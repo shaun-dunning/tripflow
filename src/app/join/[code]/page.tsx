@@ -1,0 +1,383 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
+
+type TripInfo = {
+  id: string;
+  title: string;
+  destination: string;
+  start_date: string;
+  end_date: string;
+  cover_photo: string | null;
+  travelers: { id: string; name: string; avatar: string; avatar_url: string | null }[];
+};
+
+const MAUI_FALLBACK =
+  "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=80";
+
+function formatDateRange(start: string, end: string) {
+  const s = new Date(start + "T12:00:00");
+  const e = new Date(end + "T12:00:00");
+  const month = s.toLocaleString("default", { month: "long" });
+  return `${month} ${s.getDate()}–${e.getDate()}, ${s.getFullYear()}`;
+}
+
+async function joinTrip(tripId: string, user: User) {
+  // Don't double-add
+  const { data: existing } = await supabase
+    .from("travelers")
+    .select("id")
+    .eq("trip_id", tripId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (existing) return;
+
+  const name =
+    user.user_metadata?.full_name?.split(" ")[0] ??
+    user.email?.split("@")[0] ??
+    "Traveler";
+
+  await supabase.from("travelers").insert({
+    trip_id: tripId,
+    name,
+    avatar: "🧑",
+    role: "Co-traveler",
+    status: "active",
+    is_me: false,
+    user_id: user.id,
+  });
+}
+
+export default function JoinPage() {
+  const { code } = useParams<{ code: string }>();
+  const router = useRouter();
+
+  const [trip, setTrip] = useState<TripInfo | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [alreadyMember, setAlreadyMember] = useState(false);
+  const [joining, setJoining] = useState(false);
+
+  // Auth form state
+  const [mode, setMode] = useState<"signup" | "signin">("signup");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // 1. Load trip info
+  useEffect(() => {
+    async function load() {
+      const { data, error } = await supabase
+        .from("trips")
+        .select(`id, title, destination, start_date, end_date, cover_photo,
+                 travelers(id, name, avatar, avatar_url)`)
+        .eq("invite_code", code.toUpperCase())
+        .single();
+
+      if (error || !data) {
+        setNotFound(true);
+        return;
+      }
+      setTrip(data as TripInfo);
+    }
+    load();
+  }, [code]);
+
+  // 2. Check if already logged in
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setCurrentUser(data.user);
+    });
+  }, []);
+
+  // 3. If logged in + trip loaded → check membership
+  useEffect(() => {
+    if (!currentUser || !trip) return;
+    supabase
+      .from("travelers")
+      .select("id")
+      .eq("trip_id", trip.id)
+      .eq("user_id", currentUser.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setAlreadyMember(true);
+      });
+  }, [currentUser, trip]);
+
+  async function handleJoinAsLoggedIn() {
+    if (!trip || !currentUser) return;
+    setJoining(true);
+    await joinTrip(trip.id, currentUser);
+    router.replace("/");
+  }
+
+  async function handleAuthSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!trip) return;
+    setError(null);
+    setAuthLoading(true);
+
+    let user: User | null = null;
+
+    if (mode === "signup") {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: name } },
+      });
+      if (error) { setError(error.message); setAuthLoading(false); return; }
+      user = data.user ?? null;
+    } else {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) { setError(error.message); setAuthLoading(false); return; }
+      user = data.user ?? null;
+    }
+
+    if (user) {
+      await joinTrip(trip.id, user);
+      router.replace("/");
+    }
+    setAuthLoading(false);
+  }
+
+  // ── Not found ──────────────────────────────────────────────────────────────
+  if (notFound) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <span className="text-5xl">🤔</span>
+        <h1 className="text-xl font-black text-slate-900">Invite not found</h1>
+        <p className="text-sm text-slate-500">
+          This link may have expired or the code is incorrect.
+        </p>
+      </div>
+    );
+  }
+
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (!trip) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <span className="text-3xl">🌺</span>
+          <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  const visibleTravelers = trip.travelers.slice(0, 5);
+  const extraCount = trip.travelers.length - visibleTravelers.length;
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen flex flex-col bg-white">
+
+      {/* ── Hero ── */}
+      <div className="relative h-64 w-full overflow-hidden flex-none">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={trip.cover_photo ?? MAUI_FALLBACK}
+          alt={trip.destination}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
+          <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-1">
+            🌺 You&apos;re invited
+          </p>
+          <h1 className="text-2xl font-black text-white leading-tight">{trip.title}</h1>
+          <p className="text-sm text-white/70 mt-1">
+            {formatDateRange(trip.start_date, trip.end_date)} · {trip.destination}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Travelers going ── */}
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+        <div className="flex -space-x-2">
+          {visibleTravelers.map((t) => (
+            <div
+              key={t.id}
+              className="w-9 h-9 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-lg shadow-sm"
+            >
+              {t.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={t.avatar_url} alt={t.name} className="w-full h-full rounded-full object-cover" />
+              ) : (
+                t.avatar
+              )}
+            </div>
+          ))}
+          {extraCount > 0 && (
+            <div className="w-9 h-9 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[11px] font-bold text-slate-600 shadow-sm">
+              +{extraCount}
+            </div>
+          )}
+        </div>
+        <div>
+          <p className="text-sm font-bold text-slate-900">
+            {trip.travelers.length} traveler{trip.travelers.length !== 1 ? "s" : ""} going
+          </p>
+          <p className="text-xs text-slate-400">
+            {visibleTravelers.map((t) => t.name).join(", ")}
+            {extraCount > 0 ? ` +${extraCount} more` : ""}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Join section ── */}
+      <div className="flex-1 px-6 pt-6 pb-10">
+
+        {/* Already logged in */}
+        {currentUser ? (
+          <div className="flex flex-col items-center gap-4 pt-4 text-center">
+            {alreadyMember ? (
+              <>
+                <span className="text-4xl">✅</span>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">You&apos;re already on this trip!</h2>
+                  <p className="text-sm text-slate-400 mt-1">Head back to the app to see the plan.</p>
+                </div>
+                <button
+                  onClick={() => router.replace("/")}
+                  className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
+                >
+                  Open TripFlow
+                </button>
+              </>
+            ) : (
+              <>
+                <span className="text-4xl">👋</span>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900">Ready to join?</h2>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Signed in as <span className="font-semibold text-slate-700">{currentUser.email}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={handleJoinAsLoggedIn}
+                  disabled={joining}
+                  className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-50"
+                >
+                  {joining ? "Joining…" : `Join ${trip.title}`}
+                </button>
+              </>
+            )}
+          </div>
+        ) : (
+          /* Auth form */
+          <>
+            <h2 className="text-xl font-black text-slate-900 mb-1">
+              {mode === "signup" ? "Create your account" : "Welcome back"}
+            </h2>
+            <p className="text-sm text-slate-400 mb-6">
+              {mode === "signup"
+                ? "You'll be added to the trip automatically."
+                : "Sign in and you'll be added to the trip."}
+            </p>
+
+            {/* Mode toggle */}
+            <div className="flex bg-slate-100 rounded-2xl p-1 mb-6">
+              <button
+                onClick={() => { setMode("signup"); setError(null); }}
+                className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                  mode === "signup" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
+                }`}
+              >
+                Create Account
+              </button>
+              <button
+                onClick={() => { setMode("signin"); setError(null); }}
+                className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                  mode === "signin" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
+                }`}
+              >
+                Sign In
+              </button>
+            </div>
+
+            <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
+              {mode === "signup" && (
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                    Your Name
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Kristin"
+                    required
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 transition-all"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="6+ characters"
+                  required
+                  minLength={6}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 transition-all"
+                />
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                  <span>⚠️</span>
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={authLoading}
+                className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mt-1 disabled:opacity-50 transition-opacity"
+              >
+                {authLoading
+                  ? "Please wait…"
+                  : mode === "signup"
+                  ? `Join ${trip.title}`
+                  : "Sign in & Join Trip"}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+
+      {/* TripFlow branding */}
+      <div className="text-center pb-8">
+        <p className="text-xs text-slate-300 font-medium">
+          🌺 TripFlow · Family Travel, Together
+        </p>
+      </div>
+    </div>
+  );
+}
