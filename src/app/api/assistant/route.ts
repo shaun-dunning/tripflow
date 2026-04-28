@@ -1,4 +1,3 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
 const SYSTEM_PROMPT = `You are a friendly, knowledgeable trip assistant for a family vacation to Maui, Hawaii.
@@ -37,38 +36,82 @@ Tips:
 
 Keep responses concise and friendly. When suggesting things to do, be specific to Maui and the family context. Answer questions about the planned itinerary accurately.`;
 
+type HistoryMessage = { role: string; content: string };
+
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { reply: "The AI assistant isn't configured yet. Add ANTHROPIC_API_KEY to your .env.local file and Vercel environment variables to enable it." },
-      { status: 200 }
-    );
+  const { message, history } = await req.json();
+  const priorMessages = (history as HistoryMessage[]).slice(0, -1);
+
+  // ── Gemini (free tier) ────────────────────────────────────────────────────
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    try {
+      const contents = [
+        ...priorMessages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
+        { role: "user", parts: [{ text: message }] },
+      ];
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents,
+            generationConfig: { maxOutputTokens: 600 },
+          }),
+        }
+      );
+
+      const data = await res.json();
+      const reply =
+        data.candidates?.[0]?.content?.parts?.[0]?.text ??
+        "Sorry, I couldn't generate a response.";
+      return NextResponse.json({ reply });
+    } catch (err) {
+      console.error("Gemini error:", err);
+    }
   }
 
-  const { message, history } = await req.json();
+  // ── Anthropic fallback ────────────────────────────────────────────────────
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  if (anthropicKey) {
+    try {
+      const { default: Anthropic } = await import("@anthropic-ai/sdk");
+      const client = new Anthropic({ apiKey: anthropicKey });
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const messages = [
+        ...priorMessages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        { role: "user" as const, content: message },
+      ];
 
-  // Build message history (exclude the last user message — it's in `message`)
-  const priorMessages = (history as { role: string; content: string }[])
-    .slice(0, -1)
-    .map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
+      const response = await client.messages.create({
+        model: "claude-3-5-haiku-20241022",
+        max_tokens: 600,
+        system: SYSTEM_PROMPT,
+        messages,
+      });
 
-  const response = await client.messages.create({
-    model: "claude-3-5-haiku-20241022",
-    max_tokens: 600,
-    system: SYSTEM_PROMPT,
-    messages: [
-      ...priorMessages,
-      { role: "user", content: message },
-    ],
+      const reply =
+        response.content[0]?.type === "text"
+          ? response.content[0].text
+          : "Sorry, I couldn't generate a response.";
+      return NextResponse.json({ reply });
+    } catch (err) {
+      console.error("Anthropic error:", err);
+    }
+  }
+
+  // ── No key configured ─────────────────────────────────────────────────────
+  return NextResponse.json({
+    reply:
+      "The AI assistant needs an API key to work. Add GEMINI_API_KEY (free at aistudio.google.com) to your Vercel environment variables.",
   });
-
-  const reply =
-    response.content[0]?.type === "text" ? response.content[0].text : "Sorry, I couldn't generate a response.";
-
-  return NextResponse.json({ reply });
 }
