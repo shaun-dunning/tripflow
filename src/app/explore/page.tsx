@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
@@ -114,6 +114,8 @@ function driveMinutes(drive: string): number {
 
 const WHAT_NOW_IDS = [4, 8, 1];
 
+type AiMessage = { role: "user" | "assistant"; content: string };
+
 export default function ExplorePage() {
   const [activeFilter, setActiveFilter] = useState("All");
   const [activeScenario, setActiveScenario] = useState<number | null>(null);
@@ -126,6 +128,19 @@ export default function ExplorePage() {
   const [showFilters, setShowFilters] = useState(false);
   const [travelerCount, setTravelerCount] = useState(4);
   const [currentTime, setCurrentTime] = useState("");
+
+  // Saved / hearted places
+  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
+
+  // "Added to today" toast
+  const [addedToast, setAddedToast] = useState<string | null>(null);
+
+  // AI assistant
+  const [showAI, setShowAI] = useState(false);
+  const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const aiBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Live clock — update every minute
@@ -145,6 +160,45 @@ export default function ExplorePage() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    aiBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [aiMessages]);
+
+  function toggleSave(id: number) {
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function addToToday(name: string) {
+    setAddedToast(name);
+    setTimeout(() => setAddedToast(null), 2500);
+  }
+
+  async function sendAiMessage() {
+    const text = aiInput.trim();
+    if (!text || aiLoading) return;
+    setAiInput("");
+    const newMessages: AiMessage[] = [...aiMessages, { role: "user", content: text }];
+    setAiMessages(newMessages);
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history: newMessages }),
+      });
+      const data = await res.json();
+      setAiMessages([...newMessages, { role: "assistant", content: data.reply ?? "Sorry, I couldn't get a response." }]);
+    } catch {
+      setAiMessages([...newMessages, { role: "assistant", content: "Something went wrong. Make sure the ANTHROPIC_API_KEY is set in your .env.local file." }]);
+    }
+    setAiLoading(false);
+  }
+
   const scenario = activeScenario !== null ? SCENARIOS[activeScenario] : null;
 
   const filtered = PLACES.filter((p) => {
@@ -158,7 +212,113 @@ export default function ExplorePage() {
   const activeFilterCount = (kidsOnly ? 1 : 0) + (maxDrive < 30 ? 1 : 0) + (activeScenario !== null ? 1 : 0);
 
   return (
-    <div className="flex flex-col bg-white">
+    <div className="flex flex-col bg-white relative">
+
+      {/* ── "Added to Today" toast ── */}
+      {addedToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <span>✅</span> <span className="truncate max-w-[200px]">{addedToast}</span> added to today
+        </div>
+      )}
+
+      {/* ── AI Trip Assistant overlay ── */}
+      {showAI && (
+        <div className="fixed inset-0 z-[60] flex flex-col bg-white max-w-md mx-auto">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-none">
+            <div>
+              <h2 className="text-base font-black text-slate-900">Maui Trip Assistant</h2>
+              <p className="text-xs text-slate-400 mt-0.5">Ask anything about your trip</p>
+            </div>
+            <button
+              onClick={() => setShowAI(false)}
+              className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-base font-bold"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+            {aiMessages.length === 0 && (
+              <div className="flex flex-col gap-3 py-4">
+                <div className="flex flex-col items-center gap-2 mb-2">
+                  <span className="text-4xl">🌺</span>
+                  <p className="text-sm font-bold text-slate-700 text-center">Hi! I know all about your Maui trip.</p>
+                  <p className="text-xs text-slate-400 text-center">Ask me anything — what to do, where to eat, tips for the kids, weather, packing…</p>
+                </div>
+                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Try asking:</p>
+                {[
+                  "What's the best snorkeling near Ka'anapali?",
+                  "What should we do on a rainy day with kids?",
+                  "Any tips for the Road to Hana with a family?",
+                  "What time should we leave for Haleakalā sunrise?",
+                ].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => { setAiInput(q); }}
+                    className="text-left text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-100 transition-colors"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {aiMessages.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                {msg.role === "assistant" && (
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 flex items-center justify-center text-white text-xs flex-none mr-2 mt-0.5">
+                    🌺
+                  </div>
+                )}
+                <div
+                  className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-sky-600 text-white rounded-tr-sm"
+                      : "bg-slate-100 text-slate-800 rounded-tl-sm"
+                  }`}
+                >
+                  {msg.content}
+                </div>
+              </div>
+            ))}
+
+            {aiLoading && (
+              <div className="flex justify-start">
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 flex items-center justify-center text-white text-xs flex-none mr-2">
+                  🌺
+                </div>
+                <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
+            )}
+            <div ref={aiBottomRef} />
+          </div>
+
+          {/* Input */}
+          <div className="flex-none px-4 pt-2 pb-6 border-t border-slate-100 bg-white flex gap-2">
+            <input
+              type="text"
+              value={aiInput}
+              onChange={(e) => setAiInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendAiMessage()}
+              placeholder="Ask about Maui…"
+              className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-sky-400"
+            />
+            <button
+              onClick={sendAiMessage}
+              disabled={!aiInput.trim() || aiLoading}
+              className="w-10 h-10 bg-sky-600 text-white rounded-2xl flex items-center justify-center font-bold text-base disabled:opacity-40"
+            >
+              ↑
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════
           AIRBNB-STYLE SEARCH HEADER
@@ -386,7 +546,10 @@ export default function ExplorePage() {
                           <p className="text-xs text-slate-400 mt-0.5">{place.drive} · {place.price}</p>
                           <p className="text-xs text-slate-500 mt-1 leading-snug line-clamp-2">{place.blurb}</p>
                         </div>
-                        <button className="mt-2 self-start bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg">
+                        <button
+                          onClick={() => addToToday(place.name)}
+                          className="mt-2 self-start bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg"
+                        >
                           Add to Today
                         </button>
                       </div>
@@ -436,8 +599,15 @@ export default function ExplorePage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
                     {/* Heart save button (Airbnb-style) */}
-                    <button className="absolute top-3 right-3 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-sm">
-                      <span className="text-slate-400 text-base leading-none">♡</span>
+                    <button
+                      onClick={() => toggleSave(place.id)}
+                      className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all ${
+                        savedIds.has(place.id)
+                          ? "bg-rose-500 text-white"
+                          : "bg-white/80 backdrop-blur-sm text-slate-400"
+                      }`}
+                    >
+                      <span className="text-base leading-none">{savedIds.has(place.id) ? "♥" : "♡"}</span>
                     </button>
                     {place.kidFriendly && (
                       <span className="absolute top-3 left-3 text-[10px] font-bold bg-white/85 backdrop-blur-sm text-emerald-700 px-2 py-1 rounded-full">
@@ -471,8 +641,11 @@ export default function ExplorePage() {
                         <button className="text-xs font-bold text-slate-600 border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-50 transition-colors">
                           Directions
                         </button>
-                        <button className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors">
-                          Add to plan
+                        <button
+                          onClick={() => addToToday(place.name)}
+                          className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
+                        >
+                          Add to Today
                         </button>
                       </div>
                     </div>
@@ -484,6 +657,18 @@ export default function ExplorePage() {
         </div>
 
       </div>
+
+      {/* ── Floating AI Assistant button ── */}
+      {!showAI && (
+        <button
+          onClick={() => setShowAI(true)}
+          className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white text-2xl shadow-xl shadow-sky-300/40 flex items-center justify-center z-40 hover:scale-110 transition-transform"
+          aria-label="Open AI trip assistant"
+        >
+          🌺
+        </button>
+      )}
+
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 
@@ -50,69 +51,70 @@ type DayData = {
 
 const DAYS: DayData[] = [
   {
-    dayNum: 1, date: "Wed · May 22", theme: "Travel Day",
+    dayNum: 1, date: "Fri · Jun 5", theme: "Travel Day",
     hero: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=500&fit=crop&q=85",
     heroAlt: "Airport terminal", weatherEmoji: "☁️", temp: "68°F", condition: "Overcast",
     status: "past",
-    note: "Safe travels day! All items completed.",
+    note: "Safe travels! AA271 departs early — leave by 5am for the airport.",
     agenda: [
-      { id: "mock-1-1", time: "5:30 AM", title: "Leave for LAX", emoji: "🚗", done: true, notes: "15 min drive — leave buffer for traffic", photo: "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=160&h=160&fit=crop&q=80", photoAlt: "Early morning drive" },
-      { id: "mock-1-2", time: "9:15 AM", title: "Flight AA221 to Maui", emoji: "✈️", done: true, notes: "Gate B22 · 5h 45min flight", photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=160&h=160&fit=crop&q=80", photoAlt: "Airport terminal" },
-      { id: "mock-1-3", time: "11:30 AM", title: "Arrive OGG · Rental car", emoji: "🏝️", done: true, notes: "Enterprise Lot B · Conf #ENT2847", photo: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=160&h=160&fit=crop&q=80", photoAlt: "Rental car" },
-      { id: "mock-1-4", time: "2:00 PM", title: "Check in – Wailea Resort", emoji: "🏨", done: true, notes: "Room 412 · Ocean view confirmed", photo: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=160&h=160&fit=crop&q=80", photoAlt: "Resort lobby" },
-      { id: "mock-1-5", time: "7:00 PM", title: "Dinner – Longhi's Wailea", emoji: "🍝", done: true, notes: "Casual dinner to settle in", photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=160&h=160&fit=crop&q=80", photoAlt: "Restaurant dinner" },
+      { id: "mock-1-1", time: "5:00 AM", title: "Leave for airport", emoji: "🚗", done: true, notes: "30 min drive — leave buffer for traffic", photo: "https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=160&h=160&fit=crop&q=80", photoAlt: "Early morning drive" },
+      { id: "mock-1-2", time: "8:05 AM", title: "Flight AA271 to Seattle", emoji: "✈️", done: true, notes: "LAX → SEA · Arrives 10:56am", photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=160&h=160&fit=crop&q=80", photoAlt: "Airport terminal" },
+      { id: "mock-1-3", time: "12:45 PM", title: "Flight AS845 to Maui", emoji: "🏝️", done: true, notes: "SEA → OGG · Arrives 5:11pm", photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=160&h=160&fit=crop&q=80", photoAlt: "Plane window view" },
+      { id: "mock-1-4", time: "5:11 PM", title: "Arrive OGG · Rental car", emoji: "🚙", done: true, notes: "Pick up rental at airport", photo: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=160&h=160&fit=crop&q=80", photoAlt: "Rental car" },
+      { id: "mock-1-5", time: "6:30 PM", title: "Check in – Sheraton Maui Resort", emoji: "🏨", done: true, notes: "Ka'anapali · Ocean view rooms", photo: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=160&h=160&fit=crop&q=80", photoAlt: "Resort lobby" },
+      { id: "mock-1-6", time: "8:00 PM", title: "Dinner near the resort", emoji: "🍝", done: true, notes: "Casual — settle in and unwind", photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=160&h=160&fit=crop&q=80", photoAlt: "Restaurant dinner" },
     ],
   },
   {
-    dayNum: 2, date: "Thu · May 23", theme: "Beach + Snorkel",
+    dayNum: 2, date: "Sat · Jun 6", theme: "Beach + Snorkel",
     hero: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop&q=85",
-    heroAlt: "Maui beach", weatherEmoji: "⛅", temp: "82°F", condition: "Partly cloudy",
+    heroAlt: "Ka'anapali beach", weatherEmoji: "⛅", temp: "82°F", condition: "Partly cloudy",
     status: "today",
-    note: "Bring beach towels — hotel charges $10 to rent. Grab reef-safe sunscreen from the bathroom.",
+    note: "Bring beach towels — hotel charges to rent. Grab reef-safe sunscreen from the bathroom.",
     agenda: [
       { id: "mock-2-1", time: "8:00 AM", title: "Breakfast at hotel", emoji: "🍳", done: false, notes: "Buffet ends at 10am", photo: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=160&h=160&fit=crop&q=80", photoAlt: "Hotel breakfast spread" },
-      { id: "mock-2-2", time: "10:00 AM", title: "Beach morning", emoji: "🏖️", done: false, notes: "Bring sunscreen & floaties", photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=160&h=160&fit=crop&q=80", photoAlt: "Maui beach" },
+      { id: "mock-2-2", time: "10:00 AM", title: "Ka'anapali Beach morning", emoji: "🏖️", done: false, notes: "Bring sunscreen & floaties", photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=160&h=160&fit=crop&q=80", photoAlt: "Maui beach" },
       { id: "mock-2-3", time: "1:00 PM", title: "Lunch – Monkeypod Kitchen", emoji: "🌮", done: false, notes: "Walk-in only · arrive early", photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=160&h=160&fit=crop&q=80", photoAlt: "Restaurant table" },
       { id: "mock-2-4", time: "3:00 PM", title: "Nap / downtime", emoji: "😴", done: false, notes: "Back at the resort — pool or room", photo: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=160&h=160&fit=crop&q=80", photoAlt: "Resort pool" },
-      { id: "mock-2-5", time: "4:30 PM", title: "Snorkeling – Molokini", emoji: "🤿", done: false, notes: "Depart from Maalaea Harbor", photo: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=160&h=160&fit=crop&q=80", photoAlt: "Snorkeling underwater" },
+      { id: "mock-2-5", time: "4:30 PM", title: "Snorkeling – Molokini Crater", emoji: "🤿", done: false, notes: "Depart from Maalaea Harbor", photo: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=160&h=160&fit=crop&q=80", photoAlt: "Snorkeling underwater" },
       { id: "mock-2-6", time: "7:00 PM", title: "Dinner – Mama's Fish House", emoji: "🐟", done: false, notes: "Reservation confirmed · Party of 4", reservation: true, photo: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=160&h=160&fit=crop&q=80", photoAlt: "Fine dining seafood plate" },
     ],
   },
   {
-    dayNum: 3, date: "Fri · May 24", theme: "Road to Hana",
+    dayNum: 3, date: "Sun · Jun 7", theme: "Road to Hana",
     hero: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=85",
     heroAlt: "Road to Hana", weatherEmoji: "🌦️", temp: "76°F", condition: "Chance of rain",
     status: "upcoming",
-    note: "Road to Hana stops are one-way — plan stops on the way there. Download offline maps in case of spotty service.",
+    note: "Road to Hana stops are one-way — plan stops on the way there. Download offline maps.",
     agenda: [
       { id: "mock-3-1", time: "5:30 AM", title: "Early rise – pack snacks", emoji: "🌄", done: false, notes: "Long drive day — stock the cooler", photo: "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=160&h=160&fit=crop&q=80", photoAlt: "Early morning sunrise" },
       { id: "mock-3-2", time: "7:00 AM", title: "Depart for Road to Hana", emoji: "🚗", done: false, notes: "Leave by 7am to beat the crowds", photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=160&h=160&fit=crop&q=80", photoAlt: "Winding road" },
       { id: "mock-3-3", time: "9:30 AM", title: "Twin Falls stop", emoji: "💧", done: false, notes: "Easy 20 min walk · very kid-friendly", photo: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=160&h=160&fit=crop&q=80", photoAlt: "Waterfall in forest" },
       { id: "mock-3-4", time: "12:00 PM", title: "Lunch – Hana Farms", emoji: "🌿", done: false, notes: "Local food trucks · cash friendly", photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=160&h=160&fit=crop&q=80", photoAlt: "Outdoor food stand" },
       { id: "mock-3-5", time: "2:00 PM", title: "Waiʻanapanapa Black Sand Beach", emoji: "🖤", done: false, notes: "State Park · reserve parking ahead", photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=160&h=160&fit=crop&q=80", photoAlt: "Black sand beach" },
-      { id: "mock-3-6", time: "5:00 PM", title: "Drive back to Wailea", emoji: "🌅", done: false, notes: "~2 hr drive · grab sunset views", photo: "https://images.unsplash.com/photo-1472396961693-142e6e269027?w=160&h=160&fit=crop&q=80", photoAlt: "Sunset drive" },
+      { id: "mock-3-6", time: "5:00 PM", title: "Drive back to Ka'anapali", emoji: "🌅", done: false, notes: "~2 hr drive · grab sunset views", photo: "https://images.unsplash.com/photo-1472396961693-142e6e269027?w=160&h=160&fit=crop&q=80", photoAlt: "Sunset drive" },
     ],
   },
   {
-    dayNum: 4, date: "Sat · May 25", theme: "Beach + Spa",
+    dayNum: 4, date: "Mon · Jun 8", theme: "Beach + Spa",
     hero: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&h=500&fit=crop&q=85",
     heroAlt: "Spa and pool", weatherEmoji: "☀️", temp: "84°F", condition: "Sunny",
     status: "upcoming",
-    note: "Spa is 0.3 mi from the resort — walk or take the beach path.",
+    note: "The resort spa is steps from the beach — book early as they fill up.",
     agenda: [
       { id: "mock-4-1", time: "8:30 AM", title: "Slow breakfast at hotel", emoji: "🥐", done: false, notes: "No rush today — relaxed morning", photo: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=160&h=160&fit=crop&q=80", photoAlt: "Breakfast" },
-      { id: "mock-4-2", time: "10:00 AM", title: "Wailea Beach", emoji: "🏖️", done: false, notes: "Chairs and umbrella — full beach day", photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=160&h=160&fit=crop&q=80", photoAlt: "Beach" },
+      { id: "mock-4-2", time: "10:00 AM", title: "Ka'anapali Beach", emoji: "🏖️", done: false, notes: "Chairs and umbrella — full beach day", photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=160&h=160&fit=crop&q=80", photoAlt: "Beach" },
       { id: "mock-4-3", time: "1:00 PM", title: "Lunch at the pool bar", emoji: "🍹", done: false, notes: "Order the fish tacos", photo: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=160&h=160&fit=crop&q=80", photoAlt: "Pool bar" },
-      { id: "mock-4-4", time: "3:00 PM", title: "Couples massage – Andaz Spa", emoji: "💆", done: false, notes: "Reservation confirmed · 60 min", reservation: true, photo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=160&h=160&fit=crop&q=80", photoAlt: "Spa" },
+      { id: "mock-4-4", time: "3:00 PM", title: "Couples massage – Sheraton Spa", emoji: "💆", done: false, notes: "Reservation confirmed · 60 min", reservation: true, photo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=160&h=160&fit=crop&q=80", photoAlt: "Spa" },
       { id: "mock-4-5", time: "6:30 PM", title: "Sunset dinner – Humble Market", emoji: "🌅", done: false, notes: "Walk-in · arrive at sunset", photo: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=160&h=160&fit=crop&q=80", photoAlt: "Sunset dinner" },
     ],
   },
   {
-    dayNum: 5, date: "Sun · May 26", theme: "Free Day",
+    dayNum: 5, date: "Tue · Jun 9", theme: "Free Day",
     hero: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=800&h=500&fit=crop&q=85",
     heroAlt: "Tropical island", weatherEmoji: "☀️", temp: "83°F", condition: "Sunny",
     status: "upcoming",
-    note: "No set plans today — go with the flow. Farmer's market is great in the morning.",
+    note: "No set plans today — go with the flow. Farmer's market in Upcountry is great in the morning.",
     agenda: [
       { id: "mock-5-1", time: "8:00 AM", title: "Upcountry Farmer's Market", emoji: "🥭", done: false, notes: "Kula · 30 min drive · incredible produce", photo: "https://images.unsplash.com/photo-1488459716781-31db52582fe9?w=160&h=160&fit=crop&q=80", photoAlt: "Farmers market" },
       { id: "mock-5-2", time: "11:00 AM", title: "Shopping in Paia Town", emoji: "🛍️", done: false, notes: "Boutiques, art galleries, North Shore vibes", photo: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=160&h=160&fit=crop&q=80", photoAlt: "Shopping street" },
@@ -122,7 +124,7 @@ const DAYS: DayData[] = [
     ],
   },
   {
-    dayNum: 6, date: "Mon · May 27", theme: "Haleakalā Sunrise",
+    dayNum: 6, date: "Wed · Jun 10", theme: "Haleakalā Sunrise",
     hero: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&h=500&fit=crop&q=85",
     heroAlt: "Volcano sunrise", weatherEmoji: "🌤️", temp: "55°F", condition: "Clear at summit",
     status: "upcoming",
@@ -137,18 +139,18 @@ const DAYS: DayData[] = [
     ],
   },
   {
-    dayNum: 7, date: "Tue · May 28", theme: "Fly Home",
+    dayNum: 7, date: "Thu · Jun 11", theme: "Fly Home",
     hero: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=500&fit=crop&q=85",
     heroAlt: "Airport departure", weatherEmoji: "☀️", temp: "81°F", condition: "Beautiful last day",
     status: "upcoming",
-    note: "Flight departs at 4:10 PM — check out by noon. Squeeze in one last swim!",
+    note: "Squeeze in one last swim before checkout! Return rental car with enough time for the airport.",
     agenda: [
       { id: "mock-7-1", time: "7:00 AM", title: "Last sunrise + beach walk", emoji: "🌅", done: false, notes: "Soak it in — last morning in Maui", photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=160&h=160&fit=crop&q=80", photoAlt: "Beach sunrise" },
-      { id: "mock-7-2", time: "8:30 AM", title: "Breakfast + pack up", emoji: "🧳", done: false, notes: "Check out by noon · pack tonight's items in carry-on", photo: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=160&h=160&fit=crop&q=80", photoAlt: "Packing" },
+      { id: "mock-7-2", time: "8:30 AM", title: "Breakfast + pack up", emoji: "🧳", done: false, notes: "Check out by noon", photo: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=160&h=160&fit=crop&q=80", photoAlt: "Packing" },
       { id: "mock-7-3", time: "11:00 AM", title: "Last swim at the pool", emoji: "🏊", done: false, notes: "You earned it", photo: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=160&h=160&fit=crop&q=80", photoAlt: "Pool" },
-      { id: "mock-7-4", time: "12:00 PM", title: "Check out", emoji: "🏨", done: false, notes: "Leave bags with bell desk if needed", photo: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=160&h=160&fit=crop&q=80", photoAlt: "Hotel checkout" },
-      { id: "mock-7-5", time: "1:30 PM", title: "Depart for OGG airport", emoji: "🚗", done: false, notes: "Return rental car · 30 min to airport", photo: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=160&h=160&fit=crop&q=80", photoAlt: "Road to airport" },
-      { id: "mock-7-6", time: "4:10 PM", title: "Flight home – AA222", emoji: "✈️", done: false, notes: "OGG → LAX · 5h 30min", reservation: true, photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=160&h=160&fit=crop&q=80", photoAlt: "Plane departure" },
+      { id: "mock-7-4", time: "12:00 PM", title: "Check out – Sheraton Maui", emoji: "🏨", done: false, notes: "Leave bags with bell desk if needed", photo: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=160&h=160&fit=crop&q=80", photoAlt: "Hotel checkout" },
+      { id: "mock-7-5", time: "2:00 PM", title: "Depart for OGG airport", emoji: "🚗", done: false, notes: "Return rental car · allow 45 min", photo: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=160&h=160&fit=crop&q=80", photoAlt: "Road to airport" },
+      { id: "mock-7-6", time: "5:00 PM", title: "Flight home", emoji: "✈️", done: false, notes: "OGG → home · See you on the other side!", reservation: true, photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=160&h=160&fit=crop&q=80", photoAlt: "Plane departure" },
     ],
   },
 ];
@@ -187,6 +189,7 @@ const MOODS = [
 ];
 
 export default function MyDayPage() {
+  const router = useRouter();
   const [todayDayIndex, setTodayDayIndex] = useState(0); // 0-based
   const [dayIndex, setDayIndex] = useState(0);
   const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
@@ -546,12 +549,24 @@ export default function MyDayPage() {
         {/* ── Crew ── */}
         {crewMembers.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3">
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
-              {isPast ? "Who Was There" : "Who's Coming"}
-            </p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                {isPast ? "Who Was There" : "Who's Coming"}
+              </p>
+              <button
+                onClick={() => router.push("/chat")}
+                className="text-[10px] font-semibold text-sky-600"
+              >
+                Manage crew →
+              </button>
+            </div>
             <div className="flex gap-3 flex-wrap">
               {crewMembers.map((p) => (
-                <div key={p.name} className="flex flex-col items-center gap-1">
+                <button
+                  key={p.name}
+                  onClick={() => router.push("/chat")}
+                  className="flex flex-col items-center gap-1"
+                >
                   {p.avatar_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={p.avatar_url} alt={p.name} className="w-11 h-11 rounded-full object-cover" />
@@ -561,7 +576,7 @@ export default function MyDayPage() {
                     </div>
                   )}
                   <span className="text-xs text-slate-500">{p.name}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>

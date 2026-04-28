@@ -200,7 +200,6 @@ export default function ChatPage() {
       sender_name: senderName,
       sender_avatar: myTraveler?.avatar ?? "🧔",
       sender_user_id: user?.id ?? null,
-      is_me: true,
       text,
     });
   }

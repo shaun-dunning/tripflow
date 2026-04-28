@@ -127,7 +127,7 @@ export default function TripPage() {
         setTripDateInfo(dateInfo);
         setTrip({
           title: tripData.title,
-          subtitle: `${formatDateRange(tripData.start_date, tripData.end_date)} · 4 travelers 🌺`,
+          subtitle: `${formatDateRange(tripData.start_date, tripData.end_date)} · 4 travelers`,
           coverPhoto: tripData.cover_photo,
           startDate: tripData.start_date,
           endDate: tripData.end_date,
@@ -247,10 +247,7 @@ export default function TripPage() {
               <div>
                 <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-1">{activeTripLabel}</p>
                 <h2 className="text-2xl font-black text-white leading-tight">{trip?.title ?? "Maui Family Trip"}</h2>
-                <p className="text-sm text-white/70 mt-0.5">{trip?.subtitle ?? "May 22 – 28 · 4 travelers 🌺"}</p>
-              </div>
-              <div className="flex gap-1.5 mb-1">
-                <span className="text-lg">👨‍👩‍👧‍👦</span>
+                <p className="text-sm text-white/70 mt-0.5">{trip?.subtitle ?? "Jun 5–11 · 4 travelers"}</p>
               </div>
             </div>
 
@@ -258,7 +255,7 @@ export default function TripPage() {
             <div className="mt-3">
               <div className="flex justify-between mb-1.5">
                 {TRIP.map((d) => (
-                  <div key={d.id} className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all ${
+                  <div key={d.id} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
                     d.status === "past"    ? "bg-white border-white text-sky-700" :
                     d.status === "today"  ? "bg-sky-400 border-white text-white ring-2 ring-white/50 scale-110" :
                                             "bg-white/20 border-white/40 text-white/60"
