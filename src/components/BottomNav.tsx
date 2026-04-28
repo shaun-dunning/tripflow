@@ -9,8 +9,8 @@ const tabs = [
   { href: "/", label: "My Day", icon: "☀️", badge: 0 },
   { href: "/trip", label: "Trips", icon: "🗺️", badge: 0 },
   { href: "/explore", label: "Explore", icon: "🔍", badge: 0 },
-  { href: "/vault", label: "Docs", icon: "📁", badge: 1 },
-  { href: "/chat", label: "Group", icon: "💬", badge: 3 },
+  { href: "/vault", label: "Docs", icon: "📁", badge: 0 },
+  { href: "/chat", label: "Group", icon: "💬", badge: 0 },
 ];
 
 export default function BottomNav() {

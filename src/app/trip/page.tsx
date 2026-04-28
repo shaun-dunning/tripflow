@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { getTripDateInfo, getDayStatus, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
-const TODAY_DAY_NUMBER = 2; // Day 2 = today for demo
 
 type Activity = { emoji: string; label: string };
 type Day = {
@@ -109,6 +109,7 @@ export default function TripPage() {
   const [trip, setTrip] = useState<TripMeta | null>(null);
   const [days, setDays] = useState<Day[]>(TRIP);
   const [todayGlance, setTodayGlance] = useState(TODAY_GLANCE);
+  const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
 
   useEffect(() => {
     async function fetchTripData() {
@@ -119,10 +120,14 @@ export default function TripPage() {
         .eq("id", TRIP_ID)
         .single();
 
+      let dateInfo: TripDateInfo | null = null;
+
       if (tripData) {
+        dateInfo = getTripDateInfo(tripData.start_date, tripData.end_date);
+        setTripDateInfo(dateInfo);
         setTrip({
           title: tripData.title,
-          subtitle: `${new Date(tripData.start_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${new Date(tripData.end_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} · 4 travelers 🌺`,
+          subtitle: `${formatDateRange(tripData.start_date, tripData.end_date)} · 4 travelers 🌺`,
           coverPhoto: tripData.cover_photo,
           startDate: tripData.start_date,
           endDate: tripData.end_date,
@@ -136,12 +141,10 @@ export default function TripPage() {
         .eq("trip_id", TRIP_ID)
         .order("day_number");
 
-      if (tripDays?.length) {
+      if (tripDays?.length && dateInfo) {
         const mapped: Day[] = tripDays.map((td) => {
           const dayNum = td.day_number;
-          const status: Day["status"] =
-            dayNum < TODAY_DAY_NUMBER ? "past" :
-            dayNum === TODAY_DAY_NUMBER ? "today" : "upcoming";
+          const status = getDayStatus(dayNum, dateInfo!);
 
           // Use first 3 agenda items as activity pills, fall back to mock
           const mockDay = TRIP.find((d) => d.id === dayNum);
@@ -152,12 +155,12 @@ export default function TripPage() {
                 .map((ai: { emoji: string; title: string }) => ({ emoji: ai.emoji, label: ai.title.split("–")[0].trim() }))
             : (mockDay?.activities ?? []);
 
-          // Parse date label e.g. "Day 2 · Beach Day" → label="Day 2", theme="Beach Day"
+          // Parse date label e.g. "Arrival Day 🛬" → theme
           const labelParts = (td.label ?? "").split(" · ");
-          const label = labelParts[0] ?? `Day ${dayNum}`;
-          const theme = labelParts.slice(1).join(" · ") || mockDay?.theme || "";
+          const label = `Day ${dayNum}`;
+          const theme = labelParts.join(" · ") || mockDay?.theme || "";
 
-          const dateFormatted = new Date(td.date).toLocaleDateString("en-US", {
+          const dateFormatted = new Date(td.date + "T12:00:00").toLocaleDateString("en-US", {
             weekday: "short", month: "short", day: "numeric",
           });
 
@@ -176,8 +179,8 @@ export default function TripPage() {
         });
         setDays(mapped);
 
-        // Today at a Glance — undone items from today's day
-        const todayDay = tripDays.find((td) => td.day_number === TODAY_DAY_NUMBER);
+        // Today at a Glance — undone items from today
+        const todayDay = tripDays.find((td) => td.day_number === dateInfo!.currentDayNumber);
         if (todayDay?.agenda_items?.length) {
           const upcoming = todayDay.agenda_items
             .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
@@ -197,8 +200,19 @@ export default function TripPage() {
   }, []);
 
   const today = days.find((d) => d.status === "today") ?? days[0];
-  const daysLeft = days.filter((d) => d.status === "upcoming").length;
-  const progress = Math.round(((today.id - 1) / days.length) * 100);
+  const daysLeft = tripDateInfo?.daysLeft ?? days.filter((d) => d.status === "upcoming").length;
+  const progress = tripDateInfo?.progressPercent ?? Math.round(((today.id - 1) / days.length) * 100);
+  const tripStatus = tripDateInfo?.status ?? "upcoming";
+  const countdownLabel = tripStatus === "upcoming"
+    ? `${tripDateInfo?.daysUntilTrip ?? "?"} days away`
+    : tripStatus === "completed"
+    ? "Trip complete"
+    : `${daysLeft} days left`;
+  const activeTripLabel = tripStatus === "upcoming"
+    ? `Upcoming · ${days.length} days`
+    : tripStatus === "completed"
+    ? "Completed Trip"
+    : `Active Trip · Day ${tripDateInfo?.currentDayNumber} of ${tripDateInfo?.totalDays}`;
 
   return (
     <div className="flex flex-col gap-5 px-4 pt-4 pb-6">
@@ -221,15 +235,17 @@ export default function TripPage() {
 
           {/* Countdown pill */}
           <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-2 text-center">
-            <p className="text-2xl font-black leading-none">{daysLeft}</p>
-            <p className="text-[10px] font-semibold tracking-wide mt-0.5 opacity-80">days left</p>
+            <p className="text-2xl font-black leading-none">
+              {tripStatus === "upcoming" ? tripDateInfo?.daysUntilTrip ?? "—" : tripStatus === "completed" ? "✓" : daysLeft}
+            </p>
+            <p className="text-[10px] font-semibold tracking-wide mt-0.5 opacity-80">{countdownLabel.split(" ").slice(1).join(" ") || "days left"}</p>
           </div>
 
           {/* Trip identity */}
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-1">Active Trip · {today.label} of {days.length}</p>
+                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-1">{activeTripLabel}</p>
                 <h2 className="text-2xl font-black text-white leading-tight">{trip?.title ?? "Maui Family Trip"}</h2>
                 <p className="text-sm text-white/70 mt-0.5">{trip?.subtitle ?? "May 22 – 28 · 4 travelers 🌺"}</p>
               </div>

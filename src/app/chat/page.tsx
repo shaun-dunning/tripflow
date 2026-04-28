@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Message = {
@@ -107,10 +108,13 @@ export default function ChatPage() {
   const [travelers, setTravelers] = useState<Traveler[]>([]);
   const [loading, setLoading] = useState(true);
   const [input, setInput] = useState("");
+  const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
+  const [tripTitle, setTripTitle] = useState("Maui Trip Group");
 
   // Sheet
   const [sheet, setSheet] = useState<Sheet>(null);
   const [editMode, setEditMode] = useState(false);
+  const [profileEditMode, setProfileEditMode] = useState(false);
   const [showInviteSheet, setShowInviteSheet] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -150,20 +154,17 @@ export default function ChatPage() {
   // ── Data ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchData() {
-      const [msgResult, travelerResult] = await Promise.all([
-        supabase
-          .from("messages")
-          .select("*")
-          .eq("trip_id", TRIP_ID)
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("travelers")
-          .select("*")
-          .eq("trip_id", TRIP_ID)
-          .order("created_at", { ascending: true }),
+      const [msgResult, travelerResult, tripResult] = await Promise.all([
+        supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
+        supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
+        supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).single(),
       ]);
       if (msgResult.data) setMessages(msgResult.data as Message[]);
       if (travelerResult.data) setTravelers(travelerResult.data as Traveler[]);
+      if (tripResult.data) {
+        setTripTitle(tripResult.data.title);
+        setTripDateInfo(getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date));
+      }
       setLoading(false);
     }
     fetchData();
@@ -216,14 +217,26 @@ export default function ChatPage() {
   function closeSheet() {
     setSheet(null);
     setEditMode(false);
+    setProfileEditMode(false);
+  }
+
+  function openProfileEdit() {
+    if (!myTraveler) return;
+    setEditName(myTraveler.name);
+    setEditAvatar(myTraveler.avatar);
+    setEditAvatarUrl(myTraveler.avatar_url ?? null);
+    setEditRole(myTraveler.role);
+    setProfileEditMode(true);
   }
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file || !sheetTraveler) return;
+    // works for both profile edit (myTraveler) and traveler edit (sheetTraveler)
+    const targetTraveler = profileEditMode ? myTraveler : sheetTraveler;
+    if (!file || !targetTraveler) return;
     setUploadingPhoto(true);
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${sheetTraveler.id}.${ext}`;
+    const path = `${targetTraveler.id}.${ext}`;
     const { error } = await supabase.storage
       .from("avatars")
       .upload(path, file, { upsert: true });
@@ -232,8 +245,22 @@ export default function ChatPage() {
       setEditAvatarUrl(data.publicUrl);
     }
     setUploadingPhoto(false);
-    // reset so same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function saveProfileEdit() {
+    if (!myTraveler) return;
+    const updates = {
+      name: editName,
+      avatar: editAvatar,
+      avatar_url: editAvatarUrl,
+      role: editRole,
+    };
+    await supabase.from("travelers").update(updates).eq("id", myTraveler.id);
+    setTravelers((prev) =>
+      prev.map((t) => (t.id === myTraveler.id ? { ...t, ...updates } : t))
+    );
+    setProfileEditMode(false);
   }
 
   async function saveEdit() {
@@ -397,42 +424,185 @@ export default function ChatPage() {
             {/* ── Profile sheet ── */}
             {sheet.type === "profile" && (
               <div className="px-6 pt-3 pb-10">
-                {/* Avatar + name */}
-                <div className="flex flex-col items-center gap-3 mb-8">
-                  <div className="relative">
-                    {myTraveler ? (
-                      <TravelerAvatar traveler={myTraveler} size="xl" />
-                    ) : (
-                      <div className="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center text-white text-2xl font-bold">
-                        {initials}
+                {!profileEditMode ? (
+                  /* ── View mode ── */
+                  <>
+                    <div className="flex flex-col items-center gap-3 mb-8">
+                      <div className="relative">
+                        {myTraveler ? (
+                          <TravelerAvatar traveler={myTraveler} size="xl" />
+                        ) : (
+                          <div className="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center text-white text-2xl font-bold">
+                            {initials}
+                          </div>
+                        )}
+                        <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white" />
+                      </div>
+                      <div className="text-center">
+                        <h2 className="text-2xl font-black text-slate-900">{displayName}</h2>
+                        {myTraveler?.role && (
+                          <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full mt-2 inline-block">
+                            {myTraveler.role}
+                          </span>
+                        )}
+                        <p className="text-xs text-slate-400 mt-2">{user?.email}</p>
+                      </div>
+                    </div>
+
+                    {myTraveler && (
+                      <button
+                        onClick={openProfileEdit}
+                        className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mb-2.5"
+                      >
+                        Edit my profile
+                      </button>
+                    )}
+                    <button
+                      onClick={handleSignOut}
+                      className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-4 rounded-2xl text-sm"
+                    >
+                      Sign out
+                    </button>
+                    <button
+                      onClick={closeSheet}
+                      className="w-full mt-2 text-sm text-slate-400 font-semibold py-3 pb-6 text-center"
+                    >
+                      Close
+                    </button>
+                  </>
+                ) : (
+                  /* ── Edit mode ── */
+                  <div className="flex flex-col gap-5 py-3">
+                    <h3 className="text-base font-black text-slate-900 text-center">Edit my profile</h3>
+
+                    {/* Photo / avatar preview */}
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="relative">
+                        <TravelerAvatar
+                          traveler={{ name: editName, avatar: editAvatar, avatar_url: editAvatarUrl }}
+                          size="xl"
+                        />
+                        {uploadingPhoto && (
+                          <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* file input rendered once at component root — see below */}
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => fileInputRef.current?.click()}
+                          className="text-xs font-bold text-slate-700 bg-slate-100 px-4 py-2.5 rounded-full flex items-center gap-1.5"
+                        >
+                          📷 Upload photo
+                        </button>
+                        {editAvatarUrl && (
+                          <button
+                            onClick={() => setEditAvatarUrl(null)}
+                            className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-2.5 rounded-full"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Emoji picker */}
+                    {!editAvatarUrl && (
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                          Or choose emoji
+                        </p>
+                        <div className="flex gap-2 flex-wrap">
+                          {AVATAR_OPTIONS.map((emoji) => (
+                            <button
+                              key={emoji}
+                              onClick={() => setEditAvatar(emoji)}
+                              className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl transition-all ${
+                                editAvatar === emoji
+                                  ? "bg-slate-900 scale-110"
+                                  : "bg-slate-100"
+                              }`}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     )}
-                    <span className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white" />
-                  </div>
-                  <div className="text-center">
-                    <h2 className="text-2xl font-black text-slate-900">{displayName}</h2>
-                    {myTraveler?.role && (
-                      <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full mt-2 inline-block">
-                        {myTraveler.role}
-                      </span>
-                    )}
-                    <p className="text-xs text-slate-400 mt-2">{user?.email}</p>
-                  </div>
-                </div>
 
-                {/* Actions */}
-                <button
-                  onClick={handleSignOut}
-                  className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-4 rounded-2xl text-sm"
-                >
-                  Sign out
-                </button>
-                <button
-                  onClick={closeSheet}
-                  className="w-full mt-2 text-sm text-slate-400 font-semibold py-3 pb-6 text-center"
-                >
-                  Close
-                </button>
+                    {/* Name */}
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                        Name
+                      </p>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
+                      />
+                    </div>
+
+                    {/* Role */}
+                    <div>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                        Role
+                      </p>
+                      <div className="flex gap-1.5 flex-wrap mb-3">
+                        {ROLE_PRESETS.map((preset) => {
+                          const active =
+                            preset === "Kid"
+                              ? editRole.startsWith("Kid")
+                              : editRole === preset;
+                          return (
+                            <button
+                              key={preset}
+                              onClick={() =>
+                                setEditRole(preset === "Kid" ? "Kid · Age " : preset)
+                              }
+                              className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                                active
+                                  ? "bg-slate-900 text-white border-slate-900"
+                                  : "bg-white text-slate-500 border-slate-200"
+                              }`}
+                            >
+                              {preset === "Kid" ? "👦 Kid" : preset}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <input
+                        type="text"
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value)}
+                        placeholder="e.g. Trip Organizer, Navigator…"
+                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1.5 px-1">
+                        Tap a preset or type anything custom
+                      </p>
+                    </div>
+
+                    {/* Save / Cancel */}
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={saveProfileEdit}
+                        className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
+                      >
+                        Save changes
+                      </button>
+                      <button
+                        onClick={() => setProfileEditMode(false)}
+                        className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl"
+                      >
+                        Back
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -500,14 +670,7 @@ export default function ChatPage() {
                         )}
                       </div>
 
-                      {/* Hidden file input */}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        ref={fileInputRef}
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                      />
+                      {/* file input rendered once at component root — see below */}
 
                       <div className="flex gap-2">
                         <button
@@ -639,9 +802,15 @@ export default function ChatPage() {
         {/* Title row */}
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h1 className="text-lg font-black text-slate-900">Maui Trip Group</h1>
+            <h1 className="text-lg font-black text-slate-900">{tripTitle}</h1>
             <p className="text-xs text-slate-400 mt-0.5">
-              Day 2 of 7 &middot; {travelers.length} travelers
+              {tripDateInfo
+                ? tripDateInfo.status === "upcoming"
+                  ? `${tripDateInfo.daysUntilTrip} days away · ${travelers.length} travelers`
+                  : tripDateInfo.status === "completed"
+                  ? `Trip complete · ${travelers.length} travelers`
+                  : `Day ${tripDateInfo.currentDayNumber} of ${tripDateInfo.totalDays} · ${travelers.length} travelers`
+                : `${travelers.length} travelers`}
             </p>
           </div>
           <button
@@ -738,16 +907,6 @@ export default function ChatPage() {
           )}
         </div>
 
-        {/* Pinned banner */}
-        <div className="mt-3 flex items-center gap-2 bg-sky-50 border border-sky-100 rounded-xl px-3 py-2">
-          <span className="text-base">📌</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-sky-700">Pinned · Tonight</p>
-            <p className="text-xs text-sky-600 truncate">
-              Dinner @ Mama&apos;s Fish House · 7:00 PM · Meet in lobby at 6:45
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* ── Messages ─────────────────────────────────────────────────────── */}
@@ -755,7 +914,7 @@ export default function ChatPage() {
         <div className="flex items-center gap-2">
           <div className="flex-1 h-px bg-slate-100" />
           <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-            Today · May 23
+            {formatTodayLabel()}
           </span>
           <div className="flex-1 h-px bg-slate-100" />
         </div>
@@ -877,6 +1036,15 @@ export default function ChatPage() {
           </button>
         </div>
       </div>
+
+      {/* ── Single shared file input for photo uploads ───────────────────── */}
+      <input
+        type="file"
+        accept="image/*"
+        ref={fileInputRef}
+        onChange={handlePhotoUpload}
+        className="hidden"
+      />
 
     </div>
   );

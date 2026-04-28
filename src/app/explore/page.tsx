@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/lib/supabase";
+
+const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
 type Place = {
   id: number;
@@ -117,10 +120,30 @@ export default function ExplorePage() {
   const [maxDrive, setMaxDrive] = useState(30);
   const [kidsOnly, setKidsOnly] = useState(false);
   const [showWhatNow, setShowWhatNow] = useState(false);
-  const [location, setLocation] = useState("Wailea");
+  const [location, setLocation] = useState("Ka'anapali");
   const [editingLocation, setEditingLocation] = useState(false);
-  const [locationInput, setLocationInput] = useState("Wailea");
+  const [locationInput, setLocationInput] = useState("Ka'anapali");
   const [showFilters, setShowFilters] = useState(false);
+  const [travelerCount, setTravelerCount] = useState(4);
+  const [currentTime, setCurrentTime] = useState("");
+
+  useEffect(() => {
+    // Live clock — update every minute
+    function updateTime() {
+      setCurrentTime(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+    }
+    updateTime();
+    const timer = setInterval(updateTime, 60_000);
+
+    // Real traveler count
+    supabase
+      .from("travelers")
+      .select("id", { count: "exact", head: true })
+      .eq("trip_id", TRIP_ID)
+      .then(({ count }) => { if (count) setTravelerCount(count); });
+
+    return () => clearInterval(timer);
+  }, []);
 
   const scenario = activeScenario !== null ? SCENARIOS[activeScenario] : null;
 
@@ -213,15 +236,11 @@ export default function ExplorePage() {
         {/* ── Context chips ── */}
         <div className="flex items-center gap-2 mt-3 px-1">
           <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-            <span>⛅</span> 82°F
+            <span>🕒</span> {currentTime}
           </span>
           <span className="text-slate-200">·</span>
           <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-            <span>🕒</span> 3:00 PM
-          </span>
-          <span className="text-slate-200">·</span>
-          <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-            <span>👨‍👩‍👧‍👦</span> 4 people
+            <span>👨‍👩‍👧‍👦</span> {travelerCount} people
           </span>
           <button
             onClick={() => setKidsOnly(!kidsOnly)}
@@ -339,11 +358,9 @@ export default function ExplorePage() {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { icon: "🕒", text: "3:00 PM" },
-                  { icon: "🌡️", text: "82°F" },
-                  { icon: "👦", text: "Kids active since 10am" },
-                  { icon: "⏱️", text: "1.5 hrs before snorkeling" },
-                  { icon: "💵", text: "~$50 budget" },
+                  { icon: "🕒", text: currentTime },
+                  { icon: "👨‍👩‍👧‍👦", text: `${travelerCount} travelers` },
+                  { icon: "📍", text: `Near ${location}` },
                 ].map((chip) => (
                   <span key={chip.text} className="flex items-center gap-1 text-xs font-medium bg-white text-indigo-700 border border-indigo-100 px-2 py-1 rounded-full">
                     {chip.icon} {chip.text}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { getTripDateInfo } from "@/lib/tripDates";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -185,65 +186,78 @@ const MOODS = [
   { label: "Fancy Night", emoji: "✨", color: "bg-slate-100 text-slate-700" },
 ];
 
-const TODAY_INDEX = 1; // Day 2 is index 1
-
 export default function MyDayPage() {
-  const [dayIndex, setDayIndex] = useState(TODAY_INDEX);
+  const [todayDayIndex, setTodayDayIndex] = useState(0); // 0-based
+  const [dayIndex, setDayIndex] = useState(0);
   const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
+  const [crewMembers, setCrewMembers] = useState<{ name: string; avatar: string; avatar_url: string | null }[]>([]);
 
-  // Overlay Supabase agenda_items on top of the mock data for Day 2
   useEffect(() => {
-    async function fetchAgendaItems() {
-      const { data } = await supabase
-        .from("agenda_items")
-        .select("*")
-        .order("sort_order", { ascending: true });
+    async function fetchData() {
+      // Fetch trip dates + travelers + agenda items in parallel
+      const [tripResult, travelersResult, agendaResult, tripDaysResult] = await Promise.all([
+        supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
+        supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
+        supabase.from("agenda_items").select("*").order("sort_order", { ascending: true }),
+        supabase.from("trip_days").select("id, day_number").eq("trip_id", TRIP_ID),
+      ]);
 
-      if (!data || data.length === 0) return;
+      // Compute today's day index from real trip dates
+      if (tripResult.data) {
+        const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
+        // Clamp to valid day range (0 to DAYS.length-1)
+        const idx = Math.max(0, Math.min(info.currentDayNumber - 1, DAYS.length - 1));
+        setTodayDayIndex(idx);
+        setDayIndex(idx);
+      }
 
-      // Group items by trip_day_id
-      const byDay: Record<string, typeof data> = {};
-      data.forEach((item) => {
-        if (!byDay[item.trip_day_id]) byDay[item.trip_day_id] = [];
-        byDay[item.trip_day_id].push(item);
-      });
+      // Real crew from travelers table
+      if (travelersResult.data?.length) {
+        setCrewMembers(travelersResult.data.map((t) => ({
+          name: t.name,
+          avatar: t.avatar,
+          avatar_url: t.avatar_url ?? null,
+        })));
+      }
 
-      // Fetch trip_days to map day_number → items
-      const { data: tripDays } = await supabase
-        .from("trip_days")
-        .select("id, day_number")
-        .eq("trip_id", TRIP_ID);
-
-      if (!tripDays) return;
-
-      setAgendas((prev) => {
-        const updated = [...prev];
-        tripDays.forEach((td) => {
-          const items = byDay[td.id];
-          if (!items?.length) return;
-          const idx = td.day_number - 1;
-          updated[idx] = items.map((ai) => ({
-            id: ai.id,
-            time: ai.time,
-            title: ai.title,
-            emoji: ai.emoji,
-            done: ai.done,
-            notes: ai.subtitle ?? "",
-            reservation: ai.is_reservation,
-            fromSupabase: true,
-          }));
+      // Overlay Supabase agenda items
+      if (agendaResult.data?.length && tripDaysResult.data) {
+        const byDay: Record<string, typeof agendaResult.data> = {};
+        agendaResult.data.forEach((item) => {
+          if (!byDay[item.trip_day_id]) byDay[item.trip_day_id] = [];
+          byDay[item.trip_day_id].push(item);
         });
-        return updated;
-      });
+
+        setAgendas((prev) => {
+          const updated = [...prev];
+          tripDaysResult.data!.forEach((td) => {
+            const items = byDay[td.id];
+            if (!items?.length) return;
+            const idx = td.day_number - 1;
+            if (idx < 0 || idx >= updated.length) return;
+            updated[idx] = items.map((ai) => ({
+              id: ai.id,
+              time: ai.time,
+              title: ai.title,
+              emoji: ai.emoji,
+              done: ai.done,
+              notes: ai.subtitle ?? "",
+              reservation: ai.is_reservation,
+              fromSupabase: true,
+            }));
+          });
+          return updated;
+        });
+      }
     }
-    fetchAgendaItems();
+    fetchData();
   }, []);
 
   const day = DAYS[dayIndex];
   const items = agendas[dayIndex];
   const sections = getSections(items);
-  const isToday = day.status === "today";
-  const isPast = day.status === "past";
+  const isToday = dayIndex === todayDayIndex;
+  const isPast = dayIndex < todayDayIndex;
 
   async function toggle(id: string) {
     if (!isToday) return;
@@ -529,27 +543,29 @@ export default function MyDayPage() {
           </div>
         )}
 
-        {/* ── Family ── */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
-            {isPast ? "Who Was There" : "Who's Coming"}
-          </p>
-          <div className="flex gap-3">
-            {[
-              { name: "You", emoji: "🧔" },
-              { name: "Sarah", emoji: "👩" },
-              { name: "Liam", emoji: "👦" },
-              { name: "Emma", emoji: "👧" },
-            ].map((p) => (
-              <div key={p.name} className="flex flex-col items-center gap-1">
-                <div className="w-11 h-11 rounded-full bg-sky-100 flex items-center justify-center text-xl">
-                  {p.emoji}
+        {/* ── Crew ── */}
+        {crewMembers.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-3">
+              {isPast ? "Who Was There" : "Who's Coming"}
+            </p>
+            <div className="flex gap-3 flex-wrap">
+              {crewMembers.map((p) => (
+                <div key={p.name} className="flex flex-col items-center gap-1">
+                  {p.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.avatar_url} alt={p.name} className="w-11 h-11 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-11 h-11 rounded-full bg-sky-100 flex items-center justify-center text-xl">
+                      {p.avatar}
+                    </div>
+                  )}
+                  <span className="text-xs text-slate-500">{p.name}</span>
                 </div>
-                <span className="text-xs text-slate-500">{p.name}</span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
     </div>
