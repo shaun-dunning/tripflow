@@ -9,7 +9,9 @@ const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
 function timeToMinutes(t: string): number {
   const [time, mer] = t.split(" ");
-  let [h, m] = time.split(":").map(Number);
+  const parts = time.split(":").map(Number);
+  let h = parts[0];
+  const m = parts[1];
   if (mer === "PM" && h !== 12) h += 12;
   if (mer === "AM" && h === 12) h = 0;
   return h * 60 + m;

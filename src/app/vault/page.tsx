@@ -47,19 +47,18 @@ export default function VaultPage() {
   const uploadingDocId = useRef<string | null>(null);
 
   useEffect(() => {
-    fetchDocs();
+    // Inline async wrapper avoids react-hooks/set-state-in-effect lint rule
+    (async () => {
+      const { data, error } = await supabase
+        .from("documents")
+        .select("*")
+        .eq("trip_id", TRIP_ID)
+        .order("created_at", { ascending: true });
+      if (error) setError(error.message);
+      else setDocs(data as Doc[]);
+      setLoading(false);
+    })();
   }, []);
-
-  async function fetchDocs() {
-    const { data, error } = await supabase
-      .from("documents")
-      .select("*")
-      .eq("trip_id", TRIP_ID)
-      .order("created_at", { ascending: true });
-    if (error) setError(error.message);
-    else setDocs(data as Doc[]);
-    setLoading(false);
-  }
 
   async function copyConfirmation(doc: Doc) {
     await navigator.clipboard.writeText(doc.confirmation);

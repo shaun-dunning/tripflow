@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, getDayStatus, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 
@@ -360,7 +361,7 @@ export default function TripPage() {
                   <div className="bg-sky-50 border-t border-sky-100 px-3 py-2.5">
                     <div className="flex items-center justify-between mb-1.5">
                       <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest">Today at a Glance</p>
-                      <a href="/" className="text-[10px] font-semibold text-sky-600">See full day →</a>
+                      <Link href="/" className="text-[10px] font-semibold text-sky-600">See full day →</Link>
                     </div>
                     <div className="flex flex-col gap-1.5">
                       {todayGlance.map((a, i) => (
@@ -385,7 +386,7 @@ export default function TripPage() {
                       </div>
                     ))}
                     {day.status === "today" && (
-                      <a href="/" className="mt-1 text-xs font-semibold text-sky-600">→ Open Today&apos;s full schedule</a>
+                      <Link href="/" className="mt-1 text-xs font-semibold text-sky-600">→ Open Today&apos;s full schedule</Link>
                     )}
                     {day.status === "upcoming" && (
                       <span className="mt-1 text-xs font-semibold text-slate-400">+ Add activity</span>

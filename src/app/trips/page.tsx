@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 const TODAY_ACTIVITIES = [
@@ -44,11 +44,7 @@ function getGreeting(): string {
 }
 
 export default function TripsPage() {
-  const [greeting, setGreeting] = useState("Good morning");
-
-  useEffect(() => {
-    setGreeting(getGreeting());
-  }, []);
+  const [greeting] = useState(getGreeting);
 
   return (
     <div className="flex flex-col px-4 pt-5 pb-6 gap-5">
