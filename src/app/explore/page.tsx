@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
+import { getTripDateInfo } from "@/lib/tripDates";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -135,6 +136,9 @@ export default function ExplorePage() {
   // "Added to today" toast
   const [addedToast, setAddedToast] = useState<string | null>(null);
 
+  // Today's trip_day_id for agenda inserts
+  const [todayTripDayId, setTodayTripDayId] = useState<string | null>(null);
+
   // AI assistant
   const [showAI, setShowAI] = useState(false);
   const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
@@ -157,6 +161,28 @@ export default function ExplorePage() {
       .eq("trip_id", TRIP_ID)
       .then(({ count }) => { if (count) setTravelerCount(count); });
 
+    // Fetch today's trip_day_id for "Add to Today" inserts
+    async function fetchTodayDay() {
+      const { data: tripData } = await supabase
+        .from("trips")
+        .select("start_date, end_date")
+        .eq("id", TRIP_ID)
+        .single();
+      if (!tripData) return;
+
+      const info = getTripDateInfo(tripData.start_date, tripData.end_date);
+      if (info.status !== "active") return; // only add during active trip
+
+      const { data: dayData } = await supabase
+        .from("trip_days")
+        .select("id")
+        .eq("trip_id", TRIP_ID)
+        .eq("day_number", info.currentDayNumber)
+        .single();
+      if (dayData) setTodayTripDayId(dayData.id);
+    }
+    fetchTodayDay();
+
     return () => clearInterval(timer);
   }, []);
 
@@ -173,9 +199,37 @@ export default function ExplorePage() {
     });
   }
 
-  function addToToday(name: string) {
-    setAddedToast(name);
+  async function addToToday(place: Place) {
+    setAddedToast(place.name);
     setTimeout(() => setAddedToast(null), 2500);
+
+    // Persist to Supabase if we have today's trip_day_id
+    if (!todayTripDayId) return;
+
+    // Get current max sort_order so we append at the end
+    const { data: existing } = await supabase
+      .from("agenda_items")
+      .select("sort_order")
+      .eq("trip_day_id", todayTripDayId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const nextSortOrder = (existing?.sort_order ?? 0) + 10;
+
+    await supabase.from("agenda_items").insert({
+      trip_day_id: todayTripDayId,
+      title: place.name,
+      subtitle: `${place.drive} · ${place.address}`,
+      emoji: place.category === "Beach" ? "🏖️"
+           : place.category === "Food"  ? "🍽️"
+           : place.category === "Spa"   ? "💆"
+           : "📍",
+      time: "TBD",
+      done: false,
+      sort_order: nextSortOrder,
+      is_reservation: false,
+    });
   }
 
   async function sendAiMessage() {
@@ -547,7 +601,7 @@ export default function ExplorePage() {
                           <p className="text-xs text-slate-500 mt-1 leading-snug line-clamp-2">{place.blurb}</p>
                         </div>
                         <button
-                          onClick={() => addToToday(place.name)}
+                          onClick={() => addToToday(place)}
                           className="mt-2 self-start bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg"
                         >
                           Add to Today
@@ -642,7 +696,7 @@ export default function ExplorePage() {
                           Directions
                         </button>
                         <button
-                          onClick={() => addToToday(place.name)}
+                          onClick={() => addToToday(place)}
                           className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
                         >
                           Add to Today

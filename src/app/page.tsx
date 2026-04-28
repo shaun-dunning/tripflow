@@ -188,14 +188,31 @@ const MOODS = [
   { label: "Fancy Night", emoji: "✨", color: "bg-slate-100 text-slate-700" },
 ];
 
+type LiveWeather = {
+  temp: number;
+  condition: string;
+  emoji: string;
+  high: number;
+  low: number;
+  humidity: number;
+  source: "live" | "static";
+};
+
 export default function MyDayPage() {
   const router = useRouter();
   const [todayDayIndex, setTodayDayIndex] = useState(0); // 0-based
   const [dayIndex, setDayIndex] = useState(0);
   const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
   const [crewMembers, setCrewMembers] = useState<{ name: string; avatar: string; avatar_url: string | null }[]>([]);
+  const [weather, setWeather] = useState<LiveWeather | null>(null);
 
   useEffect(() => {
+    // Fetch live weather independently (non-blocking)
+    fetch("/api/weather")
+      .then((r) => r.json())
+      .then((data) => setWeather(data))
+      .catch(() => {}); // silent — falls back to static per-day data
+
     async function fetchData() {
       // Fetch trip dates + travelers + agenda items in parallel
       const [tripResult, travelersResult, agendaResult, tripDaysResult] = await Promise.all([
@@ -367,13 +384,19 @@ export default function MyDayPage() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-white/20">
-              <span className="text-lg">{day.weatherEmoji}</span>
+            <button
+              className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-white/20 text-left"
+              title={weather?.source === "live" ? `Hi ${weather.high}° · Lo ${weather.low}° · Humidity ${weather.humidity}%` : "Estimated weather"}
+            >
+              <span className="text-lg">{weather ? weather.emoji : day.weatherEmoji}</span>
               <div>
-                <p className="text-sm font-bold text-white">{day.temp}</p>
-                <p className="text-[10px] text-white/70">{day.condition}</p>
+                <p className="text-sm font-bold text-white">
+                  {weather ? `${weather.temp}°F` : day.temp}
+                  {weather?.source === "live" && <span className="text-[9px] text-white/50 ml-1">live</span>}
+                </p>
+                <p className="text-[10px] text-white/70">{weather ? weather.condition : day.condition}</p>
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </div>
