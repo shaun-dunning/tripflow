@@ -6,6 +6,15 @@ import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, getDayStatus, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
+const INVITE_CODE = "MAUI26";
+
+type Traveler = {
+  id: string;
+  name: string;
+  avatar: string;
+  avatar_url: string | null;
+  status: string;
+};
 
 type Activity = { emoji: string; label: string };
 type Day = {
@@ -111,6 +120,33 @@ export default function TripPage() {
   const [days, setDays] = useState<Day[]>(TRIP);
   const [todayGlance, setTodayGlance] = useState(TODAY_GLANCE);
   const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
+  const [travelers, setTravelers] = useState<Traveler[]>([]);
+  const [showShareSheet, setShowShareSheet] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  function getInviteLink() {
+    if (typeof window === "undefined") return `/join/${INVITE_CODE}`;
+    return `${window.location.origin}/join/${INVITE_CODE}`;
+  }
+
+  async function copyLink() {
+    await navigator.clipboard.writeText(getInviteLink());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function shareLink() {
+    const link = getInviteLink();
+    if (navigator.share) {
+      await navigator.share({
+        title: `Join our ${trip?.title ?? "trip"} 🌺`,
+        text: "Hey! Join our family trip on TripFlow.",
+        url: link,
+      });
+    } else {
+      copyLink();
+    }
+  }
 
   useEffect(() => {
     async function fetchTripData() {
@@ -141,6 +177,14 @@ export default function TripPage() {
         .select("*, agenda_items(*)")
         .eq("trip_id", TRIP_ID)
         .order("day_number");
+
+      // Fetch travelers
+      const { data: travelerData } = await supabase
+        .from("travelers")
+        .select("id, name, avatar, avatar_url, status")
+        .eq("trip_id", TRIP_ID)
+        .order("created_at", { ascending: true });
+      if (travelerData) setTravelers(travelerData as Traveler[]);
 
       if (tripDays?.length && dateInfo) {
         const mapped: Day[] = tripDays.map((td) => {
@@ -217,6 +261,106 @@ export default function TripPage() {
 
   return (
     <div className="flex flex-col gap-5 px-4 pt-4 pb-6">
+
+      {/* ── Share sheet ───────────────────────────────────────────────────── */}
+      {showShareSheet && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center"
+          onClick={() => setShowShareSheet(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+          <div
+            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-9 h-1 bg-slate-200 rounded-full" />
+            </div>
+
+            {/* Hero gradient */}
+            <div
+              className="mx-4 mt-2 mb-5 rounded-2xl overflow-hidden"
+              style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%)" }}
+            >
+              <div className="px-5 py-5">
+                <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">🌺 You&apos;re invited</p>
+                <h2 className="text-xl font-black text-white mb-0.5">{trip?.title ?? "Maui Family Trip"}</h2>
+                <p className="text-xs text-white/60 mb-4">{trip?.subtitle ?? "Jun 5–11 · 4 travelers"}</p>
+
+                {/* Traveler strip */}
+                {travelers.length > 0 && (
+                  <div className="flex items-center gap-2 mb-5">
+                    <div className="flex -space-x-2">
+                      {travelers.slice(0, 5).map((t) => (
+                        <div
+                          key={t.id}
+                          className="w-8 h-8 rounded-full bg-slate-700 border-2 border-white/20 flex items-center justify-center text-base shadow-sm flex-none"
+                        >
+                          {t.avatar_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={t.avatar_url} alt={t.name} className="w-full h-full rounded-full object-cover" />
+                          ) : (
+                            t.avatar
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-white/70">
+                      {travelers.map((t) => t.name.split(" ")[0]).slice(0, 3).join(", ")}
+                      {travelers.length > 3 ? ` +${travelers.length - 3} more` : ""} already in
+                    </p>
+                  </div>
+                )}
+
+                {/* Code callout */}
+                <div className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-0.5">Invite code</p>
+                    <p className="text-2xl font-black text-white tracking-widest font-mono">{INVITE_CODE}</p>
+                  </div>
+                  <button
+                    onClick={copyLink}
+                    className={`text-xs font-bold px-3 py-2 rounded-xl transition-all ${
+                      copied ? "bg-emerald-500 text-white" : "bg-white/20 text-white"
+                    }`}
+                  >
+                    {copied ? "✓ Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Link row */}
+            <div className="px-4 mb-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+                <span className="text-base">🔗</span>
+                <p className="flex-1 text-xs text-slate-500 font-mono truncate">
+                  {getInviteLink()}
+                </p>
+              </div>
+            </div>
+
+            {/* Action row */}
+            <div className="flex gap-2.5 px-4 pb-10">
+              <button
+                onClick={copyLink}
+                className={`flex-1 font-bold py-4 rounded-2xl text-sm transition-all ${
+                  copied ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {copied ? "✓ Copied!" : "Copy Link"}
+              </button>
+              <button
+                onClick={shareLink}
+                className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
+              >
+                Share ↗
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════
           ACTIVE TRIP CONTAINER
@@ -411,6 +555,73 @@ export default function TripPage() {
           </div>
         </div>
       </div>
+
+      {/* ══════════════════════════════════════
+          INVITE CARD
+      ══════════════════════════════════════ */}
+      <button
+        onClick={() => setShowShareSheet(true)}
+        className="w-full text-left rounded-3xl overflow-hidden shadow-sm"
+        style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 55%, #0c4a6e 100%)" }}
+      >
+        <div className="px-5 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Traveling together</p>
+              <p className="text-base font-black text-white">
+                {travelers.length > 0
+                  ? `${travelers.length} traveler${travelers.length !== 1 ? "s" : ""} going`
+                  : "Invite your crew"}
+              </p>
+            </div>
+            <div className="bg-white/15 border border-white/25 rounded-2xl px-3 py-2 flex items-center gap-1.5">
+              <span className="text-sm">🔗</span>
+              <span className="text-xs font-bold text-white">Invite</span>
+            </div>
+          </div>
+
+          {/* Avatar strip */}
+          {travelers.length > 0 ? (
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="flex -space-x-2">
+                {travelers.slice(0, 6).map((t) => (
+                  <div
+                    key={t.id}
+                    className="w-9 h-9 rounded-full bg-slate-700 border-2 border-white/20 flex items-center justify-center text-lg flex-none shadow-sm"
+                  >
+                    {t.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={t.avatar_url} alt={t.name} className="w-full h-full rounded-full object-cover" />
+                    ) : (
+                      t.avatar
+                    )}
+                  </div>
+                ))}
+                {travelers.length < 5 && (
+                  <div className="w-9 h-9 rounded-full border-2 border-dashed border-white/30 flex items-center justify-center text-white/40 flex-none">
+                    <span className="text-base font-light">+</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-white/60">
+                {travelers.map((t) => t.name.split(" ")[0]).slice(0, 3).join(", ")}
+                {travelers.length > 3 ? ` +${travelers.length - 3}` : ""}
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-white/50 mb-4">Share a link — they can join instantly.</p>
+          )}
+
+          {/* Invite code pill */}
+          <div className="flex items-center gap-2">
+            <div className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 flex items-center gap-2">
+              <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Code</span>
+              <span className="text-sm font-black text-white tracking-widest font-mono">{INVITE_CODE}</span>
+            </div>
+            <p className="text-[10px] text-white/40">Tap to copy link or share →</p>
+          </div>
+        </div>
+      </button>
 
       {/* ══════════════════════════════════════
           UPCOMING TRIPS
