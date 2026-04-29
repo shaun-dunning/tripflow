@@ -560,6 +560,23 @@ export default function MyDayPage() {
           );
         })}
 
+        {/* ── Add to your day (today + upcoming) ── */}
+        {(isToday || !isPast) && (
+          <button
+            onClick={() => router.push("/explore")}
+            className="w-full flex items-center gap-4 bg-white border-2 border-dashed border-slate-200 rounded-2xl px-4 py-4 text-left hover:border-slate-400 hover:bg-slate-50 transition-all group"
+          >
+            <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center text-lg flex-none transition-colors">
+              +
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-sm text-slate-700">Add something to {isToday ? "today" : "this day"}</p>
+              <p className="text-xs text-slate-400 mt-0.5">Browse beaches, restaurants, activities nearby</p>
+            </div>
+            <span className="text-slate-300 group-hover:text-slate-500 transition-colors text-lg">→</span>
+          </button>
+        )}
+
         {/* ── Trip Note (today + past) ── */}
         {(isToday || isPast) && (
           <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 flex gap-3 items-start shadow-sm">

@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
       ];
 
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -68,9 +68,23 @@ export async function POST(req: NextRequest) {
       );
 
       const data = await res.json();
-      const reply =
-        data.candidates?.[0]?.content?.parts?.[0]?.text ??
-        "Sorry, I couldn't generate a response.";
+
+      // Handle API-level errors (bad key, quota, etc.)
+      if (data.error) {
+        console.error("Gemini API error:", data.error);
+        throw new Error(data.error.message);
+      }
+
+      // Handle safety-blocked responses
+      const candidate = data.candidates?.[0];
+      if (!candidate) {
+        throw new Error("No candidates returned from Gemini");
+      }
+
+      const reply = candidate.content?.parts?.[0]?.text
+        ?? (candidate.finishReason === "SAFETY"
+          ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
+          : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
       return NextResponse.json({ reply });
     } catch (err) {
       console.error("Gemini error:", err);

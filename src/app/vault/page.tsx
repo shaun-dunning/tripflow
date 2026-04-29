@@ -30,6 +30,64 @@ const BLANK_DOC: NewDoc = {
   date: "", status: "confirmed", notes: "", emoji: "✈️", file_type: "booking",
 };
 
+// Visual configs per category — hero images, gradients, accent colors
+const CATEGORY_VISUALS: Record<string, {
+  heroPhoto: string;
+  heroAlt: string;
+  gradient: string;
+  accentClass: string;
+}> = {
+  Flights: {
+    heroPhoto: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=300&fit=crop&q=85",
+    heroAlt: "Airport terminal",
+    gradient: "from-sky-600 to-indigo-700",
+    accentClass: "bg-sky-500",
+  },
+  Hotel: {
+    heroPhoto: "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&h=300&fit=crop&q=85",
+    heroAlt: "Resort hotel",
+    gradient: "from-amber-500 to-orange-600",
+    accentClass: "bg-amber-500",
+  },
+  Car: {
+    heroPhoto: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=300&fit=crop&q=85",
+    heroAlt: "Rental car on highway",
+    gradient: "from-slate-600 to-slate-800",
+    accentClass: "bg-slate-600",
+  },
+  Activities: {
+    heroPhoto: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&h=300&fit=crop&q=85",
+    heroAlt: "Maui adventure",
+    gradient: "from-emerald-500 to-teal-600",
+    accentClass: "bg-emerald-500",
+  },
+  Dining: {
+    heroPhoto: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=300&fit=crop&q=85",
+    heroAlt: "Fine dining",
+    gradient: "from-rose-500 to-pink-600",
+    accentClass: "bg-rose-500",
+  },
+};
+
+// Airline brand colors + IATA codes for visual flair
+const AIRLINE_BRANDS: Record<string, { color: string; bg: string; code: string }> = {
+  "American Airlines": { color: "#C8102E", bg: "from-red-600 to-red-800", code: "AA" },
+  "Alaska Airlines":   { color: "#00539b", bg: "from-blue-700 to-blue-900", code: "AS" },
+  "Delta Air Lines":   { color: "#003366", bg: "from-blue-900 to-indigo-900", code: "DL" },
+  "United Airlines":   { color: "#002244", bg: "from-blue-950 to-slate-900", code: "UA" },
+  "Southwest Airlines":{ color: "#304CB2", bg: "from-yellow-400 to-orange-500", code: "WN" },
+  "Hawaiian Airlines": { color: "#540D6E", bg: "from-purple-700 to-indigo-800", code: "HA" },
+};
+
+function getAirlineBrand(provider: string) {
+  for (const [name, brand] of Object.entries(AIRLINE_BRANDS)) {
+    if (provider?.toLowerCase().includes(name.split(" ")[0].toLowerCase())) {
+      return { ...brand, name };
+    }
+  }
+  return null;
+}
+
 export default function VaultPage() {
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,7 +105,6 @@ export default function VaultPage() {
   const uploadingDocId = useRef<string | null>(null);
 
   useEffect(() => {
-    // Inline async wrapper avoids react-hooks/set-state-in-effect lint rule
     (async () => {
       const { data, error } = await supabase
         .from("documents")
@@ -191,194 +248,274 @@ export default function VaultPage() {
         </div>
 
         {/* ── Grouped docs ── */}
-        {Object.entries(grouped).map(([cat, items]) => (
-          <div key={cat}>
-            <div className="flex items-center gap-2 mb-3">
-              <span>{CATEGORY_EMOJIS[cat]}</span>
-              <p className="text-sm font-bold text-slate-800">{cat}</p>
-              <div className="flex-1 h-px bg-slate-100" />
-              <span className="text-xs text-slate-400">{items.length}</span>
-            </div>
+        {Object.entries(grouped).map(([cat, items]) => {
+          const visual = CATEGORY_VISUALS[cat];
+          return (
+            <div key={cat}>
+              {/* ── Visual category header ── */}
+              {visual && (
+                <div className="relative rounded-2xl overflow-hidden mb-3 h-28 w-full">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={visual.heroPhoto}
+                    alt={visual.heroAlt}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                  <div className={`absolute inset-0 bg-gradient-to-r ${visual.gradient} opacity-80`} />
+                  <div className="absolute inset-0 flex items-center px-5 gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl flex-none">
+                      {CATEGORY_EMOJIS[cat]}
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{items.length} {items.length === 1 ? "booking" : "bookings"}</p>
+                      <p className="text-xl font-black text-white leading-tight">{cat}</p>
+                      <p className="text-xs text-white/60 mt-0.5">
+                        {items.filter(d => d.status === "confirmed").length} confirmed
+                        {items.filter(d => d.status === "pending").length > 0 && ` · ${items.filter(d => d.status === "pending").length} pending`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            <div className="flex flex-col gap-2">
-              {items.map((doc) => {
-                const isOpen = expanded === doc.id;
-                const isEditing = editingId === doc.id;
-                const accentColor = doc.status === "confirmed" ? "bg-emerald-400" : doc.status === "pending" ? "bg-amber-400" : "bg-slate-200";
+              {!visual && (
+                <div className="flex items-center gap-2 mb-3">
+                  <span>{CATEGORY_EMOJIS[cat]}</span>
+                  <p className="text-sm font-bold text-slate-800">{cat}</p>
+                  <div className="flex-1 h-px bg-slate-100" />
+                  <span className="text-xs text-slate-400">{items.length}</span>
+                </div>
+              )}
 
-                return (
-                  <div key={doc.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                    {/* Row */}
-                    <button onClick={() => { setExpanded(isOpen ? null : doc.id); setEditingId(null); }}
-                      className="w-full text-left flex items-stretch"
-                    >
-                      <div className={`w-1 ${accentColor} flex-none rounded-l-2xl`} />
-                      <div className="flex-1 flex items-center gap-3 px-4 py-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-xl flex-none">
-                          {doc.emoji}
+              <div className="flex flex-col gap-2">
+                {items.map((doc) => {
+                  const isOpen = expanded === doc.id;
+                  const isEditing = editingId === doc.id;
+                  const accentColor = doc.status === "confirmed" ? "bg-emerald-400" : doc.status === "pending" ? "bg-amber-400" : "bg-slate-200";
+
+                  // Detect airline branding for flight docs
+                  const airlineBrand = doc.category === "Flights" ? getAirlineBrand(doc.provider ?? "") : null;
+
+                  return (
+                    <div key={doc.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+                      {/* ── Airline hero strip (flight docs only) ── */}
+                      {doc.category === "Flights" && airlineBrand && (
+                        <div className={`bg-gradient-to-r ${airlineBrand.bg} px-4 py-3 flex items-center gap-3`}>
+                          <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-none">
+                            <span className="text-white text-sm font-black tracking-tight">{airlineBrand.code}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-white/80">{airlineBrand.name}</p>
+                            {doc.name && (
+                              <p className="text-sm font-black text-white leading-tight flex items-center gap-1.5">
+                                {doc.name.includes("→") ? (
+                                  <>
+                                    <span>{doc.name.split("→")[0].trim()}</span>
+                                    <span className="text-white/50">→</span>
+                                    <span>{doc.name.split("→")[1]?.trim()}</span>
+                                  </>
+                                ) : doc.name}
+                              </p>
+                            )}
+                          </div>
+                          <span className="text-2xl">✈️</span>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`font-semibold text-sm truncate ${doc.status === "completed" ? "text-slate-400" : "text-slate-900"}`}>
-                            {doc.name}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-0.5">{doc.date}</p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5 flex-none">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            doc.status === "confirmed" ? "bg-slate-100 text-slate-600" :
-                            doc.status === "pending"   ? "bg-amber-50 text-amber-600 border border-amber-200" :
-                                                         "bg-slate-50 text-slate-400"
-                          }`}>
-                            {doc.status === "confirmed" ? "Confirmed" : doc.status === "pending" ? "⏳ Pending" : "Done"}
-                          </span>
-                          <span className="text-[10px] text-slate-300">{isOpen ? "▲" : "▼"}</span>
-                        </div>
-                      </div>
-                    </button>
+                      )}
 
-                    {/* Expanded — view or edit */}
-                    {isOpen && (
-                      <div className="border-t border-slate-100 px-5 py-4 flex flex-col gap-4">
-                        {isEditing ? (
-                          /* ── Edit mode ── */
-                          <div className="flex flex-col gap-3">
-                            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Edit details</p>
+                      {/* Row */}
+                      <button onClick={() => { setExpanded(isOpen ? null : doc.id); setEditingId(null); }}
+                        className="w-full text-left flex items-stretch"
+                      >
+                        <div className={`w-1 ${accentColor} flex-none ${doc.category === "Flights" && airlineBrand ? "" : "rounded-l-2xl"}`} />
+                        <div className="flex-1 flex items-center gap-3 px-4 py-3.5">
+                          {!(doc.category === "Flights" && airlineBrand) && (
+                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-xl flex-none">
+                              {doc.emoji}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className={`font-semibold text-sm truncate ${doc.status === "completed" ? "text-slate-400" : "text-slate-900"}`}>
+                              {doc.category === "Flights" && airlineBrand ? doc.date : doc.name}
+                            </p>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              {doc.category === "Flights" && airlineBrand ? doc.name : doc.date}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1.5 flex-none">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              doc.status === "confirmed" ? "bg-slate-100 text-slate-600" :
+                              doc.status === "pending"   ? "bg-amber-50 text-amber-600 border border-amber-200" :
+                                                           "bg-slate-50 text-slate-400"
+                            }`}>
+                              {doc.status === "confirmed" ? "Confirmed" : doc.status === "pending" ? "⏳ Pending" : "Done"}
+                            </span>
+                            <span className="text-[10px] text-slate-300">{isOpen ? "▲" : "▼"}</span>
+                          </div>
+                        </div>
+                      </button>
 
-                            {[
-                              { label: "Name", key: "name" as const, placeholder: "e.g. LAX → OGG" },
-                              { label: "Provider", key: "provider" as const, placeholder: "e.g. American Airlines" },
-                              { label: "Confirmation #", key: "confirmation" as const, placeholder: "e.g. LSKUAS" },
-                              { label: "Date / Time", key: "date" as const, placeholder: "e.g. Jun 5 · 8:53 AM" },
-                              { label: "Notes", key: "notes" as const, placeholder: "Any extra info…" },
-                            ].map(({ label, key, placeholder }) => (
-                              <div key={key}>
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
-                                <input
-                                  type="text"
-                                  value={(editFields[key] as string) ?? ""}
-                                  onChange={(e) => setEditFields({ ...editFields, [key]: e.target.value })}
-                                  placeholder={placeholder}
-                                  className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-slate-900 bg-white"
-                                />
+                      {/* Expanded — view or edit */}
+                      {isOpen && (
+                        <div className="border-t border-slate-100 px-5 py-4 flex flex-col gap-4">
+                          {isEditing ? (
+                            /* ── Edit mode ── */
+                            <div className="flex flex-col gap-3">
+                              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Edit details</p>
+
+                              {[
+                                { label: "Name", key: "name" as const, placeholder: "e.g. LAX → OGG" },
+                                { label: "Provider", key: "provider" as const, placeholder: "e.g. American Airlines" },
+                                { label: "Confirmation #", key: "confirmation" as const, placeholder: "e.g. LSKUAS" },
+                                { label: "Date / Time", key: "date" as const, placeholder: "e.g. Jun 5 · 8:53 AM" },
+                                { label: "Notes", key: "notes" as const, placeholder: "Any extra info…" },
+                              ].map(({ label, key, placeholder }) => (
+                                <div key={key}>
+                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                                  <input
+                                    type="text"
+                                    value={(editFields[key] as string) ?? ""}
+                                    onChange={(e) => setEditFields({ ...editFields, [key]: e.target.value })}
+                                    placeholder={placeholder}
+                                    className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-slate-900 bg-white"
+                                  />
+                                </div>
+                              ))}
+
+                              <div>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                                <div className="flex gap-2">
+                                  {(["confirmed", "pending", "completed"] as const).map((s) => (
+                                    <button key={s} onClick={() => setEditFields({ ...editFields, status: s })}
+                                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                                        editFields.status === s ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
+                                      }`}
+                                    >
+                                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
-                            ))}
 
-                            <div>
-                              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Status</p>
-                              <div className="flex gap-2">
-                                {(["confirmed", "pending", "completed"] as const).map((s) => (
-                                  <button key={s} onClick={() => setEditFields({ ...editFields, status: s })}
-                                    className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                                      editFields.status === s ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
+                              <div className="flex gap-2 pt-1">
+                                <button onClick={() => saveEdit(doc.id)} disabled={saving}
+                                  className="flex-1 bg-slate-900 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50"
+                                >
+                                  {saving ? "Saving…" : "Save changes"}
+                                </button>
+                                <button onClick={() => setEditingId(null)}
+                                  className="px-4 text-sm font-semibold text-slate-400 border border-slate-200 rounded-xl"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            /* ── View mode ── */
+                            <>
+                              {/* Hotel hero image */}
+                              {doc.category === "Hotel" && (
+                                <div className="relative h-32 rounded-xl overflow-hidden -mx-1">
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src="https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800&h=300&fit=crop&q=85"
+                                    alt="Sheraton Maui Resort"
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                  <div className="absolute bottom-0 left-0 right-0 px-4 pb-3">
+                                    <p className="text-white font-bold text-sm">{doc.name || doc.provider}</p>
+                                    {doc.date && <p className="text-white/70 text-xs">{doc.date}</p>}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Confirmation # */}
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Confirmation #</p>
+                                  <p className="text-base font-black text-slate-900 font-mono tracking-wide">{doc.confirmation || "—"}</p>
+                                </div>
+                                {doc.confirmation && (
+                                  <button onClick={() => copyConfirmation(doc)}
+                                    className={`text-xs font-bold px-4 py-2 rounded-xl border-2 transition-all ${
+                                      copiedId === doc.id ? "bg-emerald-500 text-white border-emerald-500" : "border-slate-900 text-slate-900"
                                     }`}
                                   >
-                                    {s.charAt(0).toUpperCase() + s.slice(1)}
+                                    {copiedId === doc.id ? "✓ Copied!" : "Copy"}
                                   </button>
-                                ))}
+                                )}
                               </div>
-                            </div>
 
-                            <div className="flex gap-2 pt-1">
-                              <button onClick={() => saveEdit(doc.id)} disabled={saving}
-                                className="flex-1 bg-slate-900 text-white font-bold py-3 rounded-xl text-sm disabled:opacity-50"
-                              >
-                                {saving ? "Saving…" : "Save changes"}
-                              </button>
-                              <button onClick={() => setEditingId(null)}
-                                className="px-4 text-sm font-semibold text-slate-400 border border-slate-200 rounded-xl"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          /* ── View mode ── */
-                          <>
-                            {/* Confirmation # */}
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Confirmation #</p>
-                                <p className="text-base font-black text-slate-900 font-mono tracking-wide">{doc.confirmation || "—"}</p>
-                              </div>
-                              {doc.confirmation && (
-                                <button onClick={() => copyConfirmation(doc)}
-                                  className={`text-xs font-bold px-4 py-2 rounded-xl border-2 transition-all ${
-                                    copiedId === doc.id ? "bg-emerald-500 text-white border-emerald-500" : "border-slate-900 text-slate-900"
-                                  }`}
-                                >
-                                  {copiedId === doc.id ? "✓ Copied!" : "Copy"}
-                                </button>
+                              {/* Provider */}
+                              {doc.provider && (
+                                <div>
+                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Provider</p>
+                                  <p className="text-sm text-slate-700">{doc.provider}</p>
+                                </div>
                               )}
-                            </div>
 
-                            {/* Provider */}
-                            {doc.provider && (
-                              <div>
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Provider</p>
-                                <p className="text-sm text-slate-700">{doc.provider}</p>
-                              </div>
-                            )}
-
-                            {/* Notes */}
-                            {doc.notes && (
-                              <div>
-                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Notes</p>
-                                <p className="text-sm text-slate-600 leading-relaxed">{doc.notes}</p>
-                              </div>
-                            )}
-
-                            {/* File section */}
-                            <div>
-                              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Attachment</p>
-                              {doc.file_url ? (
-                                <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-2 bg-sky-50 border border-sky-100 rounded-xl px-3 py-2.5"
-                                >
-                                  <span className="text-lg">{doc.file_type === "pdf" ? "📄" : "🖼️"}</span>
-                                  <span className="text-xs font-bold text-sky-700 flex-1">View {doc.file_type === "pdf" ? "PDF" : "file"}</span>
-                                  <span className="text-xs text-sky-400">↗</span>
-                                </a>
-                              ) : (
-                                <button
-                                  onClick={() => {
-                                    uploadingDocId.current = doc.id;
-                                    fileInputRef.current?.click();
-                                  }}
-                                  disabled={uploadingId === doc.id}
-                                  className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-3 text-xs font-semibold text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
-                                >
-                                  {uploadingId === doc.id ? (
-                                    <><div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" /> Uploading…</>
-                                  ) : (
-                                    <>📎 Attach PDF or screenshot</>
-                                  )}
-                                </button>
+                              {/* Notes */}
+                              {doc.notes && (
+                                <div>
+                                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-1">Notes</p>
+                                  <p className="text-sm text-slate-600 leading-relaxed">{doc.notes}</p>
+                                </div>
                               )}
-                            </div>
 
-                            {/* Actions */}
-                            <div className="flex gap-2">
-                              <button onClick={() => startEdit(doc)}
-                                className="flex-1 bg-slate-900 text-white text-xs font-bold py-3 rounded-xl"
-                              >
-                                Edit
-                              </button>
-                              <button onClick={() => deleteDoc(doc.id)}
-                                className="px-4 bg-red-50 border border-red-200 text-red-500 text-xs font-bold py-3 rounded-xl"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                              {/* File section */}
+                              <div>
+                                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Attachment</p>
+                                {doc.file_url ? (
+                                  <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-2 bg-sky-50 border border-sky-100 rounded-xl px-3 py-2.5"
+                                  >
+                                    <span className="text-lg">{doc.file_type === "pdf" ? "📄" : "🖼️"}</span>
+                                    <span className="text-xs font-bold text-sky-700 flex-1">View {doc.file_type === "pdf" ? "PDF" : "file"}</span>
+                                    <span className="text-xs text-sky-400">↗</span>
+                                  </a>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      uploadingDocId.current = doc.id;
+                                      fileInputRef.current?.click();
+                                    }}
+                                    disabled={uploadingId === doc.id}
+                                    className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-3 text-xs font-semibold text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-colors disabled:opacity-50"
+                                  >
+                                    {uploadingId === doc.id ? (
+                                      <><div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" /> Uploading…</>
+                                    ) : (
+                                      <>📎 Attach PDF or screenshot</>
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex gap-2">
+                                <button onClick={() => startEdit(doc)}
+                                  className="flex-1 bg-slate-900 text-white text-xs font-bold py-3 rounded-xl"
+                                >
+                                  Edit
+                                </button>
+                                <button onClick={() => deleteDoc(doc.id)}
+                                  className="px-4 bg-red-50 border border-red-200 text-red-500 text-xs font-bold py-3 rounded-xl"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* ── Add document form or button ── */}
         {showAddForm ? (

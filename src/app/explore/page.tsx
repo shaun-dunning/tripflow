@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 
@@ -115,9 +116,17 @@ function driveMinutes(drive: string): number {
 
 const WHAT_NOW_IDS = [4, 8, 1];
 
+const AI_QUICK_PROMPTS = [
+  "Best snorkeling spot for kids?",
+  "What to do on a rainy day?",
+  "Tips for Road to Hana?",
+  "Best sunset dinner nearby?",
+];
+
 type AiMessage = { role: "user" | "assistant"; content: string };
 
 export default function ExplorePage() {
+  const router = useRouter();
   const [activeFilter, setActiveFilter] = useState("All");
   const [activeScenario, setActiveScenario] = useState<number | null>(null);
   const [maxDrive, setMaxDrive] = useState(30);
@@ -129,9 +138,6 @@ export default function ExplorePage() {
   const [showFilters, setShowFilters] = useState(false);
   const [travelerCount, setTravelerCount] = useState(4);
   const [currentTime, setCurrentTime] = useState("");
-
-  // Saved / hearted places
-  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
 
   // "Added to today" toast
   const [addedToast, setAddedToast] = useState<string | null>(null);
@@ -147,21 +153,18 @@ export default function ExplorePage() {
   const aiBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Live clock — update every minute
     function updateTime() {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
     }
     updateTime();
     const timer = setInterval(updateTime, 60_000);
 
-    // Real traveler count
     supabase
       .from("travelers")
       .select("id", { count: "exact", head: true })
       .eq("trip_id", TRIP_ID)
       .then(({ count }) => { if (count) setTravelerCount(count); });
 
-    // Fetch today's trip_day_id for "Add to Today" inserts
     async function fetchTodayDay() {
       const { data: tripData } = await supabase
         .from("trips")
@@ -171,7 +174,7 @@ export default function ExplorePage() {
       if (!tripData) return;
 
       const info = getTripDateInfo(tripData.start_date, tripData.end_date);
-      if (info.status !== "active") return; // only add during active trip
+      if (info.status !== "active") return;
 
       const { data: dayData } = await supabase
         .from("trip_days")
@@ -190,65 +193,59 @@ export default function ExplorePage() {
     aiBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [aiMessages]);
 
-  function toggleSave(id: number) {
-    setSavedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
   async function addToToday(place: Place) {
     setAddedToast(place.name);
-    setTimeout(() => setAddedToast(null), 2500);
 
-    // Persist to Supabase if we have today's trip_day_id
-    if (!todayTripDayId) return;
+    if (todayTripDayId) {
+      const { data: existing } = await supabase
+        .from("agenda_items")
+        .select("sort_order")
+        .eq("trip_day_id", todayTripDayId)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-    // Get current max sort_order so we append at the end
-    const { data: existing } = await supabase
-      .from("agenda_items")
-      .select("sort_order")
-      .eq("trip_day_id", todayTripDayId)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      const nextSortOrder = (existing?.sort_order ?? 0) + 10;
 
-    const nextSortOrder = (existing?.sort_order ?? 0) + 10;
+      await supabase.from("agenda_items").insert({
+        trip_day_id: todayTripDayId,
+        title: place.name,
+        subtitle: `${place.drive} · ${place.address}`,
+        emoji: place.category === "Beach" ? "🏖️"
+             : place.category === "Food"  ? "🍽️"
+             : place.category === "Spa"   ? "💆"
+             : "📍",
+        time: "TBD",
+        done: false,
+        sort_order: nextSortOrder,
+        is_reservation: false,
+      });
+    }
 
-    await supabase.from("agenda_items").insert({
-      trip_day_id: todayTripDayId,
-      title: place.name,
-      subtitle: `${place.drive} · ${place.address}`,
-      emoji: place.category === "Beach" ? "🏖️"
-           : place.category === "Food"  ? "🍽️"
-           : place.category === "Spa"   ? "💆"
-           : "📍",
-      time: "TBD",
-      done: false,
-      sort_order: nextSortOrder,
-      is_reservation: false,
-    });
+    // Navigate to My Day after a beat so user sees the confirmation
+    setTimeout(() => {
+      setAddedToast(null);
+      router.push("/");
+    }, 1200);
   }
 
-  async function sendAiMessage() {
-    const text = aiInput.trim();
-    if (!text || aiLoading) return;
+  async function sendAiMessage(text?: string) {
+    const messageText = (text ?? aiInput).trim();
+    if (!messageText || aiLoading) return;
     setAiInput("");
-    const newMessages: AiMessage[] = [...aiMessages, { role: "user", content: text }];
+    const newMessages: AiMessage[] = [...aiMessages, { role: "user", content: messageText }];
     setAiMessages(newMessages);
     setAiLoading(true);
     try {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history: newMessages }),
+        body: JSON.stringify({ message: messageText, history: newMessages }),
       });
       const data = await res.json();
       setAiMessages([...newMessages, { role: "assistant", content: data.reply ?? "Sorry, I couldn't get a response." }]);
     } catch {
-      setAiMessages([...newMessages, { role: "assistant", content: "Something went wrong. Make sure the ANTHROPIC_API_KEY is set in your .env.local file." }]);
+      setAiMessages([...newMessages, { role: "assistant", content: "Something went wrong. Make sure the GEMINI_API_KEY or ANTHROPIC_API_KEY is set in your environment variables." }]);
     }
     setAiLoading(false);
   }
@@ -271,7 +268,9 @@ export default function ExplorePage() {
       {/* ── "Added to Today" toast ── */}
       {addedToast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-          <span>✅</span> <span className="truncate max-w-[200px]">{addedToast}</span> added to today
+          <span>✅</span>
+          <span className="truncate max-w-[200px]">{addedToast}</span>
+          <span className="text-white/60">added · going to My Day…</span>
         </div>
       )}
 
@@ -279,39 +278,41 @@ export default function ExplorePage() {
       {showAI && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-white max-w-md mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100 flex-none">
-            <div>
-              <h2 className="text-base font-black text-slate-900">Maui Trip Assistant</h2>
-              <p className="text-xs text-slate-400 mt-0.5">Ask anything about your trip</p>
+          <div
+            className="flex items-center justify-between px-5 pt-5 pb-4 flex-none"
+            style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)" }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl">
+                🌺
+              </div>
+              <div>
+                <h2 className="text-base font-black text-white">Maui Trip AI</h2>
+                <p className="text-xs text-white/70 mt-0.5">Your personal Maui guide</p>
+              </div>
             </div>
             <button
               onClick={() => setShowAI(false)}
-              className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-base font-bold"
+              className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-white text-base font-bold"
             >
               ✕
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+          <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3 bg-slate-50">
             {aiMessages.length === 0 && (
               <div className="flex flex-col gap-3 py-4">
-                <div className="flex flex-col items-center gap-2 mb-2">
-                  <span className="text-4xl">🌺</span>
+                <div className="flex flex-col items-center gap-2 mb-3">
                   <p className="text-sm font-bold text-slate-700 text-center">Hi! I know all about your Maui trip.</p>
-                  <p className="text-xs text-slate-400 text-center">Ask me anything — what to do, where to eat, tips for the kids, weather, packing…</p>
+                  <p className="text-xs text-slate-400 text-center">Ask about activities, restaurants, packing tips, road to Hana, kids stuff — anything!</p>
                 </div>
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Try asking:</p>
-                {[
-                  "What's the best snorkeling near Ka'anapali?",
-                  "What should we do on a rainy day with kids?",
-                  "Any tips for the Road to Hana with a family?",
-                  "What time should we leave for Haleakalā sunrise?",
-                ].map((q) => (
+                {AI_QUICK_PROMPTS.map((q) => (
                   <button
                     key={q}
-                    onClick={() => { setAiInput(q); }}
-                    className="text-left text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-100 transition-colors"
+                    onClick={() => { setShowAI(true); sendAiMessage(q); }}
+                    className="text-left text-xs font-medium text-slate-700 bg-white border border-slate-200 rounded-2xl px-4 py-3 hover:bg-slate-50 transition-colors shadow-sm"
                   >
                     {q}
                   </button>
@@ -330,7 +331,7 @@ export default function ExplorePage() {
                   className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
                     msg.role === "user"
                       ? "bg-sky-600 text-white rounded-tr-sm"
-                      : "bg-slate-100 text-slate-800 rounded-tl-sm"
+                      : "bg-white text-slate-800 rounded-tl-sm shadow-sm border border-slate-100"
                   }`}
                 >
                   {msg.content}
@@ -343,7 +344,7 @@ export default function ExplorePage() {
                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 flex items-center justify-center text-white text-xs flex-none mr-2">
                   🌺
                 </div>
-                <div className="bg-slate-100 rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 items-center">
+                <div className="bg-white rounded-2xl rounded-tl-sm px-4 py-3 flex gap-1 items-center shadow-sm border border-slate-100">
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
@@ -354,7 +355,7 @@ export default function ExplorePage() {
           </div>
 
           {/* Input */}
-          <div className="flex-none px-4 pt-2 pb-6 border-t border-slate-100 bg-white flex gap-2">
+          <div className="flex-none px-4 pt-3 pb-6 border-t border-slate-100 bg-white flex gap-2">
             <input
               type="text"
               value={aiInput}
@@ -364,9 +365,9 @@ export default function ExplorePage() {
               className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-sky-400"
             />
             <button
-              onClick={sendAiMessage}
+              onClick={() => sendAiMessage()}
               disabled={!aiInput.trim() || aiLoading}
-              className="w-10 h-10 bg-sky-600 text-white rounded-2xl flex items-center justify-center font-bold text-base disabled:opacity-40"
+              className="w-10 h-10 bg-gradient-to-br from-sky-500 to-indigo-500 text-white rounded-2xl flex items-center justify-center font-bold text-base disabled:opacity-40"
             >
               ↑
             </button>
@@ -375,22 +376,19 @@ export default function ExplorePage() {
       )}
 
       {/* ══════════════════════════════════════
-          AIRBNB-STYLE SEARCH HEADER
+          SEARCH HEADER
       ══════════════════════════════════════ */}
       <div className="px-4 pt-5 pb-3">
 
         {/* ── Big search pill ── */}
         <div className="flex items-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.09)] px-4 py-3.5">
-          {/* Search icon */}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-slate-400 flex-none">
             <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
             <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
 
-          {/* Divider */}
           <div className="w-px h-7 bg-slate-200 flex-none" />
 
-          {/* Location field */}
           <div className="flex-1 min-w-0">
             {editingLocation ? (
               <form
@@ -427,7 +425,6 @@ export default function ExplorePage() {
             )}
           </div>
 
-          {/* Filter button */}
           <button
             onClick={() => setShowFilters((v) => !v)}
             className={`relative w-9 h-9 rounded-full border-2 flex items-center justify-center flex-none transition-all ${
@@ -469,7 +466,6 @@ export default function ExplorePage() {
         {/* ── Expandable filter panel ── */}
         {showFilters && (
           <div className="mt-3 bg-slate-50 rounded-2xl p-3 flex flex-col gap-3 border border-slate-100">
-            {/* Vibe / Scenario pills */}
             <div>
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">What do you need?</p>
               <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
@@ -489,7 +485,6 @@ export default function ExplorePage() {
               </div>
             </div>
 
-            {/* Drive time slider */}
             <div>
               <div className="flex justify-between mb-1.5">
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Max drive time</p>
@@ -502,7 +497,6 @@ export default function ExplorePage() {
               />
             </div>
 
-            {/* Clear */}
             {activeFilterCount > 0 && (
               <button
                 onClick={() => { setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); }}
@@ -516,7 +510,7 @@ export default function ExplorePage() {
       </div>
 
       {/* ══════════════════════════════════════
-          CATEGORY ICON TABS (Airbnb-style)
+          CATEGORY TABS
       ══════════════════════════════════════ */}
       <div className="border-b border-slate-100">
         <div className="flex overflow-x-auto px-4 gap-1" style={{ scrollbarWidth: "none" }}>
@@ -604,7 +598,7 @@ export default function ExplorePage() {
                           onClick={() => addToToday(place)}
                           className="mt-2 self-start bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg"
                         >
-                          Add to Today
+                          + Add to My Day
                         </button>
                       </div>
                     </div>
@@ -614,6 +608,55 @@ export default function ExplorePage() {
             </div>
           </div>
         )}
+
+        {/* ══════════════════════════════════════
+            AI TRIP ASSISTANT — Prominent ingress
+        ══════════════════════════════════════ */}
+        <div
+          className="rounded-2xl overflow-hidden shadow-lg"
+          style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%)" }}
+        >
+          {/* Top row */}
+          <div className="px-4 pt-4 pb-3 flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center text-2xl flex-none shadow-lg">
+              🌺
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-sky-300 uppercase tracking-widest mb-0.5">Your Personal Guide</p>
+              <h3 className="text-base font-black text-white leading-tight">Maui Trip AI</h3>
+              <p className="text-xs text-white/60 mt-0.5 leading-snug">Knows your itinerary, your crew, and all of Maui</p>
+            </div>
+          </div>
+
+          {/* Quick prompts */}
+          <div className="px-4 pb-3 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+            {AI_QUICK_PROMPTS.map((q) => (
+              <button
+                key={q}
+                onClick={() => { setShowAI(true); sendAiMessage(q); }}
+                className="flex-none text-[11px] font-semibold text-white/80 bg-white/10 border border-white/15 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-white/20 transition-colors"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={() => setShowAI(true)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-white/10 border-t border-white/10 hover:bg-white/15 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-full bg-sky-500 flex items-center justify-center">
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 3v10M3 8h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <span className="text-sm font-bold text-white">Ask anything about your trip</span>
+            </div>
+            <span className="text-white/60 text-lg">→</span>
+          </button>
+        </div>
 
         {/* ── Results ── */}
         <div>
@@ -652,22 +695,12 @@ export default function ExplorePage() {
                   <div className="relative h-44 w-full overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
-                    {/* Heart save button (Airbnb-style) */}
-                    <button
-                      onClick={() => toggleSave(place.id)}
-                      className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all ${
-                        savedIds.has(place.id)
-                          ? "bg-rose-500 text-white"
-                          : "bg-white/80 backdrop-blur-sm text-slate-400"
-                      }`}
-                    >
-                      <span className="text-base leading-none">{savedIds.has(place.id) ? "♥" : "♡"}</span>
-                    </button>
                     {place.kidFriendly && (
                       <span className="absolute top-3 left-3 text-[10px] font-bold bg-white/85 backdrop-blur-sm text-emerald-700 px-2 py-1 rounded-full">
                         👦 Kid-friendly
                       </span>
                     )}
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
                   </div>
 
                   {/* Content */}
@@ -699,7 +732,7 @@ export default function ExplorePage() {
                           onClick={() => addToToday(place)}
                           className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
                         >
-                          Add to Today
+                          + Add to My Day
                         </button>
                       </div>
                     </div>
@@ -711,18 +744,6 @@ export default function ExplorePage() {
         </div>
 
       </div>
-
-      {/* ── Floating AI Assistant button ── */}
-      {!showAI && (
-        <button
-          onClick={() => setShowAI(true)}
-          className="fixed bottom-24 right-4 w-14 h-14 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white text-2xl shadow-xl shadow-sky-300/40 flex items-center justify-center z-40 hover:scale-110 transition-transform"
-          aria-label="Open AI trip assistant"
-        >
-          🌺
-        </button>
-      )}
-
     </div>
   );
 }
