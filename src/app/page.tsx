@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
@@ -11,7 +11,7 @@ function timeToMinutes(t: string): number {
   const [time, mer] = t.split(" ");
   const parts = time.split(":").map(Number);
   let h = parts[0];
-  const m = parts[1];
+  const m = parts[1] ?? 0;
   if (mer === "PM" && h !== 12) h += 12;
   if (mer === "AM" && h === 12) h = 0;
   return h * 60 + m;
@@ -34,7 +34,7 @@ type Item = {
   reservation?: boolean;
   photo?: string;
   photoAlt?: string;
-  fromSupabase?: boolean; // true = persisted in DB, false = local mock
+  fromSupabase?: boolean;
 };
 
 type DayData = {
@@ -157,17 +157,18 @@ const DAYS: DayData[] = [
   },
 ];
 
-// Auto-assign items to morning / afternoon / evening by time
 function getSections(agenda: Item[]) {
   return [
     {
       key: "morning", label: "Morning", emoji: "🌅", range: "Until noon",
       color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", dot: "bg-amber-400",
+      defaultTime: "9:00 AM",
       items: agenda.filter((i) => timeToMinutes(i.time) < timeToMinutes("12:00 PM")),
     },
     {
       key: "afternoon", label: "Afternoon", emoji: "☀️", range: "12 – 5pm",
       color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-200", dot: "bg-sky-400",
+      defaultTime: "2:00 PM",
       items: agenda.filter((i) => {
         const m = timeToMinutes(i.time);
         return m >= timeToMinutes("12:00 PM") && m < timeToMinutes("5:00 PM");
@@ -176,6 +177,7 @@ function getSections(agenda: Item[]) {
     {
       key: "evening", label: "Evening", emoji: "🌙", range: "5pm onwards",
       color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200", dot: "bg-indigo-400",
+      defaultTime: "7:00 PM",
       items: agenda.filter((i) => timeToMinutes(i.time) >= timeToMinutes("5:00 PM")),
     },
   ].filter((s) => s.items.length > 0);
@@ -200,23 +202,35 @@ type LiveWeather = {
   source: "live" | "static";
 };
 
+// Sentinel prefix for optimistically-created items not yet in DB
+const NEW_ID_PREFIX = "optimistic-";
+
 export default function MyDayPage() {
   const router = useRouter();
-  const [todayDayIndex, setTodayDayIndex] = useState(0); // 0-based
+  const [todayDayIndex, setTodayDayIndex] = useState(0);
   const [dayIndex, setDayIndex] = useState(0);
   const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
   const [crewMembers, setCrewMembers] = useState<{ name: string; avatar: string; avatar_url: string | null }[]>([]);
   const [weather, setWeather] = useState<LiveWeather | null>(null);
+  // day_number → trip_day_id (for Supabase writes)
+  const [dayIdMap, setDayIdMap] = useState<Record<number, string>>({});
+
+  // Edit / add sheet
+  const [sheetItem, setSheetItem] = useState<Item | null>(null);
+  const [draft, setDraft] = useState<Item>({ id: "", time: "", title: "", emoji: "📍", done: false, notes: "" });
+  const [sheetSaving, setSheetSaving] = useState(false);
+  const [sheetDeleteConfirm, setSheetDeleteConfirm] = useState(false);
+  const emojiInputRef = useRef<HTMLInputElement>(null);
+
+  const isNewItem = sheetItem?.id.startsWith(NEW_ID_PREFIX) ?? false;
 
   useEffect(() => {
-    // Fetch live weather independently (non-blocking)
     fetch("/api/weather")
       .then((r) => r.json())
       .then((data) => setWeather(data))
-      .catch(() => {}); // silent — falls back to static per-day data
+      .catch(() => {});
 
     async function fetchData() {
-      // Fetch trip dates + travelers + agenda items in parallel
       const [tripResult, travelersResult, agendaResult, tripDaysResult] = await Promise.all([
         supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
         supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
@@ -224,16 +238,13 @@ export default function MyDayPage() {
         supabase.from("trip_days").select("id, day_number").eq("trip_id", TRIP_ID),
       ]);
 
-      // Compute today's day index from real trip dates
       if (tripResult.data) {
         const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
-        // Clamp to valid day range (0 to DAYS.length-1)
         const idx = Math.max(0, Math.min(info.currentDayNumber - 1, DAYS.length - 1));
         setTodayDayIndex(idx);
         setDayIndex(idx);
       }
 
-      // Real crew from travelers table
       if (travelersResult.data?.length) {
         setCrewMembers(travelersResult.data.map((t) => ({
           name: t.name,
@@ -242,7 +253,13 @@ export default function MyDayPage() {
         })));
       }
 
-      // Overlay Supabase agenda items
+      // Build dayIdMap for all days
+      if (tripDaysResult.data) {
+        const map: Record<number, string> = {};
+        tripDaysResult.data.forEach((td) => { map[td.day_number] = td.id; });
+        setDayIdMap(map);
+      }
+
       if (agendaResult.data?.length && tripDaysResult.data) {
         const byDay: Record<string, typeof agendaResult.data> = {};
         agendaResult.data.forEach((item) => {
@@ -280,13 +297,13 @@ export default function MyDayPage() {
   const sections = getSections(items);
   const isToday = dayIndex === todayDayIndex;
   const isPast = dayIndex < todayDayIndex;
+  const isEditable = !isPast; // today and upcoming are editable
 
+  // ── Toggle done (quick tap, today only) ──────────────────────────────────
   async function toggle(id: string) {
     if (!isToday) return;
     const item = items.find((i) => i.id === id);
     if (!item) return;
-
-    // Optimistic UI update
     setAgendas((prev) =>
       prev.map((agenda, i) =>
         i === dayIndex
@@ -294,20 +311,324 @@ export default function MyDayPage() {
           : agenda
       )
     );
-
-    // Persist to Supabase if it came from there
     if (item.fromSupabase) {
-      await supabase
-        .from("agenda_items")
-        .update({ done: !item.done })
-        .eq("id", id);
+      await supabase.from("agenda_items").update({ done: !item.done }).eq("id", id);
     }
+  }
+
+  // ── Sheet open/close ─────────────────────────────────────────────────────
+  function openEdit(item: Item) {
+    setSheetDeleteConfirm(false);
+    setSheetItem(item);
+    setDraft({ ...item });
+  }
+
+  function openAdd(defaultTime: string) {
+    const newItem: Item = {
+      id: `${NEW_ID_PREFIX}${Date.now()}`,
+      time: defaultTime,
+      title: "",
+      emoji: "📍",
+      done: false,
+      notes: "",
+      reservation: false,
+      fromSupabase: false,
+    };
+    setSheetDeleteConfirm(false);
+    setSheetItem(newItem);
+    setDraft({ ...newItem });
+  }
+
+  function closeSheet() {
+    setSheetItem(null);
+    setSheetDeleteConfirm(false);
+  }
+
+  // ── Save edit ─────────────────────────────────────────────────────────────
+  async function saveEdit() {
+    if (!sheetItem || !draft.title.trim()) return;
+    setSheetSaving(true);
+
+    // Optimistic update
+    setAgendas((prev) =>
+      prev.map((agenda, i) =>
+        i === dayIndex
+          ? agenda.map((it) => it.id === sheetItem.id ? { ...it, ...draft } : it)
+          : agenda
+      )
+    );
+
+    if (sheetItem.fromSupabase) {
+      await supabase.from("agenda_items").update({
+        title: draft.title,
+        emoji: draft.emoji,
+        time: draft.time,
+        subtitle: draft.notes,
+        is_reservation: draft.reservation ?? false,
+        done: draft.done,
+      }).eq("id", sheetItem.id);
+    }
+
+    setSheetSaving(false);
+    closeSheet();
+  }
+
+  // ── Add new item ──────────────────────────────────────────────────────────
+  async function addItem() {
+    if (!draft.title.trim()) return;
+    setSheetSaving(true);
+
+    const tripDayId = dayIdMap[day.dayNum];
+
+    // Get max sort_order for this day
+    let sortOrder = (items.length + 1) * 10;
+    if (tripDayId) {
+      const { data: existing } = await supabase
+        .from("agenda_items")
+        .select("sort_order")
+        .eq("trip_day_id", tripDayId)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      sortOrder = (existing?.sort_order ?? 0) + 10;
+    }
+
+    const newItem: Item = {
+      ...draft,
+      id: `${NEW_ID_PREFIX}${Date.now()}`,
+      fromSupabase: false,
+    };
+
+    // Persist to Supabase if we have the day's ID
+    if (tripDayId) {
+      const { data } = await supabase
+        .from("agenda_items")
+        .insert({
+          trip_day_id: tripDayId,
+          title: draft.title,
+          emoji: draft.emoji,
+          time: draft.time,
+          subtitle: draft.notes,
+          done: false,
+          sort_order: sortOrder,
+          is_reservation: draft.reservation ?? false,
+        })
+        .select()
+        .single();
+      if (data) newItem.id = data.id;
+      newItem.fromSupabase = !!data;
+    }
+
+    setAgendas((prev) =>
+      prev.map((agenda, i) => i === dayIndex ? [...agenda, newItem] : agenda)
+    );
+    setSheetSaving(false);
+    closeSheet();
+  }
+
+  // ── Delete item ───────────────────────────────────────────────────────────
+  async function deleteItem() {
+    if (!sheetItem) return;
+    setSheetSaving(true);
+    setAgendas((prev) =>
+      prev.map((agenda, i) =>
+        i === dayIndex ? agenda.filter((it) => it.id !== sheetItem.id) : agenda
+      )
+    );
+    if (sheetItem.fromSupabase) {
+      await supabase.from("agenda_items").delete().eq("id", sheetItem.id);
+    }
+    setSheetSaving(false);
+    closeSheet();
   }
 
   const nextUp = isToday ? items.find((i) => !i.done) : null;
 
   return (
     <div className="flex flex-col">
+
+      {/* ══════════════════════════════════════
+          EDIT / ADD SHEET (bottom sheet)
+      ══════════════════════════════════════ */}
+      <div
+        className={`fixed inset-0 z-50 flex flex-col justify-end max-w-md mx-auto transition-opacity duration-200 ${
+          sheetItem ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+      >
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          onClick={closeSheet}
+        />
+
+        {/* Sheet panel */}
+        <div
+          className={`relative bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+            sheetItem ? "translate-y-0" : "translate-y-full"
+          }`}
+        >
+          {/* Drag handle */}
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="w-10 h-1 bg-slate-200 rounded-full" />
+          </div>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-2 pb-4 border-b border-slate-100">
+            <h3 className="text-base font-black text-slate-900">
+              {isNewItem ? "Add Activity" : "Edit Activity"}
+            </h3>
+            <button
+              onClick={closeSheet}
+              className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Form body */}
+          <div className="px-5 pt-4 pb-2 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+
+            {/* Done toggle — today + edit mode only */}
+            {!isNewItem && isToday && (
+              <button
+                onClick={() => setDraft((d) => ({ ...d, done: !d.done }))}
+                className={`w-full flex items-center gap-3 rounded-2xl px-4 py-3 border-2 transition-all ${
+                  draft.done
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                    : "bg-slate-50 border-slate-200 text-slate-500"
+                }`}
+              >
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-none transition-all ${
+                  draft.done ? "bg-emerald-500 border-emerald-500" : "border-slate-300"
+                }`}>
+                  {draft.done && <span className="text-white text-xs font-bold">✓</span>}
+                </div>
+                <span className="text-sm font-semibold">
+                  {draft.done ? "Marked as done" : "Mark as done"}
+                </span>
+              </button>
+            )}
+
+            {/* Emoji + Title row */}
+            <div className="flex gap-3 items-start">
+              <button
+                onClick={() => emojiInputRef.current?.focus()}
+                className="w-14 h-14 rounded-2xl border-2 border-slate-200 flex items-center justify-center text-3xl flex-none hover:border-slate-400 transition-colors relative"
+              >
+                {draft.emoji || "📍"}
+                <input
+                  ref={emojiInputRef}
+                  type="text"
+                  value={draft.emoji}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Keep only the last character typed (new emoji)
+                    const chars = [...val];
+                    setDraft((d) => ({ ...d, emoji: chars[chars.length - 1] ?? d.emoji }));
+                  }}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                  maxLength={4}
+                />
+              </button>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Activity</p>
+                <input
+                  type="text"
+                  value={draft.title}
+                  onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+                  placeholder="What are you doing?"
+                  autoFocus={isNewItem}
+                  className="w-full text-sm font-semibold text-slate-900 border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-slate-900 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Time */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Time</p>
+              <input
+                type="text"
+                value={draft.time}
+                onChange={(e) => setDraft((d) => ({ ...d, time: e.target.value }))}
+                placeholder="e.g. 2:00 PM"
+                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-slate-900 bg-white"
+              />
+            </div>
+
+            {/* Notes */}
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Notes</p>
+              <textarea
+                value={draft.notes}
+                onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
+                placeholder="Any details, tips, or reminders…"
+                rows={2}
+                className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-slate-900 bg-white resize-none"
+              />
+            </div>
+
+            {/* Reservation flag */}
+            <button
+              onClick={() => setDraft((d) => ({ ...d, reservation: !d.reservation }))}
+              className={`flex items-center gap-3 rounded-xl px-4 py-3 border transition-all ${
+                draft.reservation
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+              }`}
+            >
+              <span className="text-base">🗓</span>
+              <span className="text-sm font-semibold">
+                {draft.reservation ? "Reservation (tap to remove)" : "Flag as reservation"}
+              </span>
+            </button>
+
+            {/* Delete confirm */}
+            {!isNewItem && sheetDeleteConfirm && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex flex-col gap-2">
+                <p className="text-sm font-bold text-red-700">Delete this activity?</p>
+                <p className="text-xs text-red-500">This can&apos;t be undone.</p>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    onClick={deleteItem}
+                    disabled={sheetSaving}
+                    className="flex-1 bg-red-500 text-white text-sm font-bold py-2.5 rounded-xl disabled:opacity-50"
+                  >
+                    {sheetSaving ? "Deleting…" : "Yes, delete"}
+                  </button>
+                  <button
+                    onClick={() => setSheetDeleteConfirm(false)}
+                    className="px-4 text-sm font-semibold text-slate-500 border border-slate-200 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action bar */}
+          <div className="px-5 pt-3 pb-8 flex gap-3 border-t border-slate-100 mt-2">
+            {!isNewItem && !sheetDeleteConfirm && (
+              <button
+                onClick={() => setSheetDeleteConfirm(true)}
+                className="px-4 py-3 text-sm font-bold text-red-500 border border-red-200 rounded-2xl hover:bg-red-50 transition-colors"
+              >
+                Delete
+              </button>
+            )}
+            <button
+              onClick={isNewItem ? addItem : saveEdit}
+              disabled={sheetSaving || !draft.title.trim()}
+              className="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-sm disabled:opacity-40 transition-opacity"
+            >
+              {sheetSaving
+                ? (isNewItem ? "Adding…" : "Saving…")
+                : (isNewItem ? "Add Activity" : "Save Changes")}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* ── Hero (with embedded navigation) ── */}
       <div className="relative h-56 w-full overflow-hidden">
@@ -317,10 +638,8 @@ export default function MyDayPage() {
           alt={day.heroAlt}
           className="absolute inset-0 w-full h-full object-cover"
         />
-        {/* Gradient: dark bottom for text, subtle top for "My Day" label */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/20" />
 
-        {/* ── Top label ── */}
         <div className="absolute top-0 left-0 right-0 px-4 pt-3 flex items-center justify-between">
           <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">My Day</span>
           <span className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">
@@ -328,7 +647,6 @@ export default function MyDayPage() {
           </span>
         </div>
 
-        {/* ── Left arrow ── */}
         {dayIndex > 0 && (
           <button
             onClick={() => setDayIndex((i) => i - 1)}
@@ -338,7 +656,6 @@ export default function MyDayPage() {
           </button>
         )}
 
-        {/* ── Right arrow ── */}
         {dayIndex < DAYS.length - 1 && (
           <button
             onClick={() => setDayIndex((i) => i + 1)}
@@ -348,7 +665,6 @@ export default function MyDayPage() {
           </button>
         )}
 
-        {/* ── Dot indicators (very bottom of hero) ── */}
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
           {DAYS.map((d, i) => (
             <button
@@ -367,7 +683,6 @@ export default function MyDayPage() {
           ))}
         </div>
 
-        {/* ── Bottom text ── */}
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
           <div className="flex items-end justify-between">
             <div>
@@ -480,7 +795,6 @@ export default function MyDayPage() {
           const doneCount = section.items.filter((i) => i.done).length;
           return (
             <div key={section.key}>
-              {/* Airbnb-style minimal section divider */}
               <div className="flex items-center gap-3 mb-3">
                 <span className="text-base">{section.emoji}</span>
                 <span className="text-sm font-bold text-slate-800">{section.label}</span>
@@ -495,47 +809,72 @@ export default function MyDayPage() {
                   const gap = next ? timeToMinutes(next.time) - timeToMinutes(item.time) : null;
                   return (
                     <div key={item.id} className="flex flex-col">
-                      <button
-                        onClick={() => toggle(item.id)}
-                        disabled={!isToday}
-                        className={`w-full text-left flex items-stretch gap-3 bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${
-                          item.done ? "opacity-40 border-slate-100" : "border-slate-100 hover:border-slate-300 hover:shadow-md"
-                        } ${item.reservation ? "ring-1 ring-slate-900" : ""} ${!isToday ? "cursor-default" : ""}`}
+                      {/* ── Item card — split zones ── */}
+                      <div
+                        className={`flex items-stretch bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${
+                          item.done ? "opacity-50 border-slate-100" : "border-slate-100 hover:border-slate-200 hover:shadow-md"
+                        } ${item.reservation ? "ring-1 ring-slate-900" : ""}`}
                       >
-                        <div className="flex flex-col items-center justify-start pt-3 pl-3 w-14 flex-none">
-                          <span className="text-xl">{item.emoji}</span>
-                          <span className="text-[10px] text-slate-400 mt-1 text-center leading-tight font-medium">{item.time}</span>
-                        </div>
-                        <div className="flex-1 min-w-0 py-3">
-                          <p className={`font-semibold text-sm ${item.done ? "line-through text-slate-400" : "text-slate-900"}`}>
-                            {item.title}
-                          </p>
-                          {item.notes && <p className="text-xs text-slate-400 mt-0.5 leading-snug">{item.notes}</p>}
-                          {item.reservation && !item.done && (
-                            <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
-                              🗓 Reserved
-                            </span>
-                          )}
-                        </div>
+                        {/* Left + Center: tap to edit (today + upcoming) */}
+                        <button
+                          onClick={() => isEditable ? openEdit(item) : undefined}
+                          disabled={!isEditable}
+                          className={`flex-1 min-w-0 flex items-stretch gap-3 text-left ${isEditable ? "cursor-pointer" : "cursor-default"}`}
+                        >
+                          <div className="flex flex-col items-center justify-start pt-3 pl-3 w-14 flex-none">
+                            <span className="text-xl">{item.emoji}</span>
+                            <span className="text-[10px] text-slate-400 mt-1 text-center leading-tight font-medium">{item.time}</span>
+                          </div>
+                          <div className="flex-1 min-w-0 py-3 pr-2">
+                            <p className={`font-semibold text-sm ${item.done ? "line-through text-slate-400" : "text-slate-900"}`}>
+                              {item.title}
+                            </p>
+                            {item.notes && <p className="text-xs text-slate-400 mt-0.5 leading-snug">{item.notes}</p>}
+                            {item.reservation && !item.done && (
+                              <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
+                                🗓 Reserved
+                              </span>
+                            )}
+                          </div>
+                        </button>
+
+                        {/* Right: photo (decorative) or done-toggle button */}
                         {item.photo ? (
-                          <div className="relative w-20 h-[72px] flex-none overflow-hidden">
+                          <button
+                            onClick={() => toggle(item.id)}
+                            disabled={!isToday}
+                            className={`relative w-20 h-[72px] flex-none overflow-hidden ${isToday ? "cursor-pointer" : "cursor-default"}`}
+                            title={isToday ? (item.done ? "Mark undone" : "Mark done") : undefined}
+                          >
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={item.photo}
                               alt={item.photoAlt ?? item.title}
                               className={`w-full h-full object-cover transition-all ${item.done || isPast ? "grayscale" : ""}`}
                             />
-                          </div>
+                            {/* Done overlay on photo */}
+                            {isToday && (
+                              <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${item.done ? "opacity-100 bg-black/40" : "opacity-0 hover:opacity-100 bg-black/20"}`}>
+                                <div className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center ${item.done ? "bg-white" : "bg-transparent"}`}>
+                                  {item.done && <span className="text-slate-900 text-xs font-bold">✓</span>}
+                                </div>
+                              </div>
+                            )}
+                          </button>
                         ) : (
-                          <div className="flex items-center pr-4">
+                          <button
+                            onClick={() => toggle(item.id)}
+                            disabled={!isToday}
+                            className={`flex items-center pr-4 pl-2 ${isToday ? "cursor-pointer" : "cursor-default"}`}
+                          >
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-none transition-colors ${
                               item.done ? "bg-slate-900 border-slate-900" : "border-slate-300"
                             }`}>
                               {item.done && <span className="text-white text-[10px] leading-none">✓</span>}
                             </div>
-                          </div>
+                          </button>
                         )}
-                      </button>
+                      </div>
 
                       {gap !== null && (
                         <div className="flex items-center gap-2 px-4 py-1.5">
@@ -548,7 +887,12 @@ export default function MyDayPage() {
                             {formatGap(gap)} until {next?.title.split("–")[0].trim()}
                           </span>
                           {gap >= 90 && (
-                            <span className="text-[10px] text-slate-400 ml-auto">explore nearby →</span>
+                            <button
+                              onClick={() => router.push("/explore")}
+                              className="text-[10px] text-sky-500 font-semibold ml-auto hover:underline"
+                            >
+                              explore nearby →
+                            </button>
                           )}
                         </div>
                       )}
@@ -556,22 +900,35 @@ export default function MyDayPage() {
                   );
                 })}
               </div>
+
+              {/* ── Add activity to this section ── */}
+              {isEditable && (
+                <button
+                  onClick={() => openAdd(section.defaultTime)}
+                  className="mt-2 w-full flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-700 py-2 px-1 transition-colors group"
+                >
+                  <div className="w-5 h-5 rounded-full border-2 border-current flex items-center justify-center text-xs leading-none font-bold group-hover:border-slate-700">
+                    +
+                  </div>
+                  Add to {section.label.toLowerCase()}
+                </button>
+              )}
             </div>
           );
         })}
 
-        {/* ── Add to your day (today + upcoming) ── */}
-        {(isToday || !isPast) && (
+        {/* ── Add to today / Explore CTA ── */}
+        {isEditable && (
           <button
             onClick={() => router.push("/explore")}
             className="w-full flex items-center gap-4 bg-white border-2 border-dashed border-slate-200 rounded-2xl px-4 py-4 text-left hover:border-slate-400 hover:bg-slate-50 transition-all group"
           >
             <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center text-lg flex-none transition-colors">
-              +
+              🔍
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-slate-700">Add something to {isToday ? "today" : "this day"}</p>
-              <p className="text-xs text-slate-400 mt-0.5">Browse beaches, restaurants, activities nearby</p>
+              <p className="font-semibold text-sm text-slate-700">Discover something to add</p>
+              <p className="text-xs text-slate-400 mt-0.5">Browse beaches, restaurants & activities nearby</p>
             </div>
             <span className="text-slate-300 group-hover:text-slate-500 transition-colors text-lg">→</span>
           </button>
