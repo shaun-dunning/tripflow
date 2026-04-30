@@ -98,6 +98,16 @@ const CATEGORIES = [
   { label: "Spa",      icon: "🌺", key: "Spa"       },
 ];
 
+const TRIP_DAYS_INFO = [
+  { dayNum: 1, date: "Fri · Jun 5",  theme: "Travel Day",       emoji: "✈️" },
+  { dayNum: 2, date: "Sat · Jun 6",  theme: "Beach + Snorkel",  emoji: "🏖️" },
+  { dayNum: 3, date: "Sun · Jun 7",  theme: "Road to Hana",     emoji: "🚗" },
+  { dayNum: 4, date: "Mon · Jun 8",  theme: "Beach + Spa",      emoji: "💆" },
+  { dayNum: 5, date: "Tue · Jun 9",  theme: "Free Day",         emoji: "🌺" },
+  { dayNum: 6, date: "Wed · Jun 10", theme: "Haleakalā Sunrise",emoji: "🌋" },
+  { dayNum: 7, date: "Thu · Jun 11", theme: "Fly Home",         emoji: "🏠" },
+];
+
 const SCENARIOS = [
   { label: "Quick lunch", emoji: "🌮", tags: ["lunch"], maxDrive: 10 },
   { label: "Kids activity", emoji: "👦", tags: ["activity"], maxDrive: 30 },
@@ -139,11 +149,16 @@ export default function ExplorePage() {
   const [travelerCount, setTravelerCount] = useState(4);
   const [currentTime, setCurrentTime] = useState("");
 
-  // "Added to today" toast
+  // "Added to trip" toast
   const [addedToast, setAddedToast] = useState<string | null>(null);
 
-  // Today's trip_day_id for agenda inserts
-  const [todayTripDayId, setTodayTripDayId] = useState<string | null>(null);
+  // All trip days: dayNum → trip_day_id
+  const [tripDayMap, setTripDayMap] = useState<Record<number, string>>({});
+  const [todayDayNum, setTodayDayNum] = useState<number | null>(null);
+
+  // Day picker sheet
+  const [dayPickerPlace, setDayPickerPlace] = useState<Place | null>(null);
+  const [dayPickerAdding, setDayPickerAdding] = useState(false);
 
   // AI assistant
   const [showAI, setShowAI] = useState(false);
@@ -165,26 +180,24 @@ export default function ExplorePage() {
       .eq("trip_id", TRIP_ID)
       .then(({ count }) => { if (count) setTravelerCount(count); });
 
-    async function fetchTodayDay() {
-      const { data: tripData } = await supabase
-        .from("trips")
-        .select("start_date, end_date")
-        .eq("id", TRIP_ID)
-        .single();
-      if (!tripData) return;
+    async function fetchTripDays() {
+      const [tripResult, daysResult] = await Promise.all([
+        supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
+        supabase.from("trip_days").select("id, day_number").eq("trip_id", TRIP_ID).order("day_number"),
+      ]);
 
-      const info = getTripDateInfo(tripData.start_date, tripData.end_date);
-      if (info.status !== "active") return;
+      if (tripResult.data) {
+        const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
+        if (info.status === "active") setTodayDayNum(info.currentDayNumber);
+      }
 
-      const { data: dayData } = await supabase
-        .from("trip_days")
-        .select("id")
-        .eq("trip_id", TRIP_ID)
-        .eq("day_number", info.currentDayNumber)
-        .single();
-      if (dayData) setTodayTripDayId(dayData.id);
+      if (daysResult.data) {
+        const map: Record<number, string> = {};
+        daysResult.data.forEach((d) => { map[d.day_number] = d.id; });
+        setTripDayMap(map);
+      }
     }
-    fetchTodayDay();
+    fetchTripDays();
 
     return () => clearInterval(timer);
   }, []);
@@ -193,22 +206,21 @@ export default function ExplorePage() {
     aiBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [aiMessages]);
 
-  async function addToToday(place: Place) {
-    setAddedToast(place.name);
+  async function addToDay(place: Place, dayNum: number) {
+    const tripDayId = tripDayMap[dayNum];
+    setDayPickerAdding(true);
 
-    if (todayTripDayId) {
+    if (tripDayId) {
       const { data: existing } = await supabase
         .from("agenda_items")
         .select("sort_order")
-        .eq("trip_day_id", todayTripDayId)
+        .eq("trip_day_id", tripDayId)
         .order("sort_order", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      const nextSortOrder = (existing?.sort_order ?? 0) + 10;
-
       await supabase.from("agenda_items").insert({
-        trip_day_id: todayTripDayId,
+        trip_day_id: tripDayId,
         title: place.name,
         subtitle: `${place.drive} · ${place.address}`,
         emoji: place.category === "Beach" ? "🏖️"
@@ -217,16 +229,18 @@ export default function ExplorePage() {
              : "📍",
         time: "TBD",
         done: false,
-        sort_order: nextSortOrder,
+        sort_order: (existing?.sort_order ?? 0) + 10,
         is_reservation: false,
       });
     }
 
-    // Navigate to My Day after a beat so user sees the confirmation
+    setDayPickerAdding(false);
+    setDayPickerPlace(null);
+    setAddedToast(`Day ${dayNum}: ${place.name}`);
     setTimeout(() => {
       setAddedToast(null);
       router.push("/");
-    }, 1200);
+    }, 1500);
   }
 
   async function sendAiMessage(text?: string) {
@@ -265,14 +279,83 @@ export default function ExplorePage() {
   return (
     <div className="flex flex-col bg-white relative">
 
-      {/* ── "Added to Today" toast ── */}
+      {/* ── "Added to trip" toast ── */}
       {addedToast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <span>✅</span>
-          <span className="truncate max-w-[200px]">{addedToast}</span>
-          <span className="text-white/60">added · going to My Day…</span>
+          <span className="truncate max-w-[220px]">{addedToast}</span>
+          <span className="text-white/60">added!</span>
         </div>
       )}
+
+      {/* ── Day Picker Sheet ── */}
+      <div className={`fixed inset-0 z-[65] flex flex-col justify-end max-w-md mx-auto transition-opacity duration-200 ${dayPickerPlace ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
+        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => !dayPickerAdding && setDayPickerPlace(null)} />
+        <div className={`relative bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${dayPickerPlace ? "translate-y-0" : "translate-y-full"}`}>
+
+          {/* Handle */}
+          <div className="flex justify-center pt-3 pb-1 flex-none">
+            <div className="w-10 h-1 bg-slate-200 rounded-full" />
+          </div>
+
+          {/* Header */}
+          <div className="px-5 pt-2 pb-4 border-b border-slate-100 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl flex-none">
+              {dayPickerPlace?.category === "Beach" ? "🏖️"
+                : dayPickerPlace?.category === "Food" ? "🍽️"
+                : dayPickerPlace?.category === "Spa"  ? "💆"
+                : "📍"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Add to trip</p>
+              <p className="text-sm font-black text-slate-900 leading-tight truncate">{dayPickerPlace?.name}</p>
+            </div>
+            <button onClick={() => setDayPickerPlace(null)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold flex-none">
+              ✕
+            </button>
+          </div>
+
+          {/* Day list */}
+          <div className="px-4 pt-3 pb-8 flex flex-col gap-2 max-h-[65vh] overflow-y-auto">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Which day?</p>
+            {TRIP_DAYS_INFO.map((d) => {
+              const isToday = d.dayNum === todayDayNum;
+              const hasDayId = !!tripDayMap[d.dayNum];
+              return (
+                <button
+                  key={d.dayNum}
+                  onClick={() => dayPickerPlace && addToDay(dayPickerPlace, d.dayNum)}
+                  disabled={dayPickerAdding || !hasDayId}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border text-left transition-all active:scale-[0.98] ${
+                    isToday
+                      ? "bg-sky-50 border-sky-200 hover:bg-sky-100"
+                      : "bg-white border-slate-100 hover:bg-slate-50"
+                  } disabled:opacity-40`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg flex-none ${isToday ? "bg-sky-500" : "bg-slate-100"}`}>
+                    <span>{d.emoji}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-bold text-slate-900">Day {d.dayNum} · {d.theme}</p>
+                      {isToday && (
+                        <span className="text-[9px] font-bold bg-sky-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+                          Today
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-0.5">{d.date}</p>
+                  </div>
+                  {dayPickerAdding
+                    ? <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin flex-none" />
+                    : <span className="text-slate-300 text-lg flex-none">›</span>
+                  }
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
 
       {/* ── AI Trip Assistant overlay ── */}
       {showAI && (
@@ -595,10 +678,10 @@ export default function ExplorePage() {
                           <p className="text-xs text-slate-500 mt-1 leading-snug line-clamp-2">{place.blurb}</p>
                         </div>
                         <button
-                          onClick={() => addToToday(place)}
+                          onClick={() => setDayPickerPlace(place)}
                           className="mt-2 self-start bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg"
                         >
-                          + Add to My Day
+                          + Add to Trip
                         </button>
                       </div>
                     </div>
@@ -729,10 +812,10 @@ export default function ExplorePage() {
                           Directions
                         </button>
                         <button
-                          onClick={() => addToToday(place)}
+                          onClick={() => setDayPickerPlace(place)}
                           className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
                         >
-                          + Add to My Day
+                          + Add to Trip
                         </button>
                       </div>
                     </div>

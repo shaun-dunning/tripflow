@@ -202,11 +202,17 @@ type LiveWeather = {
   source: "live" | "static";
 };
 
+function nowMinutes(): number {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
 // Sentinel prefix for optimistically-created items not yet in DB
 const NEW_ID_PREFIX = "optimistic-";
 
 export default function MyDayPage() {
   const router = useRouter();
+  const [currentMins, setCurrentMins] = useState(nowMinutes);
   const [todayDayIndex, setTodayDayIndex] = useState(0);
   const [dayIndex, setDayIndex] = useState(0);
   const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
@@ -214,6 +220,7 @@ export default function MyDayPage() {
   const [weather, setWeather] = useState<LiveWeather | null>(null);
   // day_number → trip_day_id (for Supabase writes)
   const [dayIdMap, setDayIdMap] = useState<Record<number, string>>({});
+  const [tripInfo, setTripInfo] = useState<{ status: "upcoming" | "active" | "completed"; daysUntilTrip: number } | null>(null);
 
   // Edit / add sheet
   const [sheetItem, setSheetItem] = useState<Item | null>(null);
@@ -223,6 +230,11 @@ export default function MyDayPage() {
   const emojiInputRef = useRef<HTMLInputElement>(null);
 
   const isNewItem = sheetItem?.id.startsWith(NEW_ID_PREFIX) ?? false;
+
+  useEffect(() => {
+    const clockTimer = setInterval(() => setCurrentMins(nowMinutes()), 60_000);
+    return () => clearInterval(clockTimer);
+  }, []);
 
   useEffect(() => {
     fetch("/api/weather")
@@ -240,6 +252,7 @@ export default function MyDayPage() {
 
       if (tripResult.data) {
         const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
+        setTripInfo({ status: info.status, daysUntilTrip: info.daysUntilTrip });
         const idx = Math.max(0, Math.min(info.currentDayNumber - 1, DAYS.length - 1));
         setTodayDayIndex(idx);
         setDayIndex(idx);
@@ -720,13 +733,62 @@ export default function MyDayPage() {
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 
+        {/* ── Trip Countdown (pre-trip only) ── */}
+        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
+          <div className="relative rounded-3xl overflow-hidden shadow-xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=400&fit=crop&q=85"
+              alt="Maui beach"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-sky-900/95 via-blue-900/88 to-teal-900/95" />
+            <div className="relative px-5 pt-5 pb-5">
+              <p className="text-[10px] font-bold text-sky-300 uppercase tracking-widest mb-4">Maui Family Trip · Jun 5–11, 2026</p>
+              <div className="flex items-end gap-3 mb-2">
+                <div className="text-center">
+                  <div className="text-7xl font-black text-white leading-none tabular-nums">{tripInfo.daysUntilTrip}</div>
+                  <div className="text-xs font-bold text-white/50 uppercase tracking-widest mt-1">days to go</div>
+                </div>
+                <div className="pb-1 flex-1">
+                  <p className="text-xl font-black text-white leading-tight">until your Maui adventure</p>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2 flex-wrap">
+                {[
+                  { icon: "🏖️", label: "7 Days" },
+                  { icon: "👨‍👩‍👧‍👦", label: "4 Travelers" },
+                  { icon: "🏨", label: "Sheraton Ka'anapali" },
+                ].map((stat) => (
+                  <div key={stat.label} className="flex items-center gap-1.5 bg-white/12 backdrop-blur-sm border border-white/15 rounded-xl px-3 py-2">
+                    <span className="text-sm">{stat.icon}</span>
+                    <span className="text-xs font-semibold text-white">{stat.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 grid grid-cols-7 gap-1">
+                {["F","S","S","M","T","W","T"].map((d, i) => (
+                  <div key={i} className="flex flex-col items-center gap-1">
+                    <span className="text-[9px] font-bold text-white/40 uppercase">{d}</span>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? "bg-sky-400 text-white" : "bg-white/10 text-white/60"}`}>
+                      {5 + i}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Next Up (today only) ── */}
         {nextUp && isToday && (() => {
-          const minsAway = 42;
-          const isUrgent = minsAway <= 30;
-          const isWarning = minsAway <= 60;
-          const timeLabel = minsAway < 60
-            ? `${minsAway} min away`
+          const nextMins = nextUp.time && nextUp.time !== "TBD" ? timeToMinutes(nextUp.time) : null;
+          const minsAway = nextMins !== null ? Math.max(0, nextMins - currentMins) : null;
+          const isUrgent = minsAway !== null && minsAway <= 15;
+          const isWarning = minsAway !== null && minsAway <= 60;
+          const timeLabel = minsAway === null ? "Scheduled"
+            : minsAway === 0 ? "Now!"
+            : minsAway < 60 ? `${minsAway} min away`
             : `${Math.floor(minsAway / 60)} hr ${minsAway % 60 > 0 ? `${minsAway % 60} min` : ""} away`;
           const bannerBg = isUrgent ? "bg-red-500 shadow-red-200" : isWarning ? "bg-orange-500 shadow-orange-200" : "bg-sky-600 shadow-sky-200";
           const mutedText = isUrgent ? "text-red-200" : isWarning ? "text-orange-200" : "text-sky-200";
@@ -746,9 +808,11 @@ export default function MyDayPage() {
                 <p className={`text-xs mt-0.5 ${mutedText}`}>{nextUp.time}</p>
               </div>
               <div className="text-right">
-                <p className={`text-[10px] ${mutedText}`}>{isUrgent ? "🚨 Leaving soon!" : isWarning ? "⏰ Coming up" : "Travel time"}</p>
-                <p className="text-xl font-bold">{isUrgent || isWarning ? timeLabel : "12 min"}</p>
-                {!isUrgent && !isWarning && <p className={`text-[10px] ${mutedText}`}>12 min drive</p>}
+                <p className={`text-[10px] ${mutedText}`}>{isUrgent ? "🚨 Leaving soon!" : isWarning ? "⏰ Coming up" : "Up next"}</p>
+                <p className="text-xl font-bold">{timeLabel}</p>
+                {!isUrgent && !isWarning && minsAway !== null && minsAway > 60 && (
+                  <p className={`text-[10px] ${mutedText}`}>{nextUp.time}</p>
+                )}
               </div>
             </div>
           );
