@@ -195,6 +195,12 @@ export default function ExplorePage() {
   const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
   const [wishlistSavedToast, setWishlistSavedToast] = useState<string | null>(null);
 
+  // Expanded card
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+
   // AI assistant
   const [showAI, setShowAI] = useState(false);
   const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
@@ -326,12 +332,29 @@ export default function ExplorePage() {
   const scenario = activeScenario !== null ? SCENARIOS[activeScenario] : null;
 
   const filtered = PLACES.filter((p) => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const hit =
+        p.name.toLowerCase().includes(q) ||
+        p.blurb.toLowerCase().includes(q) ||
+        p.reviewQuote.toLowerCase().includes(q) ||
+        p.proTip.toLowerCase().includes(q) ||
+        p.address.toLowerCase().includes(q) ||
+        p.tags.some((t) => t.includes(q)) ||
+        p.category.toLowerCase().includes(q);
+      if (!hit) return false;
+    }
     if (activeFilter !== "All" && p.category !== activeFilter) return false;
     if (kidsOnly && !p.kidFriendly) return false;
     if (driveMinutes(p.drive) > maxDrive) return false;
     if (scenario && !scenario.tags.some((t) => p.tags.includes(t))) return false;
     return true;
   });
+
+  // Top picks by verifiedRating × log(reviewCount) — shown in Traveler Picks strip
+  const travelerPicks = [...PLACES]
+    .sort((a, b) => b.verifiedRating * Math.log(b.reviewCount) - a.verifiedRating * Math.log(a.reviewCount))
+    .slice(0, 3);
 
   const activeFilterCount = (kidsOnly ? 1 : 0) + (maxDrive < 30 ? 1 : 0) + (activeScenario !== null ? 1 : 0);
 
@@ -554,16 +577,54 @@ export default function ExplorePage() {
       ══════════════════════════════════════ */}
       <div className="px-4 pt-5 pb-3">
 
-        {/* ── Big search pill ── */}
+        {/* ── Real search input ── */}
         <div className="flex items-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.09)] px-4 py-3.5">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-slate-400 flex-none">
             <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
             <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search beaches, dining, activities…"
+            className="flex-1 text-sm font-medium text-slate-900 outline-none bg-transparent placeholder:text-slate-400"
+          />
+          {searchQuery ? (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold flex-none hover:bg-slate-200 transition-colors"
+            >
+              ✕
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowFilters((v) => !v)}
+              className={`relative w-9 h-9 rounded-full border-2 flex items-center justify-center flex-none transition-all ${
+                showFilters || activeFilterCount > 0
+                  ? "bg-slate-900 border-slate-900 text-white"
+                  : "bg-white border-slate-200 text-slate-500 hover:border-slate-400"
+              }`}
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+              </svg>
+              {activeFilterCount > 0 && !showFilters && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          )}
+        </div>
 
-          <div className="w-px h-7 bg-slate-200 flex-none" />
-
-          <div className="flex-1 min-w-0">
+        {/* ── Context chips + location ── */}
+        <div className="flex items-center gap-2 mt-3 px-1">
+          <button
+            onClick={() => { setLocationInput(location); setEditingLocation(true); }}
+            className="flex items-center gap-1 text-xs text-slate-500 font-medium hover:text-slate-700 transition-colors"
+          >
+            <span>📍</span>
             {editingLocation ? (
               <form
                 onSubmit={(e) => {
@@ -573,7 +634,6 @@ export default function ExplorePage() {
                   setEditingLocation(false);
                 }}
               >
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Exploring near</p>
                 <input
                   autoFocus
                   type="text"
@@ -584,48 +644,21 @@ export default function ExplorePage() {
                     if (trimmed) setLocation(trimmed);
                     setEditingLocation(false);
                   }}
-                  className="w-full text-sm font-bold text-slate-900 outline-none bg-transparent placeholder:text-slate-400"
-                  placeholder="Any area on Maui…"
+                  className="text-xs font-semibold text-slate-900 outline-none bg-transparent w-28"
+                  placeholder="Area on Maui…"
                 />
               </form>
             ) : (
-              <button
-                onClick={() => { setLocationInput(location); setEditingLocation(true); }}
-                className="text-left w-full"
-              >
-                <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest leading-none mb-0.5">Exploring near</p>
-                <p className="text-sm font-bold text-slate-900 leading-tight">{location}, Maui</p>
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => setShowFilters((v) => !v)}
-            className={`relative w-9 h-9 rounded-full border-2 flex items-center justify-center flex-none transition-all ${
-              showFilters || activeFilterCount > 0
-                ? "bg-slate-900 border-slate-900 text-white"
-                : "bg-white border-slate-200 text-slate-500 hover:border-slate-400"
-            }`}
-          >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-              <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-            {activeFilterCount > 0 && !showFilters && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                {activeFilterCount}
-              </span>
+              <span className="font-semibold text-slate-700">{location}</span>
             )}
           </button>
-        </div>
-
-        {/* ── Context chips ── */}
-        <div className="flex items-center gap-2 mt-3 px-1">
+          <span className="text-slate-200">·</span>
           <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
             <span>🕒</span> {currentTime}
           </span>
           <span className="text-slate-200">·</span>
           <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-            <span>👨‍👩‍👧‍👦</span> {travelerCount} people
+            <span>👨‍👩‍👧‍👦</span> {travelerCount}
           </span>
           <button
             onClick={() => setKidsOnly(!kidsOnly)}
@@ -755,6 +788,63 @@ export default function ExplorePage() {
           </div>
         )}
 
+        {/* ── Traveler Picks ── */}
+        {!searchQuery && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">Traveler Picks</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Highest rated by verified visitors</p>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                <span className="text-amber-500">★</span> Top Rated
+              </div>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+              {travelerPicks.map((place) => (
+                <button
+                  key={place.id}
+                  onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
+                  className="flex-none w-52 bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm text-left active:scale-[0.98] transition-transform"
+                >
+                  <div className="relative h-28 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                      <span className="text-amber-400">★</span>
+                      <span>{place.verifiedRating.toFixed(1)}</span>
+                      <span className="text-white/60 font-normal">{place.reviewSource}</span>
+                    </div>
+                    {place.kidFriendly && (
+                      <span className="absolute top-2.5 right-2.5 text-[9px] font-bold bg-emerald-500/90 text-white px-1.5 py-0.5 rounded-full">
+                        👦 Family
+                      </span>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 px-3 pb-2">
+                      <p className="text-xs font-bold text-white leading-tight truncate">{place.name}</p>
+                    </div>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <p className="text-[10px] text-slate-500 leading-snug line-clamp-2 italic">
+                      &ldquo;{place.reviewQuote.split(".")[0]}.&rdquo;
+                    </p>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className="text-[10px] text-slate-400">{place.drive} · {place.price}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setDayPickerPlace(place); }}
+                        className="text-[10px] font-bold bg-slate-900 text-white px-2.5 py-1 rounded-lg"
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── What Now? ── */}
         {!showWhatNow ? (
           <button
@@ -878,12 +968,12 @@ export default function ExplorePage() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-bold text-slate-800">
               {filtered.length} {filtered.length === 1 ? "place" : "places"}
-              {activeFilter !== "All" ? ` · ${activeFilter}` : ""}
+              {searchQuery ? ` for "${searchQuery}"` : activeFilter !== "All" ? ` · ${activeFilter}` : ""}
               {scenario ? ` · ${scenario.label}` : ""}
             </p>
-            {(activeFilter !== "All" || scenario || kidsOnly || maxDrive < 30) && (
+            {(searchQuery || activeFilter !== "All" || scenario || kidsOnly || maxDrive < 30) && (
               <button
-                onClick={() => { setActiveFilter("All"); setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); }}
+                onClick={() => { setSearchQuery(""); setActiveFilter("All"); setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); }}
                 className="text-xs font-semibold text-rose-500"
               >
                 Clear
@@ -896,7 +986,7 @@ export default function ExplorePage() {
               <span className="text-3xl">🔭</span>
               <p className="text-sm font-medium">Nothing matches right now</p>
               <button
-                onClick={() => { setActiveFilter("All"); setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); }}
+                onClick={() => { setSearchQuery(""); setActiveFilter("All"); setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); }}
                 className="text-xs text-slate-900 font-semibold mt-1 underline underline-offset-2"
               >
                 Clear filters
@@ -904,78 +994,105 @@ export default function ExplorePage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {filtered.map((place) => (
-                <div key={place.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
-                  {/* Photo */}
-                  <div className="relative h-44 w-full overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
-                    {place.kidFriendly && (
-                      <span className="absolute top-3 left-3 text-[10px] font-bold bg-white/85 backdrop-blur-sm text-emerald-700 px-2 py-1 rounded-full">
-                        👦 Kid-friendly
-                      </span>
-                    )}
-                    {wishlistIds.has(place.id) && (
-                      <span className="absolute top-3 right-3 text-[10px] font-bold bg-amber-500 text-white px-2 py-1 rounded-full">
-                        🔖 Saved
-                      </span>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
+              {filtered.map((place) => {
+                const isExpanded = expandedId === place.id;
+                return (
+                  <div key={place.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+                    {/* Photo */}
+                    <div
+                      className="relative h-40 w-full overflow-hidden cursor-pointer"
+                      onClick={() => setExpandedId(isExpanded ? null : place.id)}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
+                      {/* Verified rating badge */}
+                      <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                        <span className="text-amber-400">★</span>
+                        <span>{place.verifiedRating.toFixed(1)}</span>
+                        <span className="text-white/60 font-normal">{place.reviewSource}</span>
+                      </div>
+                      {place.kidFriendly && !wishlistIds.has(place.id) && (
+                        <span className="absolute top-3 right-3 text-[10px] font-bold bg-white/85 backdrop-blur-sm text-emerald-700 px-2 py-1 rounded-full">
+                          👦 Kids
+                        </span>
+                      )}
+                      {wishlistIds.has(place.id) && (
+                        <span className="absolute top-3 right-3 text-[10px] font-bold bg-amber-500 text-white px-2 py-1 rounded-full">
+                          🔖 Saved
+                        </span>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />
+                    </div>
+
+                    {/* Content */}
+                    <div className="px-4 py-3">
+                      <button
+                        className="w-full text-left"
+                        onClick={() => setExpandedId(isExpanded ? null : place.id)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-slate-900 text-sm">{place.name}</p>
+                            <p className="text-xs text-slate-400 mt-0.5">{place.address} · {place.category}</p>
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-medium flex-none mt-0.5">{isExpanded ? "↑ Less" : "↓ More"}</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-2 leading-relaxed">{place.blurb}</p>
+                        {!isExpanded && (
+                          <p className="text-[11px] text-slate-400 italic mt-1.5 leading-snug line-clamp-1">
+                            &ldquo;{place.reviewQuote.split(".")[0].trim()}.&rdquo;
+                          </p>
+                        )}
+                      </button>
+
+                      {/* Expanded: Verified review + Pro tip */}
+                      {isExpanded && (
+                        <>
+                          <div className="mt-3 pt-3 border-t border-slate-50">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Travelers say</p>
+                            <p className="text-xs text-slate-500 italic leading-relaxed">
+                              &ldquo;{place.reviewQuote}&rdquo;
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <span className="text-[10px] font-bold text-amber-500">★ {place.verifiedRating.toFixed(1)}</span>
+                              <span className="text-[10px] text-slate-400">· {place.reviewCount.toLocaleString()} reviews on {place.reviewSource}</span>
+                            </div>
+                          </div>
+                          <div className="mt-2.5 bg-amber-50 rounded-xl px-3 py-2 flex gap-2 items-start">
+                            <span className="text-sm flex-none">💡</span>
+                            <p className="text-[11px] text-amber-800 leading-snug">{place.proTip}</p>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Drive + price row */}
+                      <div className="flex items-center gap-2 mt-3">
+                        <span className="text-xs text-slate-600 font-semibold">
+                          🚗 {place.drive}
+                        </span>
+                        <span className="text-slate-200">·</span>
+                        <span className="text-xs text-slate-500">{place.price} · {PRICE_LABELS[place.price]}</span>
+                        <div className="ml-auto flex gap-2">
+                          {!isExpanded && (
+                            <button
+                              onClick={() => setExpandedId(place.id)}
+                              className="text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                            >
+                              Reviews ↓
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setDayPickerPlace(place)}
+                            className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
+                          >
+                            + Add to Trip
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-
-                  {/* Content */}
-                  <div className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold text-slate-900 text-sm">{place.name}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{place.address} · {place.category}</p>
-                      </div>
-                      <div className="flex items-center gap-1 flex-none">
-                        <span className="text-xs font-bold text-slate-800">★ {place.rating}</span>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-slate-500 mt-2 leading-relaxed">{place.blurb}</p>
-
-                    {/* Verified review */}
-                    <div className="mt-3 pt-3 border-t border-slate-50">
-                      <p className="text-xs text-slate-500 italic leading-relaxed line-clamp-2">
-                        &ldquo;{place.reviewQuote}&rdquo;
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-1.5">
-                        <span className="text-[10px] font-bold text-amber-500">★ {place.verifiedRating.toFixed(1)}</span>
-                        <span className="text-[10px] text-slate-400">· {place.reviewCount.toLocaleString()} reviews on {place.reviewSource}</span>
-                      </div>
-                    </div>
-
-                    {/* Pro tip */}
-                    <div className="mt-2.5 bg-amber-50 rounded-xl px-3 py-2 flex gap-2 items-start">
-                      <span className="text-sm flex-none">💡</span>
-                      <p className="text-[11px] text-amber-800 leading-snug">{place.proTip}</p>
-                    </div>
-
-                    {/* Drive + price row */}
-                    <div className="flex items-center gap-2 mt-3">
-                      <span className="text-xs text-slate-600 font-semibold">
-                        🚗 {place.drive}
-                      </span>
-                      <span className="text-slate-200">·</span>
-                      <span className="text-xs text-slate-500">{place.price} · {PRICE_LABELS[place.price]}</span>
-                      <div className="ml-auto flex gap-2">
-                        <button className="text-xs font-bold text-slate-600 border border-slate-200 px-3 py-1.5 rounded-xl hover:bg-slate-50 transition-colors">
-                          Directions
-                        </button>
-                        <button
-                          onClick={() => setDayPickerPlace(place)}
-                          className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
-                        >
-                          + Add to Trip
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

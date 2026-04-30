@@ -42,10 +42,10 @@ const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 const INVITE_CODE = "MAUI26";
 
 const QUICK_ACTIONS = [
-  { label: "Today's plan", emoji: "📋" },
-  { label: "Share location", emoji: "📍" },
-  { label: "Dinner details", emoji: "🐟" },
-  { label: "Photo", emoji: "📷" },
+  { key: "plan",    label: "Today's plan",  emoji: "📋" },
+  { key: "loc",     label: "Share location", emoji: "📍" },
+  { key: "dinner",  label: "Dinner details", emoji: "🐟" },
+  { key: "photo",   label: "Photo",          emoji: "📷" },
 ];
 
 const AVATAR_OPTIONS = ["🧔", "👩", "👦", "👧", "👵", "👴", "🧑", "👨", "👩‍🦱", "👨‍🦳", "🧒", "👶"];
@@ -131,6 +131,7 @@ export default function ChatPage() {
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const msgPhotoRef = useRef<HTMLInputElement>(null);
 
   // Derived
   const myTraveler = travelers.find((t) => t.user_id === user?.id);
@@ -324,6 +325,76 @@ export default function ChatPage() {
     } else {
       copyInviteLink();
     }
+  }
+
+  async function handleQuickAction(key: string) {
+    const senderName =
+      user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
+    const avatar = myTraveler?.avatar ?? "🧔";
+
+    if (key === "plan") {
+      await supabase.from("messages").insert({
+        trip_id: TRIP_ID,
+        sender_name: senderName,
+        sender_avatar: avatar,
+        sender_user_id: user?.id ?? null,
+        card_type: "plan",
+        card_title: "Today's Plan · Day 2",
+        card_sub: "Beach → Molokini → Mama's Fish House",
+        card_emoji: "📋",
+      });
+    } else if (key === "dinner") {
+      await supabase.from("messages").insert({
+        trip_id: TRIP_ID,
+        sender_name: senderName,
+        sender_avatar: avatar,
+        sender_user_id: user?.id ?? null,
+        card_type: "reservation",
+        card_title: "Dinner · Mama's Fish House",
+        card_sub: "7:00 PM · Reservation confirmed · Party of 4",
+        card_emoji: "🐟",
+      });
+    } else if (key === "loc") {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: "My location", text: `${senderName} is near Ka'anapali Beach, Maui 📍` });
+        } catch { /* cancelled */ }
+      } else {
+        await supabase.from("messages").insert({
+          trip_id: TRIP_ID,
+          sender_name: senderName,
+          sender_avatar: avatar,
+          sender_user_id: user?.id ?? null,
+          card_type: "location",
+          card_title: `${senderName}'s location`,
+          card_sub: "Near Ka'anapali Beach, Maui",
+          card_emoji: "📍",
+        });
+      }
+    } else if (key === "photo") {
+      msgPhotoRef.current?.click();
+    }
+  }
+
+  async function handleMsgPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `msg-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (!error) {
+      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+      const senderName =
+        user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
+      await supabase.from("messages").insert({
+        trip_id: TRIP_ID,
+        sender_name: senderName,
+        sender_avatar: myTraveler?.avatar ?? "🧔",
+        sender_user_id: user?.id ?? null,
+        image_url: data.publicUrl,
+      });
+    }
+    if (msgPhotoRef.current) msgPhotoRef.current.value = "";
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
@@ -1010,8 +1081,9 @@ export default function ChatPage() {
         >
           {QUICK_ACTIONS.map((a) => (
             <button
-              key={a.label}
-              className="flex-none flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full whitespace-nowrap"
+              key={a.key}
+              onClick={() => handleQuickAction(a.key)}
+              className="flex-none flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full whitespace-nowrap active:bg-slate-200 transition-colors"
             >
               {a.emoji} {a.label}
             </button>
@@ -1036,12 +1108,21 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* ── Single shared file input for photo uploads ───────────────────── */}
+      {/* ── File inputs ───────────────────────────────────────────────────── */}
+      {/* Avatar uploads (traveler/profile edit) */}
       <input
         type="file"
         accept="image/*"
         ref={fileInputRef}
         onChange={handlePhotoUpload}
+        className="hidden"
+      />
+      {/* Message photo (📷 quick action) */}
+      <input
+        type="file"
+        accept="image/*"
+        ref={msgPhotoRef}
+        onChange={handleMsgPhoto}
         className="hidden"
       />
 

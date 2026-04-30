@@ -208,6 +208,50 @@ function nowMinutes(): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
+// ── Smart weather alert — cross-references forecast with today's activities ──
+type WeatherAlert = { emoji: string; type: "info" | "warning"; title: string; body: string };
+
+function getWeatherAlert(weather: LiveWeather | null, agenda: Item[]): WeatherAlert | null {
+  if (!weather) return null;
+  const cond = weather.condition.toLowerCase();
+  const isRainy = cond.includes("rain") || cond.includes("shower") || cond.includes("storm");
+  const isWindy = cond.includes("wind");
+  const isHot = weather.high >= 88;
+  const outdoor = ["snorkel", "beach", "hike", "swim", "surf", "ocean", "dive", "kayak", "boat"];
+  const hasOutdoor = agenda.some((i) =>
+    outdoor.some((k) => i.title.toLowerCase().includes(k) || (i.notes ?? "").toLowerCase().includes(k))
+  );
+  if (isRainy && hasOutdoor) {
+    return {
+      emoji: "🌧️", type: "warning",
+      title: "Rain in the forecast",
+      body: "Some outdoor activities may be affected. Pack a light layer and have a backup plan ready.",
+    };
+  }
+  if (isHot && hasOutdoor) {
+    return {
+      emoji: "☀️", type: "warning",
+      title: `High of ${weather.high}°F today`,
+      body: "Apply reef-safe sunscreen early — UV is intense. Stay hydrated and seek shade between 11am–3pm.",
+    };
+  }
+  if (isWindy && hasOutdoor) {
+    return {
+      emoji: "💨", type: "info",
+      title: "Breezy conditions",
+      body: "Ocean may be choppy — check with tour operators before heading out. Great for kite surfing!",
+    };
+  }
+  if (!isRainy && weather.high >= 78 && weather.high <= 87) {
+    return {
+      emoji: "🌺", type: "info",
+      title: "Perfect Maui day",
+      body: `${weather.high}° and ${weather.condition.toLowerCase()} — ideal for everything on your list today.`,
+    };
+  }
+  return null;
+}
+
 // Smart gap suggestions — checks wishlist first, then time-of-day defaults
 type GapSuggestion = { emoji: string; name: string; note: string; fromWishlist?: boolean };
 
@@ -825,30 +869,17 @@ export default function MyDayPage() {
 
         {/* ── Pre-trip quick actions ── */}
         {tripInfo?.status === "upcoming" && (
-          <div className="flex gap-3">
-            <button
-              onClick={() => router.push("/packing")}
-              className="flex-1 flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <span className="text-xl">🧳</span>
-              <div className="text-left">
-                <p className="text-sm font-bold text-slate-900">Packing List</p>
-                <p className="text-[11px] text-slate-400">Tailored to your itinerary</p>
-              </div>
-              <span className="text-slate-300 ml-auto">›</span>
-            </button>
-            <button
-              onClick={() => router.push("/explore")}
-              className="flex-1 flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <span className="text-xl">🔍</span>
-              <div className="text-left">
-                <p className="text-sm font-bold text-slate-900">Explore Maui</p>
-                <p className="text-[11px] text-slate-400">Plan your days</p>
-              </div>
-              <span className="text-slate-300 ml-auto">›</span>
-            </button>
-          </div>
+          <button
+            onClick={() => router.push("/packing")}
+            className="flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow w-full"
+          >
+            <span className="text-xl">🧳</span>
+            <div className="text-left">
+              <p className="text-sm font-bold text-slate-900">Packing List</p>
+              <p className="text-[11px] text-slate-400">Tailored to your itinerary</p>
+            </div>
+            <span className="text-slate-300 ml-auto">›</span>
+          </button>
         )}
 
         {/* ── Next Up (today only) ── */}
