@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
   let geminiError = "";
 
   if (geminiKey && geminiKey !== "your_key_here") {
-    // Try gemini-2.0-flash first, fall back to gemini-1.5-flash
-    const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    // Try models in order — versioned names required by v1beta
+    const models = ["gemini-2.0-flash-001", "gemini-1.5-flash-001", "gemini-1.5-flash-latest"];
     for (const model of models) {
       try {
         const contents = [
