@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
+import { loadWishlist, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -190,6 +191,10 @@ export default function ExplorePage() {
   const [dayPickerPlace, setDayPickerPlace] = useState<Place | null>(null);
   const [dayPickerAdding, setDayPickerAdding] = useState(false);
 
+  // Wishlist (saved for later)
+  const [wishlistIds, setWishlistIds] = useState<Set<number>>(new Set());
+  const [wishlistSavedToast, setWishlistSavedToast] = useState<string | null>(null);
+
   // AI assistant
   const [showAI, setShowAI] = useState(false);
   const [aiMessages, setAiMessages] = useState<AiMessage[]>([]);
@@ -228,6 +233,10 @@ export default function ExplorePage() {
       }
     }
     fetchTripDays();
+
+    // Load wishlist
+    const saved = loadWishlist();
+    setWishlistIds(new Set(saved.map((e) => e.placeId)));
 
     return () => clearInterval(timer);
   }, []);
@@ -273,6 +282,26 @@ export default function ExplorePage() {
     }, 1500);
   }
 
+  function toggleWishlist(place: Place) {
+    if (wishlistIds.has(place.id)) {
+      removeFromWishlist(place.id);
+      setWishlistIds((prev) => { const n = new Set(prev); n.delete(place.id); return n; });
+    } else {
+      addToWishlist({
+        placeId: place.id,
+        name: place.name,
+        category: place.category,
+        drive: place.drive,
+        photo: place.photo,
+        photoAlt: place.photoAlt,
+      });
+      setWishlistIds((prev) => new Set([...prev, place.id]));
+      setDayPickerPlace(null);
+      setWishlistSavedToast(place.name);
+      setTimeout(() => setWishlistSavedToast(null), 2000);
+    }
+  }
+
   async function sendAiMessage(text?: string) {
     const messageText = (text ?? aiInput).trim();
     if (!messageText || aiLoading) return;
@@ -308,6 +337,15 @@ export default function ExplorePage() {
 
   return (
     <div className="flex flex-col bg-white relative">
+
+      {/* ── "Saved for later" toast ── */}
+      {wishlistSavedToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-amber-700 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <span>🔖</span>
+          <span className="truncate max-w-[200px]">{wishlistSavedToast}</span>
+          <span className="text-white/70">saved for later</span>
+        </div>
+      )}
 
       {/* ── "Added to trip" toast ── */}
       {addedToast && (
@@ -347,7 +385,7 @@ export default function ExplorePage() {
 
           {/* Day list */}
           <div className="px-4 pt-3 pb-8 flex flex-col gap-2 max-h-[65vh] overflow-y-auto">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Which day?</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Pick a day — or save for later</p>
             {TRIP_DAYS_INFO.map((d) => {
               const isToday = d.dayNum === todayDayNum;
               const hasDayId = !!tripDayMap[d.dayNum];
@@ -383,6 +421,29 @@ export default function ExplorePage() {
                 </button>
               );
             })}
+
+            {/* Save for Later */}
+            <div className="border-t border-slate-100 pt-3 mt-1">
+              {dayPickerPlace && wishlistIds.has(dayPickerPlace.id) ? (
+                <button
+                  onClick={() => dayPickerPlace && toggleWishlist(dayPickerPlace)}
+                  className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-rose-500 hover:text-rose-600 transition-colors"
+                >
+                  🗑️ Remove from saved list
+                </button>
+              ) : (
+                <button
+                  onClick={() => dayPickerPlace && toggleWishlist(dayPickerPlace)}
+                  className="w-full flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3.5 hover:bg-amber-100 transition-colors"
+                >
+                  <span className="text-xl">🔖</span>
+                  <div className="text-left flex-1">
+                    <p className="text-sm font-bold text-amber-900">Save for later</p>
+                    <p className="text-[11px] text-amber-600 mt-0.5">We&apos;ll remind you when there&apos;s a free slot</p>
+                  </div>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -653,6 +714,47 @@ export default function ExplorePage() {
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 
+        {/* ── Saved for Later ── */}
+        {wishlistIds.size > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🔖</span>
+                <p className="text-sm font-bold text-slate-800">Saved for later</p>
+              </div>
+              <span className="text-[11px] text-slate-400">{wishlistIds.size} place{wishlistIds.size !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+              {PLACES.filter((p) => wishlistIds.has(p.id)).map((place) => (
+                <div key={place.id} className="flex-none w-44 bg-white rounded-2xl overflow-hidden border border-amber-100 shadow-sm">
+                  <div className="relative h-24 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    <button
+                      onClick={() => toggleWishlist(place)}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white text-[10px] font-bold"
+                    >
+                      ✕
+                    </button>
+                    <span className="absolute bottom-2 left-2.5 text-[10px] font-bold text-white/80">{place.drive}</span>
+                  </div>
+                  <div className="px-3 py-2.5">
+                    <p className="text-xs font-bold text-slate-900 leading-tight truncate">{place.name}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{place.category}</p>
+                    <button
+                      onClick={() => setDayPickerPlace(place)}
+                      className="mt-2 w-full bg-slate-900 text-white text-[10px] font-bold py-1.5 rounded-lg"
+                    >
+                      Add to Trip →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── What Now? ── */}
         {!showWhatNow ? (
           <button
@@ -811,6 +913,11 @@ export default function ExplorePage() {
                     {place.kidFriendly && (
                       <span className="absolute top-3 left-3 text-[10px] font-bold bg-white/85 backdrop-blur-sm text-emerald-700 px-2 py-1 rounded-full">
                         👦 Kid-friendly
+                      </span>
+                    )}
+                    {wishlistIds.has(place.id) && (
+                      <span className="absolute top-3 right-3 text-[10px] font-bold bg-amber-500 text-white px-2 py-1 rounded-full">
+                        🔖 Saved
                       </span>
                     )}
                     <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/40 to-transparent" />

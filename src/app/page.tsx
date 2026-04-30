@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
+import { loadWishlist, type WishlistEntry } from "@/lib/wishlist";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -207,23 +208,48 @@ function nowMinutes(): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
-// Smart gap suggestions — time-of-day aware
-type GapSuggestion = { emoji: string; name: string; note: string };
-function getGapSuggestion(afterTime: string, gapMins: number): GapSuggestion | null {
+// Smart gap suggestions — checks wishlist first, then time-of-day defaults
+type GapSuggestion = { emoji: string; name: string; note: string; fromWishlist?: boolean };
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  Beach: "🏖️", Food: "🍽️", Activity: "📍", Spa: "💆",
+};
+
+function getGapSuggestion(
+  afterTime: string,
+  gapMins: number,
+  wishlist: WishlistEntry[],
+): GapSuggestion | null {
   if (gapMins < 90) return null;
   const mins = timeToMinutes(afterTime);
   if (isNaN(mins)) return null;
-  // Morning (before noon)
+
+  // Prefer a saved wishlist item whose category fits the time of day
+  if (wishlist.length > 0) {
+    const preferFood = mins >= 660 && mins < 840;   // 11am–2pm
+    const preferSpa  = mins >= 840 && mins < 1020;  // 2pm–5pm (adults free time)
+    const match =
+      wishlist.find((e) => preferFood  && e.category === "Food")   ??
+      wishlist.find((e) => preferSpa   && e.category === "Spa")    ??
+      wishlist.find((e) => e.category === "Beach")                  ??
+      wishlist.find((e) => e.category === "Activity")               ??
+      wishlist[0];
+    if (match) return {
+      emoji: CATEGORY_EMOJI[match.category] ?? "📍",
+      name: match.name,
+      note: `${match.drive} · saved by you`,
+      fromWishlist: true,
+    };
+  }
+
+  // Default time-of-day suggestions
   if (mins < 720) return { emoji: "🚶", name: "Wailea Beach Path", note: "Free · 5 min walk · stunning views" };
-  // Lunch window (noon – 2pm)
   if (mins < 840) return { emoji: "🍜", name: "Monkeypod Kitchen", note: "Farm-to-table · 4 min drive" };
-  // Afternoon (2pm – 5pm)
   if (mins < 1020) {
     return gapMins >= 120
       ? { emoji: "🏖️", name: "Kapalua Beach", note: "Calm bay · 8 min drive · kids love it" }
       : { emoji: "🍧", name: "Ululani's Shave Ice", note: "Best on the island · 5 min drive" };
   }
-  // Evening (5pm+)
   return { emoji: "🍹", name: "Down the Hatch", note: "Waterfront happy hour · 14 min drive" };
 }
 
@@ -233,6 +259,7 @@ const NEW_ID_PREFIX = "optimistic-";
 export default function MyDayPage() {
   const router = useRouter();
   const [currentMins, setCurrentMins] = useState(nowMinutes);
+  const [wishlist, setWishlist] = useState<WishlistEntry[]>([]);
   const [todayDayIndex, setTodayDayIndex] = useState(0);
   const [dayIndex, setDayIndex] = useState(0);
   const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
@@ -254,6 +281,14 @@ export default function MyDayPage() {
   useEffect(() => {
     const clockTimer = setInterval(() => setCurrentMins(nowMinutes()), 60_000);
     return () => clearInterval(clockTimer);
+  }, []);
+
+  // Load wishlist from localStorage (also refresh when tab gains focus)
+  useEffect(() => {
+    const refresh = () => setWishlist(loadWishlist());
+    refresh();
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
   }, []);
 
   useEffect(() => {
@@ -494,19 +529,20 @@ export default function MyDayPage() {
           onClick={closeSheet}
         />
 
-        {/* Sheet panel */}
+        {/* Sheet panel — flex col so action bar always stays visible */}
         <div
-          className={`relative bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out ${
+          className={`relative bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out flex flex-col ${
             sheetItem ? "translate-y-0" : "translate-y-full"
           }`}
+          style={{ maxHeight: "calc(100dvh - 72px)" }}
         >
           {/* Drag handle */}
-          <div className="flex justify-center pt-3 pb-1">
+          <div className="flex justify-center pt-3 pb-1 flex-none">
             <div className="w-10 h-1 bg-slate-200 rounded-full" />
           </div>
 
           {/* Header */}
-          <div className="flex items-center justify-between px-5 pt-2 pb-4 border-b border-slate-100">
+          <div className="flex items-center justify-between px-5 pt-2 pb-4 border-b border-slate-100 flex-none">
             <h3 className="text-base font-black text-slate-900">
               {isNewItem ? "Add Activity" : "Edit Activity"}
             </h3>
@@ -518,8 +554,8 @@ export default function MyDayPage() {
             </button>
           </div>
 
-          {/* Form body */}
-          <div className="px-5 pt-4 pb-2 flex flex-col gap-4 max-h-[70vh] overflow-y-auto">
+          {/* Form body — scrolls within the constrained sheet height */}
+          <div className="px-5 pt-4 pb-2 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
 
             {/* Done toggle — today + edit mode only */}
             {!isNewItem && isToday && (
@@ -640,8 +676,8 @@ export default function MyDayPage() {
             )}
           </div>
 
-          {/* Action bar */}
-          <div className="px-5 pt-3 pb-8 flex gap-3 border-t border-slate-100 mt-2">
+          {/* Action bar — always visible, never clipped */}
+          <div className="px-5 pt-3 pb-8 flex gap-3 border-t border-slate-100 flex-none">
             {!isNewItem && !sheetDeleteConfirm && (
               <button
                 onClick={() => setSheetDeleteConfirm(true)}
@@ -988,19 +1024,28 @@ export default function MyDayPage() {
                             </span>
                           </div>
                           {(() => {
-                            const suggestion = getGapSuggestion(item.time, gap);
+                            const suggestion = getGapSuggestion(item.time, gap, wishlist);
                             if (!suggestion) return null;
                             return (
                               <button
                                 onClick={() => router.push("/explore")}
-                                className="mx-4 mb-1.5 flex items-center gap-2.5 bg-sky-50 border border-sky-100 rounded-2xl px-3.5 py-2.5 text-left hover:bg-sky-100 transition-colors"
+                                className={`mx-4 mb-1.5 flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left transition-colors ${
+                                  suggestion.fromWishlist
+                                    ? "bg-amber-50 border border-amber-100 hover:bg-amber-100"
+                                    : "bg-sky-50 border border-sky-100 hover:bg-sky-100"
+                                }`}
                               >
                                 <span className="text-lg flex-none">{suggestion.emoji}</span>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[11px] font-bold text-sky-800 leading-tight">Perfect gap for {suggestion.name}</p>
-                                  <p className="text-[10px] text-sky-500 mt-0.5">{suggestion.note}</p>
+                                  {suggestion.fromWishlist && (
+                                    <p className="text-[9px] font-bold text-amber-600 uppercase tracking-widest mb-0.5">From your saved list</p>
+                                  )}
+                                  <p className={`text-[11px] font-bold leading-tight ${suggestion.fromWishlist ? "text-amber-900" : "text-sky-800"}`}>
+                                    {suggestion.fromWishlist ? suggestion.name : `Perfect gap for ${suggestion.name}`}
+                                  </p>
+                                  <p className={`text-[10px] mt-0.5 ${suggestion.fromWishlist ? "text-amber-600" : "text-sky-500"}`}>{suggestion.note}</p>
                                 </div>
-                                <span className="text-sky-300 text-sm flex-none">→</span>
+                                <span className={`text-sm flex-none ${suggestion.fromWishlist ? "text-amber-300" : "text-sky-300"}`}>→</span>
                               </button>
                             );
                           })()}
