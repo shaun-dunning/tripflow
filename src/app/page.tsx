@@ -207,6 +207,26 @@ function nowMinutes(): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
+// Smart gap suggestions — time-of-day aware
+type GapSuggestion = { emoji: string; name: string; note: string };
+function getGapSuggestion(afterTime: string, gapMins: number): GapSuggestion | null {
+  if (gapMins < 90) return null;
+  const mins = timeToMinutes(afterTime);
+  if (isNaN(mins)) return null;
+  // Morning (before noon)
+  if (mins < 720) return { emoji: "🚶", name: "Wailea Beach Path", note: "Free · 5 min walk · stunning views" };
+  // Lunch window (noon – 2pm)
+  if (mins < 840) return { emoji: "🍜", name: "Monkeypod Kitchen", note: "Farm-to-table · 4 min drive" };
+  // Afternoon (2pm – 5pm)
+  if (mins < 1020) {
+    return gapMins >= 120
+      ? { emoji: "🏖️", name: "Kapalua Beach", note: "Calm bay · 8 min drive · kids love it" }
+      : { emoji: "🍧", name: "Ululani's Shave Ice", note: "Best on the island · 5 min drive" };
+  }
+  // Evening (5pm+)
+  return { emoji: "🍹", name: "Down the Hatch", note: "Waterfront happy hour · 14 min drive" };
+}
+
 // Sentinel prefix for optimistically-created items not yet in DB
 const NEW_ID_PREFIX = "optimistic-";
 
@@ -767,6 +787,34 @@ export default function MyDayPage() {
           </div>
         )}
 
+        {/* ── Pre-trip quick actions ── */}
+        {tripInfo?.status === "upcoming" && (
+          <div className="flex gap-3">
+            <button
+              onClick={() => router.push("/packing")}
+              className="flex-1 flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <span className="text-xl">🧳</span>
+              <div className="text-left">
+                <p className="text-sm font-bold text-slate-900">Packing List</p>
+                <p className="text-[11px] text-slate-400">Tailored to your itinerary</p>
+              </div>
+              <span className="text-slate-300 ml-auto">›</span>
+            </button>
+            <button
+              onClick={() => router.push("/explore")}
+              className="flex-1 flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <span className="text-xl">🔍</span>
+              <div className="text-left">
+                <p className="text-sm font-bold text-slate-900">Explore Maui</p>
+                <p className="text-[11px] text-slate-400">Plan your days</p>
+              </div>
+              <span className="text-slate-300 ml-auto">›</span>
+            </button>
+          </div>
+        )}
+
         {/* ── Next Up (today only) ── */}
         {nextUp && isToday && (() => {
           const nextMins = nextUp.time && nextUp.time !== "TBD" ? timeToMinutes(nextUp.time) : null;
@@ -928,23 +976,34 @@ export default function MyDayPage() {
                       </div>
 
                       {gap !== null && (
-                        <div className="flex items-center gap-2 px-4 py-1.5">
-                          <div className="flex flex-col items-center gap-0.5">
-                            <div className="w-0.5 h-2 rounded-full bg-slate-300" />
-                            <div className="w-0.5 h-2 rounded-full bg-slate-200" />
-                            <div className="w-0.5 h-2 rounded-full bg-slate-100" />
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-2 px-4 py-1.5">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <div className="w-0.5 h-2 rounded-full bg-slate-300" />
+                              <div className="w-0.5 h-2 rounded-full bg-slate-200" />
+                              <div className="w-0.5 h-2 rounded-full bg-slate-100" />
+                            </div>
+                            <span className="text-xs font-medium text-slate-400">
+                              {formatGap(gap)} until {next?.title.split("–")[0].trim()}
+                            </span>
                           </div>
-                          <span className="text-xs font-medium text-slate-400">
-                            {formatGap(gap)} until {next?.title.split("–")[0].trim()}
-                          </span>
-                          {gap >= 90 && (
-                            <button
-                              onClick={() => router.push("/explore")}
-                              className="text-[10px] text-sky-500 font-semibold ml-auto hover:underline"
-                            >
-                              explore nearby →
-                            </button>
-                          )}
+                          {(() => {
+                            const suggestion = getGapSuggestion(item.time, gap);
+                            if (!suggestion) return null;
+                            return (
+                              <button
+                                onClick={() => router.push("/explore")}
+                                className="mx-4 mb-1.5 flex items-center gap-2.5 bg-sky-50 border border-sky-100 rounded-2xl px-3.5 py-2.5 text-left hover:bg-sky-100 transition-colors"
+                              >
+                                <span className="text-lg flex-none">{suggestion.emoji}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[11px] font-bold text-sky-800 leading-tight">Perfect gap for {suggestion.name}</p>
+                                  <p className="text-[10px] text-sky-500 mt-0.5">{suggestion.note}</p>
+                                </div>
+                                <span className="text-sky-300 text-sm flex-none">→</span>
+                              </button>
+                            );
+                          })()}
                         </div>
                       )}
                     </div>
