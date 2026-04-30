@@ -25,6 +25,66 @@ const CATEGORY_EMOJIS: Record<string, string> = {
 };
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
+// Seeded automatically if the documents table is empty
+const SEED_DOCS: NewDoc[] = [
+  {
+    category: "Flights", name: "LAX → SEA",
+    provider: "American Airlines", confirmation: "LSKUAS",
+    date: "Jun 5 · 8:05 AM", status: "confirmed",
+    notes: "AA271 · Departs LAX · Arrives Seattle 10:56am",
+    emoji: "✈️", file_type: "booking",
+  },
+  {
+    category: "Flights", name: "SEA → OGG",
+    provider: "Alaska Airlines", confirmation: "AS9K2M",
+    date: "Jun 5 · 12:45 PM", status: "confirmed",
+    notes: "AS845 · Departs Seattle · Arrives Maui OGG 5:11pm",
+    emoji: "✈️", file_type: "booking",
+  },
+  {
+    category: "Flights", name: "OGG → LAX",
+    provider: "Alaska Airlines", confirmation: "AS1R7P",
+    date: "Jun 11 · 10:30 AM", status: "confirmed",
+    notes: "Return flight · AS844 · Arrives LAX 6:45pm",
+    emoji: "✈️", file_type: "booking",
+  },
+  {
+    category: "Hotel", name: "Sheraton Maui Resort & Spa",
+    provider: "Sheraton", confirmation: "SHR4892K",
+    date: "Jun 5–11 · 6 nights", status: "confirmed",
+    notes: "Ka'anapali Beach · Ocean view rooms · Check-in 3pm · Check-out noon",
+    emoji: "🏨", file_type: "booking",
+  },
+  {
+    category: "Car", name: "Intermediate SUV",
+    provider: "Alamo", confirmation: "ALM77291",
+    date: "Jun 5 · Airport pickup", status: "confirmed",
+    notes: "Pick up OGG arrivals level · Return Jun 11 by 9am",
+    emoji: "🚙", file_type: "booking",
+  },
+  {
+    category: "Activities", name: "Haleakalā Sunrise",
+    provider: "recreation.gov", confirmation: "HALE-2698",
+    date: "Jun 10 · 2:30 AM departure", status: "confirmed",
+    notes: "Timed entry reservation required · Summit 10,023 ft · Leave hotel at 2:30am",
+    emoji: "🌋", file_type: "booking",
+  },
+  {
+    category: "Activities", name: "Old Lahaina Luau",
+    provider: "Old Lahaina Luau", confirmation: "OLL-45821",
+    date: "Jun 9 · 5:45 PM", status: "confirmed",
+    notes: "4 tickets · Front of house seating · Lei greeting included",
+    emoji: "🌺", file_type: "booking",
+  },
+  {
+    category: "Dining", name: "Mama's Fish House",
+    provider: "OpenTable", confirmation: "OT-889231",
+    date: "Jun 6 · 7:00 PM", status: "confirmed",
+    notes: "Party of 4 · Oceanfront table requested · Dress code: resort casual",
+    emoji: "🐟", file_type: "booking",
+  },
+];
+
 const BLANK_DOC: NewDoc = {
   category: "Flights", name: "", provider: "", confirmation: "",
   date: "", status: "confirmed", notes: "", emoji: "✈️", file_type: "booking",
@@ -115,8 +175,25 @@ export default function VaultPage() {
         .select("*")
         .eq("trip_id", TRIP_ID)
         .order("created_at", { ascending: true });
-      if (error) setError(error.message);
-      else setDocs(data as Doc[]);
+
+      if (error) {
+        setError(error.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        // First load — seed the Maui trip documents
+        const { data: seeded, error: seedError } = await supabase
+          .from("documents")
+          .insert(SEED_DOCS.map((d) => ({ ...d, trip_id: TRIP_ID })))
+          .select();
+        if (seedError) setError(seedError.message);
+        else if (seeded) setDocs(seeded as Doc[]);
+      } else {
+        setDocs(data as Doc[]);
+      }
+
       setLoading(false);
     })();
   }, []);
@@ -450,7 +527,23 @@ export default function VaultPage() {
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-5">
           <h1 className="text-2xl font-black text-white mb-3">Docs & Reservations</h1>
 
-          {/* Frosted glass stat pills */}
+          {/* Readiness bar + stat pills */}
+          {docs.length > 0 && (
+            <div className="mb-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Trip readiness</span>
+                <span className="text-[10px] font-bold text-white/80">
+                  {Math.round((confirmedCount / docs.length) * 100)}%
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-400 rounded-full transition-all duration-700"
+                  style={{ width: `${(confirmedCount / docs.length) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
           <div className="flex gap-2">
             <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5">
               <div className="w-2 h-2 rounded-full bg-emerald-400" />
@@ -463,7 +556,7 @@ export default function VaultPage() {
               </div>
             )}
             <div className="flex items-center gap-1.5 bg-white/15 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5">
-              <span className="text-xs font-bold text-white">{docs.length} total</span>
+              <span className="text-xs font-bold text-white">{docs.length} docs</span>
             </div>
           </div>
         </div>
@@ -734,10 +827,16 @@ export default function VaultPage() {
         ) : (
           <button
             onClick={() => setShowAddForm(true)}
-            className="flex items-center justify-center gap-2 w-full border-2 border-dashed border-slate-200 rounded-2xl py-4 text-sm font-semibold text-slate-400 hover:border-slate-400 hover:text-slate-600 transition-colors bg-white"
+            className="flex items-center gap-3 w-full bg-white border border-slate-100 rounded-2xl px-4 py-4 text-left shadow-sm hover:shadow-md transition-shadow group"
           >
-            <span className="w-5 h-5 rounded-full border-2 border-current flex items-center justify-center text-xs font-bold">+</span>
-            Add reservation or document
+            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white text-lg flex-none group-hover:bg-sky-600 transition-colors">
+              📄
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-slate-900">Add reservation or document</p>
+              <p className="text-xs text-slate-400 mt-0.5">Flights, hotel, activities, dining</p>
+            </div>
+            <span className="text-slate-300 text-lg group-hover:text-slate-500 transition-colors">→</span>
           </button>
         )}
       </div>

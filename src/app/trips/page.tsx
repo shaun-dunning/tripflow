@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
+import { getTripDateInfo, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 
-const TODAY_ACTIVITIES = [
-  { emoji: "😴", title: "Nap / downtime", time: "3:00 PM" },
-  { emoji: "🤿", title: "Snorkeling – Molokini", time: "4:30 PM" },
-  { emoji: "🐟", title: "Dinner – Mama's Fish House", time: "7:00 PM" },
-];
+const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
+
+type AgendaItem = { emoji: string; title: string; time: string };
 
 type UpcomingTrip = {
   id: number;
@@ -46,6 +46,13 @@ const INITIAL_TRIPS: UpcomingTrip[] = [
   },
 ];
 
+// Fallback when Supabase agenda isn't available yet
+const FALLBACK_TODAY: AgendaItem[] = [
+  { emoji: "😴", title: "Nap / downtime", time: "3:00 PM" },
+  { emoji: "🤿", title: "Snorkeling – Molokini", time: "4:30 PM" },
+  { emoji: "🐟", title: "Dinner – Mama's Fish House", time: "7:00 PM" },
+];
+
 function getGreeting(): string {
   const hour = new Date().getHours();
   if (hour < 12) return "Good morning";
@@ -58,7 +65,83 @@ export default function TripsPage() {
   const [greeting] = useState(getGreeting);
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(INITIAL_TRIPS);
 
-  // Edit upcoming trip sheet
+  // ── Live trip data ──────────────────────────────────────────────────────────
+  const [tripTitle, setTripTitle] = useState("Maui Family Trip");
+  const [tripDateRange, setTripDateRange] = useState("Jun 5–11, 2026");
+  const [tripInfo, setTripInfo] = useState<TripDateInfo | null>(null);
+  const [travelerCount, setTravelerCount] = useState(4);
+  const [todayItems, setTodayItems] = useState<AgendaItem[]>(FALLBACK_TODAY);
+
+  useEffect(() => {
+    async function loadTrip() {
+      const [tripResult, travelerResult] = await Promise.all([
+        supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).single(),
+        supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", TRIP_ID),
+      ]);
+
+      if (tripResult.data) {
+        setTripTitle(tripResult.data.title);
+        setTripDateRange(formatDateRange(tripResult.data.start_date, tripResult.data.end_date));
+        const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
+        setTripInfo(info);
+
+        // Fetch today's agenda items if trip is active
+        if (info.status === "active" && info.currentDayNumber > 0) {
+          const { data: dayData } = await supabase
+            .from("trip_days")
+            .select("id")
+            .eq("trip_id", TRIP_ID)
+            .eq("day_number", info.currentDayNumber)
+            .single();
+
+          if (dayData) {
+            const { data: items } = await supabase
+              .from("agenda_items")
+              .select("emoji, title, time")
+              .eq("trip_day_id", dayData.id)
+              .order("time")
+              .limit(3);
+            if (items && items.length > 0) {
+              setTodayItems(items as AgendaItem[]);
+            }
+          }
+        }
+      }
+
+      if (travelerResult.count) setTravelerCount(travelerResult.count);
+    }
+
+    loadTrip();
+  }, []);
+
+  // ── Derived display values ──────────────────────────────────────────────────
+  const isUpcoming = !tripInfo || tripInfo.status === "upcoming";
+  const isActive   = tripInfo?.status === "active";
+  const isComplete = tripInfo?.status === "completed";
+
+  const countdownNumber = isActive
+    ? tripInfo!.daysLeft
+    : isUpcoming
+    ? (tripInfo?.daysUntilTrip ?? 36)
+    : 0;
+
+  const countdownLabel = isActive
+    ? "days left"
+    : isUpcoming
+    ? "days to go"
+    : "complete";
+
+  const statusLabel = isActive
+    ? `Active · Day ${tripInfo!.currentDayNumber} of ${tripInfo!.totalDays}`
+    : isUpcoming
+    ? `Upcoming · ${tripInfo?.daysUntilTrip ?? "—"} days away`
+    : "Completed";
+
+  const statDays = tripInfo?.totalDays ?? 7;
+  const statRight = isActive ? tripInfo!.daysLeft : isUpcoming ? (tripInfo?.daysUntilTrip ?? "—") : 0;
+  const statRightLabel = isActive ? "days left" : isUpcoming ? "days away" : "complete";
+
+  // ── Edit upcoming trip sheet ────────────────────────────────────────────────
   const [editingTrip, setEditingTrip] = useState<UpcomingTrip | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editSubtitle, setEditSubtitle] = useState("");
@@ -134,7 +217,6 @@ export default function TripsPage() {
             <div className="px-5 pt-3 pb-10 flex flex-col gap-4">
               <h3 className="text-base font-black text-slate-900">Edit Trip</h3>
 
-              {/* Emoji picker */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Icon</p>
                 <div className="flex gap-2 flex-wrap">
@@ -152,7 +234,6 @@ export default function TripsPage() {
                 </div>
               </div>
 
-              {/* Name */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Trip name</p>
                 <input
@@ -163,7 +244,6 @@ export default function TripsPage() {
                 />
               </div>
 
-              {/* Details */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Dates & details</p>
                 <input
@@ -175,7 +255,6 @@ export default function TripsPage() {
                 />
               </div>
 
-              {/* Actions */}
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={saveEditTrip}
@@ -206,7 +285,7 @@ export default function TripsPage() {
         <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={() => setShowPlanSheet(false)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
           <div
-            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl"
+            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl flex flex-col"
             style={{ maxHeight: "calc(100dvh - 72px)" }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -219,7 +298,6 @@ export default function TripsPage() {
             </div>
             <div className="px-5 pt-4 pb-2 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
 
-              {/* Trip name */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Trip name *</p>
                 <input
@@ -232,7 +310,6 @@ export default function TripsPage() {
                 />
               </div>
 
-              {/* Destination */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Destination</p>
                 <input
@@ -244,7 +321,6 @@ export default function TripsPage() {
                 />
               </div>
 
-              {/* Dates */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Dates</p>
                 <input
@@ -256,7 +332,6 @@ export default function TripsPage() {
                 />
               </div>
 
-              {/* Travelers */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Travelers</p>
                 <div className="flex gap-2">
@@ -298,9 +373,7 @@ export default function TripsPage() {
 
       {/* ── Greeting header ── */}
       <div>
-        <p className="text-2xl font-black text-slate-900">
-          {greeting}, Shaun 👋
-        </p>
+        <p className="text-2xl font-black text-slate-900">{greeting}, Shaun 👋</p>
         <p className="text-sm text-slate-400 mt-0.5">Here&apos;s what&apos;s on your travel radar.</p>
       </div>
 
@@ -323,17 +396,21 @@ export default function TripsPage() {
 
             {/* Countdown pill */}
             <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-1.5 text-center min-w-[56px]">
-              <p className="text-xl font-black leading-none">5</p>
-              <p className="text-[10px] font-semibold tracking-wide mt-0.5 opacity-80">days left</p>
+              {isComplete ? (
+                <p className="text-xl font-black leading-none">✓</p>
+              ) : (
+                <p className="text-xl font-black leading-none">{countdownNumber}</p>
+              )}
+              <p className="text-[10px] font-semibold tracking-wide mt-0.5 opacity-80">{countdownLabel}</p>
             </div>
 
             {/* Trip identity */}
             <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
               <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-0.5">
-                Active · Day 2 of 7
+                {statusLabel}
               </p>
-              <h2 className="text-xl font-black text-white leading-tight">Maui Family Trip</h2>
-              <p className="text-xs text-white/70 mt-0.5">May 22 – 28 · 4 travelers 🌺</p>
+              <h2 className="text-xl font-black text-white leading-tight">{tripTitle}</h2>
+              <p className="text-xs text-white/70 mt-0.5">{tripDateRange} · {travelerCount} travelers 🌺</p>
             </div>
           </div>
 
@@ -344,18 +421,18 @@ export default function TripsPage() {
           >
             <div className="flex gap-4 flex-1">
               <div className="flex flex-col items-center">
-                <span className="text-base font-black text-slate-800">7</span>
+                <span className="text-base font-black text-slate-800">{statDays}</span>
                 <span className="text-[10px] text-slate-500 font-medium">days</span>
               </div>
               <div className="w-px h-8 bg-slate-200 self-center" />
               <div className="flex flex-col items-center">
-                <span className="text-base font-black text-slate-800">4</span>
+                <span className="text-base font-black text-slate-800">{travelerCount}</span>
                 <span className="text-[10px] text-slate-500 font-medium">travelers</span>
               </div>
               <div className="w-px h-8 bg-slate-200 self-center" />
               <div className="flex flex-col items-center">
-                <span className="text-base font-black text-slate-800">5</span>
-                <span className="text-[10px] text-slate-500 font-medium">today</span>
+                <span className="text-base font-black text-slate-800">{statRight}</span>
+                <span className="text-[10px] text-slate-500 font-medium">{statRightLabel}</span>
               </div>
             </div>
             <Link
@@ -374,7 +451,7 @@ export default function TripsPage() {
             <span className="text-base">🧳</span>
             <div className="flex-1 text-left">
               <p className="text-xs font-bold text-slate-700">Packing List</p>
-              <p className="text-[10px] text-slate-400">Tailored to your Maui itinerary</p>
+              <p className="text-[10px] text-slate-400">Tailored to your {tripTitle} itinerary</p>
             </div>
             <span className="text-slate-300 text-sm">›</span>
           </button>
@@ -384,23 +461,44 @@ export default function TripsPage() {
       {/* ══════════════════════════════════════
           TODAY AT A GLANCE
       ══════════════════════════════════════ */}
-      <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3.5">
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest">Today at a Glance</p>
-          <Link href="/" className="text-[10px] font-semibold text-sky-600">
-            See full day →
+      {isActive ? (
+        <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3.5">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-bold text-sky-600 uppercase tracking-widest">Today at a Glance</p>
+            <Link href="/" className="text-[10px] font-semibold text-sky-600">
+              See full day →
+            </Link>
+          </div>
+          <div className="flex flex-col gap-2">
+            {todayItems.map((a, i) => (
+              <div key={i} className="flex items-center gap-2.5">
+                <span className="text-base w-6 text-center flex-none">{a.emoji}</span>
+                <p className="flex-1 text-sm font-medium text-slate-700 truncate">{a.title}</p>
+                <span className="text-xs text-slate-400 flex-none">{a.time}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : isUpcoming ? (
+        <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-4 flex items-center gap-3">
+          <span className="text-2xl">🌺</span>
+          <div>
+            <p className="text-sm font-bold text-slate-800">Trip starts in {tripInfo?.daysUntilTrip ?? "—"} days</p>
+            <p className="text-xs text-slate-400 mt-0.5">Your {tripTitle} itinerary is ready to explore</p>
+          </div>
+          <Link href="/" className="ml-auto text-[10px] font-bold text-sky-600 whitespace-nowrap flex-none">
+            View →
           </Link>
         </div>
-        <div className="flex flex-col gap-2">
-          {TODAY_ACTIVITIES.map((a, i) => (
-            <div key={i} className="flex items-center gap-2.5">
-              <span className="text-base w-6 text-center flex-none">{a.emoji}</span>
-              <p className="flex-1 text-sm font-medium text-slate-700 truncate">{a.title}</p>
-              <span className="text-xs text-slate-400 flex-none">{a.time}</span>
-            </div>
-          ))}
+      ) : (
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-4 flex items-center gap-3">
+          <span className="text-2xl">✈️</span>
+          <div>
+            <p className="text-sm font-bold text-slate-800">Trip complete!</p>
+            <p className="text-xs text-slate-400 mt-0.5">Hope {tripTitle} was amazing. What&apos;s next?</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ══════════════════════════════════════
           UPCOMING TRIPS
@@ -428,7 +526,6 @@ export default function TripsPage() {
                 <div className="absolute top-2.5 left-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
                   Planning
                 </div>
-                {/* Edit hint */}
                 <div className="absolute top-2.5 right-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                   Edit ✏️
                 </div>
