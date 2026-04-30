@@ -42,53 +42,63 @@ export async function POST(req: NextRequest) {
   const { message, history } = await req.json();
   const priorMessages = (history as HistoryMessage[]).slice(0, -1);
 
-  // ── Gemini (free tier) ────────────────────────────────────────────────────
+  // ── Gemini ────────────────────────────────────────────────────────────────
   const geminiKey = process.env.GEMINI_API_KEY;
+  let geminiError = "";
+
   if (geminiKey && geminiKey !== "your_key_here") {
-    try {
-      const contents = [
-        ...priorMessages.map((m) => ({
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        })),
-        { role: "user", parts: [{ text: message }] },
-      ];
+    // Try gemini-2.0-flash first, fall back to gemini-1.5-flash
+    const models = ["gemini-2.0-flash", "gemini-1.5-flash"];
+    for (const model of models) {
+      try {
+        const contents = [
+          ...priorMessages.map((m) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+          })),
+          { role: "user", parts: [{ text: message }] },
+        ];
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: { maxOutputTokens: 600 },
-          }),
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+              contents,
+              generationConfig: { maxOutputTokens: 600 },
+            }),
+          }
+        );
+
+        const data = await res.json();
+
+        if (data.error) {
+          geminiError = `[${model}] ${data.error.message ?? JSON.stringify(data.error)}`;
+          console.error("Gemini API error:", geminiError);
+          continue; // try next model
         }
-      );
 
-      const data = await res.json();
+        const candidate = data.candidates?.[0];
+        if (!candidate) {
+          geminiError = `[${model}] No candidates in response`;
+          continue;
+        }
 
-      // Handle API-level errors (bad key, quota, etc.)
-      if (data.error) {
-        console.error("Gemini API error:", data.error);
-        throw new Error(data.error.message);
+        const reply =
+          candidate.content?.parts?.[0]?.text ??
+          (candidate.finishReason === "SAFETY"
+            ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
+            : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
+        return NextResponse.json({ reply });
+      } catch (err) {
+        geminiError = `[${model}] ${err instanceof Error ? err.message : String(err)}`;
+        console.error("Gemini fetch error:", geminiError);
       }
-
-      // Handle safety-blocked responses
-      const candidate = data.candidates?.[0];
-      if (!candidate) {
-        throw new Error("No candidates returned from Gemini");
-      }
-
-      const reply = candidate.content?.parts?.[0]?.text
-        ?? (candidate.finishReason === "SAFETY"
-          ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
-          : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
-      return NextResponse.json({ reply });
-    } catch (err) {
-      console.error("Gemini error:", err);
     }
+  } else {
+    geminiError = "GEMINI_API_KEY not set or is placeholder";
   }
 
   // ── Anthropic fallback ────────────────────────────────────────────────────
@@ -123,9 +133,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── No key configured ─────────────────────────────────────────────────────
+  // ── Debug: surface actual error so we can diagnose ────────────────────────
   return NextResponse.json({
-    reply:
-      "🔑 No AI key found in Vercel. Go to your Vercel project → Settings → Environment Variables → add GEMINI_API_KEY with your key from aistudio.google.com (free). Then redeploy.",
+    reply: `⚠️ AI error — ${geminiError || "unknown error"}. Check Vercel function logs for details.`,
   });
 }
