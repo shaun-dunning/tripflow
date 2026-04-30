@@ -735,46 +735,33 @@ export default function MyDayPage() {
 
         {/* ── Trip Countdown (pre-trip only) ── */}
         {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
-          <div className="relative rounded-3xl overflow-hidden shadow-xl">
+          <div className="relative rounded-2xl overflow-hidden" style={{ height: "152px" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=400&fit=crop&q=85"
               alt="Maui beach"
               className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-br from-sky-900/95 via-blue-900/88 to-teal-900/95" />
-            <div className="relative px-5 pt-5 pb-5">
-              <p className="text-[10px] font-bold text-sky-300 uppercase tracking-widest mb-4">Maui Family Trip · Jun 5–11, 2026</p>
-              <div className="flex items-end gap-3 mb-2">
-                <div className="text-center">
-                  <div className="text-7xl font-black text-white leading-none tabular-nums">{tripInfo.daysUntilTrip}</div>
-                  <div className="text-xs font-bold text-white/50 uppercase tracking-widest mt-1">days to go</div>
-                </div>
-                <div className="pb-1 flex-1">
-                  <p className="text-xl font-black text-white leading-tight">until your Maui adventure</p>
-                </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+
+            {/* Top label */}
+            <div className="absolute top-3.5 left-4 right-4 flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-white/80 uppercase tracking-widest">Maui, Hawaii</p>
+              <p className="text-[10px] text-white/50">Jun 5–11, 2026</p>
+            </div>
+
+            {/* Bottom: number + details */}
+            <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 flex items-end justify-between">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[48px] font-black text-white leading-none tracking-tight tabular-nums">
+                  {tripInfo.daysUntilTrip}
+                </span>
+                <span className="text-sm font-normal text-white/60 pb-0.5">days away</span>
               </div>
-              <div className="mt-4 flex gap-2 flex-wrap">
-                {[
-                  { icon: "🏖️", label: "7 Days" },
-                  { icon: "👨‍👩‍👧‍👦", label: "4 Travelers" },
-                  { icon: "🏨", label: "Sheraton Ka'anapali" },
-                ].map((stat) => (
-                  <div key={stat.label} className="flex items-center gap-1.5 bg-white/12 backdrop-blur-sm border border-white/15 rounded-xl px-3 py-2">
-                    <span className="text-sm">{stat.icon}</span>
-                    <span className="text-xs font-semibold text-white">{stat.label}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 grid grid-cols-7 gap-1">
-                {["F","S","S","M","T","W","T"].map((d, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1">
-                    <span className="text-[9px] font-bold text-white/40 uppercase">{d}</span>
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? "bg-sky-400 text-white" : "bg-white/10 text-white/60"}`}>
-                      {5 + i}
-                    </div>
-                  </div>
-                ))}
+              <div className="text-right pb-0.5">
+                <p className="text-[11px] text-white/60 leading-relaxed">
+                  7 days · 4 travelers<br />Sheraton Ka&apos;anapali
+                </p>
               </div>
             </div>
           </div>
