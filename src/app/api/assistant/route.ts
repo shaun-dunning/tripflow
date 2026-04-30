@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   // ── Gemini (free tier) ────────────────────────────────────────────────────
   const geminiKey = process.env.GEMINI_API_KEY;
-  if (geminiKey) {
+  if (geminiKey && geminiKey !== "your_key_here") {
     try {
       const contents = [
         ...priorMessages.map((m) => ({
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
 
   // ── Anthropic fallback ────────────────────────────────────────────────────
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
-  if (anthropicKey) {
+  if (anthropicKey && anthropicKey !== "your_key_here") {
     try {
       const { default: Anthropic } = await import("@anthropic-ai/sdk");
       const client = new Anthropic({ apiKey: anthropicKey });
@@ -126,6 +126,6 @@ export async function POST(req: NextRequest) {
   // ── No key configured ─────────────────────────────────────────────────────
   return NextResponse.json({
     reply:
-      "The AI assistant needs an API key to work. Add GEMINI_API_KEY (free at aistudio.google.com) to your Vercel environment variables.",
+      "🔑 No AI key found in Vercel. Go to your Vercel project → Settings → Environment Variables → add GEMINI_API_KEY with your key from aistudio.google.com (free). Then redeploy.",
   });
 }
