@@ -63,15 +63,15 @@ export async function POST(req: NextRequest) {
         .filter((m) => m.supportedGenerationMethods?.includes("generateContent") && m.name.includes("flash"))
         .map((m) => m.name.replace("models/", ""));
 
-      // Prefer gemini-2.0-flash variants, then 1.5-flash
+      // Prefer 1.5-flash (most reliable free tier), then 2.0-flash, then anything else
       const preferred = [
-        ...flashModels.filter((n) => n.startsWith("gemini-2.0-flash")),
         ...flashModels.filter((n) => n.startsWith("gemini-1.5-flash")),
+        ...flashModels.filter((n) => n.startsWith("gemini-2.0-flash")),
         ...flashModels,
       ];
       const model = preferred[0];
 
-      if (!model) {
+      if (preferred.length === 0) {
         geminiError = `No flash model found. Available: ${flashModels.join(", ") || "none"}`;
         throw new Error(geminiError);
       }
@@ -84,35 +84,39 @@ export async function POST(req: NextRequest) {
         { role: "user", parts: [{ text: message }] },
       ];
 
-      const res = await fetch(`${BASE}/models/${model}:generateContent?key=${geminiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-          contents,
-          generationConfig: { maxOutputTokens: 600 },
-        }),
-      });
+      // Try each model in order until one succeeds
+      for (const model of preferred) {
+        const res = await fetch(`${BASE}/models/${model}:generateContent?key=${geminiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            contents,
+            generationConfig: { maxOutputTokens: 600 },
+          }),
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      if (data.error) {
-        geminiError = `[${model}] ${data.error.message}`;
-        throw new Error(geminiError);
+        if (data.error) {
+          geminiError = `[${model}] ${data.error.message}`;
+          console.error("Gemini model error:", geminiError);
+          continue; // try next model
+        }
+
+        const candidate = data.candidates?.[0];
+        if (!candidate) {
+          geminiError = `[${model}] No candidates in response`;
+          continue;
+        }
+
+        const reply =
+          candidate.content?.parts?.[0]?.text ??
+          (candidate.finishReason === "SAFETY"
+            ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
+            : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
+        return NextResponse.json({ reply });
       }
-
-      const candidate = data.candidates?.[0];
-      if (!candidate) {
-        geminiError = `[${model}] No candidates in response`;
-        throw new Error(geminiError);
-      }
-
-      const reply =
-        candidate.content?.parts?.[0]?.text ??
-        (candidate.finishReason === "SAFETY"
-          ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
-          : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
-      return NextResponse.json({ reply });
     } catch (err) {
       if (!geminiError) geminiError = err instanceof Error ? err.message : String(err);
       console.error("Gemini error:", geminiError);
