@@ -47,55 +47,75 @@ export async function POST(req: NextRequest) {
   let geminiError = "";
 
   if (geminiKey && geminiKey !== "your_key_here") {
-    // Try models in order — versioned names required by v1beta
-    const models = ["gemini-2.0-flash-001", "gemini-1.5-flash-001", "gemini-1.5-flash-latest"];
-    for (const model of models) {
-      try {
-        const contents = [
-          ...priorMessages.map((m) => ({
-            role: m.role === "assistant" ? "model" : "user",
-            parts: [{ text: m.content }],
-          })),
-          { role: "user", parts: [{ text: message }] },
-        ];
+    try {
+      // Discover which models are actually available for this key
+      const BASE = "https://generativelanguage.googleapis.com/v1beta";
+      const listRes = await fetch(`${BASE}/models?key=${geminiKey}`);
+      const listData = await listRes.json();
 
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-              contents,
-              generationConfig: { maxOutputTokens: 600 },
-            }),
-          }
-        );
-
-        const data = await res.json();
-
-        if (data.error) {
-          geminiError = `[${model}] ${data.error.message ?? JSON.stringify(data.error)}`;
-          console.error("Gemini API error:", geminiError);
-          continue; // try next model
-        }
-
-        const candidate = data.candidates?.[0];
-        if (!candidate) {
-          geminiError = `[${model}] No candidates in response`;
-          continue;
-        }
-
-        const reply =
-          candidate.content?.parts?.[0]?.text ??
-          (candidate.finishReason === "SAFETY"
-            ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
-            : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
-        return NextResponse.json({ reply });
-      } catch (err) {
-        geminiError = `[${model}] ${err instanceof Error ? err.message : String(err)}`;
-        console.error("Gemini fetch error:", geminiError);
+      if (listData.error) {
+        geminiError = `ListModels error: ${listData.error.message}`;
+        throw new Error(geminiError);
       }
+
+      type GeminiModel = { name: string; supportedGenerationMethods?: string[] };
+      const flashModels: string[] = (listData.models as GeminiModel[] ?? [])
+        .filter((m) => m.supportedGenerationMethods?.includes("generateContent") && m.name.includes("flash"))
+        .map((m) => m.name.replace("models/", ""));
+
+      // Prefer gemini-2.0-flash variants, then 1.5-flash
+      const preferred = [
+        ...flashModels.filter((n) => n.startsWith("gemini-2.0-flash")),
+        ...flashModels.filter((n) => n.startsWith("gemini-1.5-flash")),
+        ...flashModels,
+      ];
+      const model = preferred[0];
+
+      if (!model) {
+        geminiError = `No flash model found. Available: ${flashModels.join(", ") || "none"}`;
+        throw new Error(geminiError);
+      }
+
+      const contents = [
+        ...priorMessages.map((m) => ({
+          role: m.role === "assistant" ? "model" : "user",
+          parts: [{ text: m.content }],
+        })),
+        { role: "user", parts: [{ text: message }] },
+      ];
+
+      const res = await fetch(`${BASE}/models/${model}:generateContent?key=${geminiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents,
+          generationConfig: { maxOutputTokens: 600 },
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        geminiError = `[${model}] ${data.error.message}`;
+        throw new Error(geminiError);
+      }
+
+      const candidate = data.candidates?.[0];
+      if (!candidate) {
+        geminiError = `[${model}] No candidates in response`;
+        throw new Error(geminiError);
+      }
+
+      const reply =
+        candidate.content?.parts?.[0]?.text ??
+        (candidate.finishReason === "SAFETY"
+          ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
+          : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
+      return NextResponse.json({ reply });
+    } catch (err) {
+      if (!geminiError) geminiError = err instanceof Error ? err.message : String(err);
+      console.error("Gemini error:", geminiError);
     }
   } else {
     geminiError = "GEMINI_API_KEY not set or is placeholder";
