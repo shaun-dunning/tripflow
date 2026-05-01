@@ -100,31 +100,233 @@ const TODAY_GLANCE = [
 type UpcomingTrip = {
   id: number;
   title: string;
-  subtitle: string;
+  destination: string;
+  startDate: string;   // "YYYY-MM-DD" or ""
+  nights: number;
+  travelersCount: number;
   emoji: string;
   photo: string;
   photoAlt: string;
 };
 
+type PhotoOption = { url: string; alt: string };
+
+// ── Destination photo library ──────────────────────────────────────────────
+const DESTINATION_PHOTOS: { keywords: string[]; photos: PhotoOption[] }[] = [
+  {
+    keywords: ["new york", "nyc", "manhattan"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=600&h=300&fit=crop&q=80", alt: "New York City skyline" },
+      { url: "https://images.unsplash.com/photo-1534430480872-3498386e7856?w=600&h=300&fit=crop&q=80", alt: "Times Square at night" },
+      { url: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&h=300&fit=crop&q=80", alt: "Brooklyn Bridge" },
+    ],
+  },
+  {
+    keywords: ["paris", "france"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=600&h=300&fit=crop&q=80", alt: "Eiffel Tower Paris" },
+      { url: "https://images.unsplash.com/photo-1549144511-f099e773c147?w=600&h=300&fit=crop&q=80", alt: "Paris streets" },
+      { url: "https://images.unsplash.com/photo-1431274172761-fca41d930114?w=600&h=300&fit=crop&q=80", alt: "Paris at dusk" },
+    ],
+  },
+  {
+    keywords: ["tokyo", "japan"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=600&h=300&fit=crop&q=80", alt: "Tokyo city lights" },
+      { url: "https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=600&h=300&fit=crop&q=80", alt: "Tokyo street" },
+      { url: "https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=600&h=300&fit=crop&q=80", alt: "Tokyo skyline" },
+    ],
+  },
+  {
+    keywords: ["bali", "indonesia"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=600&h=300&fit=crop&q=80", alt: "Bali rice terraces" },
+      { url: "https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b?w=600&h=300&fit=crop&q=80", alt: "Bali temple" },
+      { url: "https://images.unsplash.com/photo-1555400038-63f5ba517a47?w=600&h=300&fit=crop&q=80", alt: "Bali beach" },
+    ],
+  },
+  {
+    keywords: ["london", "england", "uk"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=600&h=300&fit=crop&q=80", alt: "London Big Ben" },
+      { url: "https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=600&h=300&fit=crop&q=80", alt: "London Tower Bridge" },
+      { url: "https://images.unsplash.com/photo-1490642914619-7955a3fd483c?w=600&h=300&fit=crop&q=80", alt: "London skyline" },
+    ],
+  },
+  {
+    keywords: ["cabo", "mexico", "cancun", "tulum", "playa"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1510097467424-192d713fd8b2?w=600&h=300&fit=crop&q=80", alt: "Cabo San Lucas" },
+      { url: "https://images.unsplash.com/photo-1587595431973-160d0d94add1?w=600&h=300&fit=crop&q=80", alt: "Mexico beach" },
+      { url: "https://images.unsplash.com/photo-1552088952-5a6f2e10c499?w=600&h=300&fit=crop&q=80", alt: "Mexico resort" },
+    ],
+  },
+  {
+    keywords: ["italy", "rome", "florence", "venice", "amalfi"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=600&h=300&fit=crop&q=80", alt: "Colosseum Rome" },
+      { url: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?w=600&h=300&fit=crop&q=80", alt: "Italian coast" },
+      { url: "https://images.unsplash.com/photo-1529260830199-42c24126f198?w=600&h=300&fit=crop&q=80", alt: "Venice canals" },
+    ],
+  },
+  {
+    keywords: ["barcelona", "spain", "madrid", "seville"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=600&h=300&fit=crop&q=80", alt: "Barcelona streets" },
+      { url: "https://images.unsplash.com/photo-1464790719320-516ecd75af6c?w=600&h=300&fit=crop&q=80", alt: "Barcelona architecture" },
+      { url: "https://images.unsplash.com/photo-1558642452-9d2a7deb7f62?w=600&h=300&fit=crop&q=80", alt: "Spain coastline" },
+    ],
+  },
+  {
+    keywords: ["hawaii", "maui", "oahu", "kauai", "honolulu"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=300&fit=crop&q=80", alt: "Hawaii beach" },
+      { url: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=300&fit=crop&q=80", alt: "Hawaii bay" },
+      { url: "https://images.unsplash.com/photo-1566895291281-ea63efd4bdab?w=600&h=300&fit=crop&q=80", alt: "Hawaii sunset" },
+    ],
+  },
+  {
+    keywords: ["caribbean", "bahamas", "jamaica", "barbados", "st lucia"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1548574505-5e239809ee19?w=600&h=300&fit=crop&q=80", alt: "Caribbean beach" },
+      { url: "https://images.unsplash.com/photo-1590523277543-a94d2e4eb00b?w=600&h=300&fit=crop&q=80", alt: "Caribbean water" },
+      { url: "https://images.unsplash.com/photo-1581889470536-467bdbe30cd0?w=600&h=300&fit=crop&q=80", alt: "Caribbean resort" },
+    ],
+  },
+  {
+    keywords: ["mountain", "alps", "colorado", "switzerland", "skiing", "ski"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&h=300&fit=crop&q=80", alt: "Mountain peaks" },
+      { url: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=600&h=300&fit=crop&q=80", alt: "Alpine scenery" },
+      { url: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600&h=300&fit=crop&q=80", alt: "Snowy mountains" },
+    ],
+  },
+  {
+    keywords: ["disney", "orlando", "universal"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&h=300&fit=crop&q=80", alt: "Theme park fireworks" },
+      { url: "https://images.unsplash.com/photo-1575183672975-c6b6a4f82c9c?w=600&h=300&fit=crop&q=80", alt: "Theme park" },
+    ],
+  },
+  {
+    keywords: ["australia", "sydney", "melbourne"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=600&h=300&fit=crop&q=80", alt: "Sydney Opera House" },
+      { url: "https://images.unsplash.com/photo-1524293581917-878a6d017c71?w=600&h=300&fit=crop&q=80", alt: "Sydney Harbour" },
+    ],
+  },
+  {
+    keywords: ["europe"],
+    photos: [
+      { url: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&h=300&fit=crop&q=80", alt: "European city" },
+      { url: "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=600&h=300&fit=crop&q=80", alt: "European street" },
+      { url: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=600&h=300&fit=crop&q=80", alt: "European coast" },
+    ],
+  },
+];
+
+const DEFAULT_PHOTOS: PhotoOption[] = [
+  { url: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600&h=300&fit=crop&q=80", alt: "Travel destination" },
+  { url: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=600&h=300&fit=crop&q=80", alt: "Travel adventure" },
+  { url: "https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=600&h=300&fit=crop&q=80", alt: "Journey ahead" },
+];
+
+function getPhotosForDestination(destination: string): PhotoOption[] {
+  if (!destination.trim()) return DEFAULT_PHOTOS;
+  const lower = destination.toLowerCase();
+  for (const entry of DESTINATION_PHOTOS) {
+    if (entry.keywords.some((kw) => lower.includes(kw))) return entry.photos;
+  }
+  return DEFAULT_PHOTOS;
+}
+
+function buildSubtitle(startDate: string, nights: number, travelersCount: number): string {
+  const parts: string[] = [];
+  if (startDate) {
+    const d = new Date(startDate + "T12:00:00");
+    parts.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
+  }
+  if (nights > 0) parts.push(`${nights} night${nights !== 1 ? "s" : ""}`);
+  if (travelersCount > 0) parts.push(`${travelersCount} traveler${travelersCount !== 1 ? "s" : ""}`);
+  return parts.join(" · ") || "Still planning";
+}
+
 const INITIAL_UPCOMING: UpcomingTrip[] = [
   {
-    id: 1, title: "Christmas in NYC", subtitle: "Dec 20, 2026 · 5 nights · 4 travelers", emoji: "🎄",
+    id: 1, title: "Christmas in NYC", destination: "New York City",
+    startDate: "2026-12-20", nights: 5, travelersCount: 4, emoji: "🎄",
     photo: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=600&h=300&fit=crop&q=80",
     photoAlt: "New York City skyline",
   },
   {
-    id: 2, title: "Spring Break · Cabo", subtitle: "March 15, 2027 · 7 nights · 4 travelers", emoji: "🌊",
+    id: 2, title: "Spring Break · Cabo", destination: "Cabo San Lucas",
+    startDate: "2027-03-15", nights: 7, travelersCount: 4, emoji: "🌊",
     photo: "https://images.unsplash.com/photo-1510097467424-192d713fd8b2?w=600&h=300&fit=crop&q=80",
     photoAlt: "Cabo San Lucas beach",
   },
   {
-    id: 3, title: "Summer Euro Trip", subtitle: "July 2027 · Still planning", emoji: "✈️",
+    id: 3, title: "Summer Euro Trip", destination: "Europe",
+    startDate: "2027-07-01", nights: 14, travelersCount: 4, emoji: "✈️",
     photo: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&h=300&fit=crop&q=80",
     photoAlt: "European city",
   },
 ];
 
 const TRIP_EMOJIS = ["✈️", "🏖️", "🏔️", "🌍", "🎄", "🌊", "🏕️", "🗼", "🌺", "🎭"];
+
+type ArchivedTrip = {
+  id: number;
+  title: string;
+  destination: string;
+  dateRange: string;
+  emoji: string;
+  photo: string;
+  photoAlt: string;
+  highlight: string;
+};
+
+const INITIAL_ARCHIVED: ArchivedTrip[] = [
+  {
+    id: 100,
+    title: "Big Island Adventure",
+    destination: "Kona, Hawaii",
+    dateRange: "Aug 2025 · 6 nights · 4 travelers",
+    emoji: "🌋",
+    photo: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Hawaii volcano landscape",
+    highlight: "Night hike to the lava flow",
+  },
+  {
+    id: 101,
+    title: "Spring Break · Disneyland",
+    destination: "Anaheim, CA",
+    dateRange: "Mar 2025 · 4 nights · 4 travelers",
+    emoji: "🎡",
+    photo: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Theme park fireworks",
+    highlight: "Rode every ride in the park",
+  },
+  {
+    id: 102,
+    title: "Portland Weekend",
+    destination: "Portland, OR",
+    dateRange: "Nov 2024 · 3 nights · 2 travelers",
+    emoji: "🌲",
+    photo: "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Pacific Northwest city",
+    highlight: "Every coffee shop, every bridge",
+  },
+];
+
+// Returns days until startDate (positive = future), null if no date or past
+function getDaysUntil(startDate: string): number | null {
+  if (!startDate) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(startDate + "T00:00:00");
+  const diff = Math.ceil((start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return diff > 0 ? diff : null;
+}
 
 export default function TripPage() {
   const router = useRouter();
@@ -137,34 +339,83 @@ export default function TripPage() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // ── Upcoming trips state ────────────────────────────────────────────────────
+  // ── Trips lifecycle state ───────────────────────────────────────────────────
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(INITIAL_UPCOMING);
+  const [archivedTrips, setArchivedTrips] = useState<ArchivedTrip[]>(INITIAL_ARCHIVED);
+  const [showArchived, setShowArchived] = useState(false);
 
   // Edit sheet
   const [editingTrip, setEditingTrip] = useState<UpcomingTrip | null>(null);
   const [editTitle, setEditTitle] = useState("");
-  const [editSubtitle, setEditSubtitle] = useState("");
+  const [editDestination, setEditDestination] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
+  const [editNights, setEditNights] = useState(7);
+  const [editTravelersCount, setEditTravelersCount] = useState(2);
   const [editEmoji, setEditEmoji] = useState("");
+  const [editPhotoIdx, setEditPhotoIdx] = useState(0);
+  const [editPhotoOptions, setEditPhotoOptions] = useState<PhotoOption[]>(DEFAULT_PHOTOS);
 
   // Plan new trip sheet
   const [showPlanSheet, setShowPlanSheet] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDestination, setNewDestination] = useState("");
-  const [newDates, setNewDates] = useState("");
-  const [newTravelers, setNewTravelers] = useState("2");
+  const [newStartDate, setNewStartDate] = useState("");
+  const [newNights, setNewNights] = useState(7);
+  const [newTravelersCount, setNewTravelersCount] = useState(2);
 
   function openEditTrip(t: UpcomingTrip) {
+    const photos = getPhotosForDestination(t.destination);
+    const currentIdx = photos.findIndex((p) => p.url === t.photo);
     setEditingTrip(t);
     setEditTitle(t.title);
-    setEditSubtitle(t.subtitle);
+    setEditDestination(t.destination);
+    setEditStartDate(t.startDate);
+    setEditNights(t.nights);
+    setEditTravelersCount(t.travelersCount);
     setEditEmoji(t.emoji);
+    setEditPhotoOptions(photos);
+    setEditPhotoIdx(currentIdx >= 0 ? currentIdx : 0);
   }
 
   function saveEditTrip() {
     if (!editingTrip) return;
+    const photo = editPhotoOptions[editPhotoIdx] ?? editPhotoOptions[0];
     setUpcomingTrips((prev) =>
-      prev.map((t) => t.id === editingTrip.id ? { ...t, title: editTitle, subtitle: editSubtitle, emoji: editEmoji } : t)
+      prev.map((t) =>
+        t.id === editingTrip.id
+          ? {
+              ...t,
+              title: editTitle,
+              destination: editDestination,
+              startDate: editStartDate,
+              nights: editNights,
+              travelersCount: editTravelersCount,
+              emoji: editEmoji,
+              photo: photo.url,
+              photoAlt: photo.alt,
+            }
+          : t
+      )
     );
+    setEditingTrip(null);
+  }
+
+  function archivePlanningTrip() {
+    if (!editingTrip) return;
+    setArchivedTrips((prev) => [
+      {
+        id: editingTrip.id,
+        title: editingTrip.title,
+        destination: editingTrip.destination,
+        dateRange: buildSubtitle(editingTrip.startDate, editingTrip.nights, editingTrip.travelersCount),
+        emoji: editingTrip.emoji,
+        photo: editingTrip.photo,
+        photoAlt: editingTrip.photoAlt,
+        highlight: "",
+      },
+      ...prev,
+    ]);
+    setUpcomingTrips((prev) => prev.filter((t) => t.id !== editingTrip.id));
     setEditingTrip(null);
   }
 
@@ -176,17 +427,24 @@ export default function TripPage() {
 
   function addNewTrip() {
     if (!newTitle.trim()) return;
-    const subtitle = [newDates, newTravelers ? `${newTravelers} travelers` : ""].filter(Boolean).join(" · ");
-    setUpcomingTrips((prev) => [...prev, {
-      id: Date.now(),
-      title: newTitle.trim(),
-      subtitle: subtitle || "Still planning",
-      emoji: "✈️",
-      photo: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600&h=300&fit=crop&q=80",
-      photoAlt: newDestination || "Trip destination",
-    }]);
+    const photos = getPhotosForDestination(newDestination);
+    const photo = photos[0];
+    setUpcomingTrips((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        title: newTitle.trim(),
+        destination: newDestination,
+        startDate: newStartDate,
+        nights: newNights,
+        travelersCount: newTravelersCount,
+        emoji: "✈️",
+        photo: photo.url,
+        photoAlt: photo.alt,
+      },
+    ]);
     setShowPlanSheet(false);
-    setNewTitle(""); setNewDestination(""); setNewDates(""); setNewTravelers("2");
+    setNewTitle(""); setNewDestination(""); setNewStartDate(""); setNewNights(7); setNewTravelersCount(2);
   }
 
   function getInviteLink() {
@@ -331,10 +589,43 @@ export default function TripPage() {
       {editingTrip && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={() => setEditingTrip(null)}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-          <div className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-center pt-3 pb-1"><div className="w-9 h-1 bg-slate-200 rounded-full" /></div>
-            <div className="px-5 pt-3 pb-10 flex flex-col gap-4">
+          <div
+            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl flex flex-col"
+            style={{ maxHeight: "calc(100dvh - 72px)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1 flex-none"><div className="w-9 h-1 bg-slate-200 rounded-full" /></div>
+            <div className="px-5 pt-2 pb-3 flex-none border-b border-slate-50">
               <h3 className="text-base font-black text-slate-900">Edit Trip</h3>
+            </div>
+
+            {/* Scrollable body */}
+            <div className="px-5 pt-4 pb-2 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
+
+              {/* Photo preview + cycle */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Cover photo</p>
+                <div className="relative h-32 rounded-2xl overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={editPhotoOptions[editPhotoIdx]?.url}
+                    alt={editPhotoOptions[editPhotoIdx]?.alt}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  <button
+                    onClick={() => setEditPhotoIdx((i) => (i + 1) % editPhotoOptions.length)}
+                    className="absolute bottom-2.5 right-2.5 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[11px] font-bold px-3 py-1.5 rounded-full"
+                  >
+                    Change photo ↺
+                  </button>
+                  <p className="absolute bottom-2.5 left-3 text-[10px] text-white/60 font-semibold">
+                    {editPhotoIdx + 1} / {editPhotoOptions.length}
+                  </p>
+                </div>
+              </div>
+
+              {/* Emoji picker */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Icon</p>
                 <div className="flex gap-2 flex-wrap">
@@ -345,22 +636,93 @@ export default function TripPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Trip name */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Trip name</p>
                 <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
                   className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
               </div>
+
+              {/* Destination — drives photo auto-update */}
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Dates & details</p>
-                <input type="text" value={editSubtitle} onChange={(e) => setEditSubtitle(e.target.value)}
-                  placeholder="e.g. Dec 20, 2026 · 5 nights · 4 travelers"
-                  className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Destination</p>
+                <input
+                  type="text"
+                  value={editDestination}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setEditDestination(val);
+                    const photos = getPhotosForDestination(val);
+                    setEditPhotoOptions(photos);
+                    setEditPhotoIdx(0);
+                  }}
+                  placeholder="e.g. Paris, Bali, New York…"
+                  className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
+                />
               </div>
-              <div className="flex gap-2 pt-1">
+
+              {/* Start date */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Start date</p>
+                <input
+                  type="date"
+                  value={editStartDate}
+                  onChange={(e) => setEditStartDate(e.target.value)}
+                  className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
+                />
+              </div>
+
+              {/* Nights stepper */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Nights</p>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setEditNights((n) => Math.max(1, n - 1))}
+                    className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  >−</button>
+                  <span className="text-lg font-bold text-slate-900 w-8 text-center">{editNights}</span>
+                  <button
+                    onClick={() => setEditNights((n) => n + 1)}
+                    className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  >+</button>
+                  <span className="text-sm text-slate-400">night{editNights !== 1 ? "s" : ""}</span>
+                </div>
+              </div>
+
+              {/* Travelers stepper */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Travelers</p>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setEditTravelersCount((n) => Math.max(1, n - 1))}
+                    className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  >−</button>
+                  <span className="text-lg font-bold text-slate-900 w-8 text-center">{editTravelersCount}</span>
+                  <button
+                    onClick={() => setEditTravelersCount((n) => n + 1)}
+                    className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                  >+</button>
+                  <span className="text-sm text-slate-400">traveler{editTravelersCount !== 1 ? "s" : ""}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer buttons */}
+            <div className="px-5 pt-3 pb-8 flex flex-col gap-2.5 border-t border-slate-100 flex-none">
+              <div className="flex gap-2">
                 <button onClick={saveEditTrip} className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
                 <button onClick={() => setEditingTrip(null)} className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl">Cancel</button>
               </div>
-              <button onClick={deleteTrip} className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-3.5 rounded-2xl text-sm">Remove trip</button>
+              <button
+                onClick={archivePlanningTrip}
+                className="w-full border border-slate-200 bg-slate-50 text-slate-500 font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2"
+              >
+                <span>🗂</span> Archive trip
+              </button>
+              <button onClick={deleteTrip} className="w-full text-center text-xs text-red-400 py-1">
+                Delete permanently
+              </button>
             </div>
           </div>
         </div>
@@ -378,32 +740,74 @@ export default function TripPage() {
               <p className="text-xs text-slate-400 mt-0.5">Start building your next adventure</p>
             </div>
             <div className="px-5 pt-4 pb-2 flex flex-col gap-4 flex-1 min-h-0 overflow-y-auto">
+              {/* Trip name */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Trip name *</p>
                 <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="e.g. Christmas in NYC" autoFocus
                   className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
               </div>
+
+              {/* Destination */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Destination</p>
                 <input type="text" value={newDestination} onChange={(e) => setNewDestination(e.target.value)}
                   placeholder="e.g. New York, Tokyo, Bali…"
                   className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
+                {/* Destination photo preview */}
+                {newDestination.trim().length > 1 && (() => {
+                  const preview = getPhotosForDestination(newDestination)[0];
+                  return (
+                    <div className="mt-2 h-20 rounded-2xl overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={preview.url} alt={preview.alt} className="w-full h-full object-cover" />
+                    </div>
+                  );
+                })()}
               </div>
+
+              {/* Start date */}
               <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Dates</p>
-                <input type="text" value={newDates} onChange={(e) => setNewDates(e.target.value)}
-                  placeholder="e.g. Dec 20 · 5 nights"
-                  className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Start date</p>
+                <input
+                  type="date"
+                  value={newStartDate}
+                  onChange={(e) => setNewStartDate(e.target.value)}
+                  className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
+                />
               </div>
+
+              {/* Nights stepper */}
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Nights</p>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setNewNights((n) => Math.max(1, n - 1))}
+                    className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600"
+                  >−</button>
+                  <span className="text-lg font-bold text-slate-900 w-8 text-center">{newNights}</span>
+                  <button
+                    onClick={() => setNewNights((n) => n + 1)}
+                    className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600"
+                  >+</button>
+                  <span className="text-sm text-slate-400">night{newNights !== 1 ? "s" : ""}</span>
+                </div>
+              </div>
+
+              {/* Travelers stepper */}
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Travelers</p>
-                <div className="flex gap-2">
-                  {["1","2","3","4","5","6+"].map((n) => (
-                    <button key={n} onClick={() => setNewTravelers(n)}
-                      className={`flex-1 py-2.5 rounded-2xl text-sm font-bold border transition-all ${newTravelers === n ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200"}`}
-                    >{n}</button>
-                  ))}
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setNewTravelersCount((n) => Math.max(1, n - 1))}
+                    className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600"
+                  >−</button>
+                  <span className="text-lg font-bold text-slate-900 w-8 text-center">{newTravelersCount}</span>
+                  <button
+                    onClick={() => setNewTravelersCount((n) => n + 1)}
+                    className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-bold text-slate-600"
+                  >+</button>
+                  <span className="text-sm text-slate-400">traveler{newTravelersCount !== 1 ? "s" : ""}</span>
                 </div>
               </div>
             </div>
@@ -779,61 +1183,199 @@ export default function TripPage() {
       </button>
 
       {/* ══════════════════════════════════════
-          UPCOMING TRIPS
+          TRIP LIFECYCLE SECTIONS
       ══════════════════════════════════════ */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-base font-bold text-slate-900">Upcoming Trips</p>
-          <button
-            onClick={() => setShowPlanSheet(true)}
-            className="text-xs font-bold text-slate-900 border-2 border-slate-900 px-3 py-1.5 rounded-full hover:bg-slate-50 transition-colors"
-          >
-            + Plan trip
-          </button>
-        </div>
+      {(() => {
+        // Sort planning trips by date ascending
+        const sorted = [...upcomingTrips].sort((a, b) => {
+          if (!a.startDate && !b.startDate) return 0;
+          if (!a.startDate) return 1;
+          if (!b.startDate) return -1;
+          return a.startDate.localeCompare(b.startDate);
+        });
+        const upNextTrip = sorted[0] ?? null;
+        const planningTrips = sorted.slice(1);
 
-        {/* Packing list ingress */}
-        <button
-          onClick={() => router.push("/packing")}
-          className="w-full flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-sm mb-3 hover:shadow-md transition-shadow"
-        >
-          <span className="text-base">🧳</span>
-          <div className="flex-1 text-left">
-            <p className="text-xs font-bold text-slate-700">Packing List</p>
-            <p className="text-[10px] text-slate-400">Tailored to your Maui itinerary</p>
-          </div>
-          <span className="text-slate-300 text-sm">›</span>
-        </button>
-
-        <div className="flex flex-col gap-3">
-          {upcomingTrips.map((t) => (
+        return (
+          <>
+            {/* ── Packing list — tied to active trip ── */}
             <button
-              key={t.id}
-              onClick={() => openEditTrip(t)}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-left w-full active:scale-[0.99] transition-transform"
+              onClick={() => router.push("/packing")}
+              className="w-full flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="relative h-28 w-full overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={t.photo} alt={t.photoAlt} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                <div className="absolute top-2.5 left-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                  Planning
-                </div>
-                <div className="absolute top-2.5 right-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  Edit ✏️
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 flex items-end justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-white leading-tight">{t.title}</p>
-                    <p className="text-[11px] text-white/70 mt-0.5">{t.subtitle}</p>
-                  </div>
-                  <span className="text-lg">{t.emoji}</span>
-                </div>
+              <span className="text-base">🧳</span>
+              <div className="flex-1 text-left">
+                <p className="text-xs font-bold text-slate-700">Packing List</p>
+                <p className="text-[10px] text-slate-400">Tailored to your Maui itinerary</p>
               </div>
+              <span className="text-slate-300 text-sm">›</span>
             </button>
-          ))}
-        </div>
-      </div>
+
+            {/* ── Up Next ───────────────────────────────────────────── */}
+            {upNextTrip && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-400" />
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Up Next</p>
+                  </div>
+                  <button
+                    onClick={() => openEditTrip(upNextTrip)}
+                    className="text-[11px] text-slate-400 font-medium"
+                  >Edit ✏️</button>
+                </div>
+
+                <button
+                  onClick={() => openEditTrip(upNextTrip)}
+                  className="w-full bg-white rounded-3xl border border-amber-100 shadow-md overflow-hidden text-left active:scale-[0.99] transition-transform"
+                >
+                  <div className="relative h-40 w-full overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={upNextTrip.photo} alt={upNextTrip.photoAlt} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
+
+                    {/* Up Next badge */}
+                    <div className="absolute top-3 left-3 bg-amber-400 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide">
+                      Up Next
+                    </div>
+
+                    {/* Countdown pill */}
+                    {getDaysUntil(upNextTrip.startDate) !== null && (
+                      <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-center px-3 py-1.5 rounded-2xl">
+                        <p className="text-lg font-black leading-none">{getDaysUntil(upNextTrip.startDate)}</p>
+                        <p className="text-[9px] font-semibold opacity-80 mt-0.5">days away</p>
+                      </div>
+                    )}
+
+                    <div className="absolute bottom-0 left-0 right-0 px-4 pb-3.5 flex items-end justify-between">
+                      <div>
+                        <p className="text-base font-black text-white leading-tight">{upNextTrip.title}</p>
+                        <p className="text-xs text-white/70 mt-0.5">{buildSubtitle(upNextTrip.startDate, upNextTrip.nights, upNextTrip.travelersCount)}</p>
+                      </div>
+                      <span className="text-xl">{upNextTrip.emoji}</span>
+                    </div>
+                  </div>
+
+                  {/* Action footer */}
+                  <div className="px-4 py-3 flex items-center justify-between border-t border-amber-50 bg-amber-50/40">
+                    <p className="text-xs text-slate-400">Tap to edit your plans</p>
+                    <span className="text-xs font-bold text-amber-600">Open →</span>
+                  </div>
+                </button>
+              </div>
+            )}
+
+            {/* ── Planning ──────────────────────────────────────────── */}
+            {(planningTrips.length > 0 || !upNextTrip) && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-sky-300" />
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Planning</p>
+                  </div>
+                  <button
+                    onClick={() => setShowPlanSheet(true)}
+                    className="text-xs font-bold text-slate-900 border-2 border-slate-900 px-3 py-1.5 rounded-full"
+                  >
+                    + Plan trip
+                  </button>
+                </div>
+
+                {planningTrips.length === 0 ? (
+                  <button
+                    onClick={() => setShowPlanSheet(true)}
+                    className="w-full border-2 border-dashed border-slate-200 rounded-2xl py-8 flex flex-col items-center gap-2 text-slate-400 hover:border-slate-300 transition-colors"
+                  >
+                    <span className="text-2xl">🗺️</span>
+                    <p className="text-sm font-semibold">Plan your next adventure</p>
+                    <p className="text-xs">Add a trip to start dreaming</p>
+                  </button>
+                ) : (
+                  <div className="flex flex-col gap-2.5">
+                    {planningTrips.map((t) => {
+                      const daysAway = getDaysUntil(t.startDate);
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => openEditTrip(t)}
+                          className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-left w-full active:scale-[0.99] transition-transform"
+                        >
+                          <div className="flex items-stretch overflow-hidden">
+                            <div className="relative w-24 flex-none">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={t.photo} alt={t.photoAlt} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
+                            </div>
+                            <div className="flex-1 px-3 py-2.5 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-0.5">
+                                <span className="text-sm flex-none">{t.emoji}</span>
+                                <p className="text-sm font-bold text-slate-900 leading-tight truncate">{t.title}</p>
+                              </div>
+                              <p className="text-[11px] text-slate-400 truncate">{buildSubtitle(t.startDate, t.nights, t.travelersCount)}</p>
+                              {daysAway !== null && (
+                                <p className="text-[10px] text-sky-400 font-semibold mt-0.5">in {daysAway} days</p>
+                              )}
+                            </div>
+                            <div className="pr-3 flex items-center flex-none">
+                              <span className="text-slate-300 text-sm">›</span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Archived ──────────────────────────────────────────── */}
+            <div>
+              <button
+                onClick={() => setShowArchived((v) => !v)}
+                className="w-full flex items-center justify-between mb-3"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-slate-300" />
+                  <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Archived</p>
+                  <span className="text-[10px] text-slate-300 font-semibold">{archivedTrips.length}</span>
+                </div>
+                <span className="text-slate-300 text-xs">{showArchived ? "▲" : "▼"}</span>
+              </button>
+
+              {showArchived && (
+                <div className="flex flex-col gap-2.5">
+                  {archivedTrips.map((t) => (
+                    <div
+                      key={t.id}
+                      className="bg-white rounded-2xl border border-slate-100 overflow-hidden"
+                    >
+                      <div className="flex items-stretch overflow-hidden">
+                        <div className="relative w-24 flex-none">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={t.photo} alt={t.photoAlt} className="w-full h-full object-cover grayscale opacity-80" />
+                        </div>
+                        <div className="flex-1 px-3 py-2.5 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-sm flex-none">{t.emoji}</span>
+                            <p className="text-sm font-bold text-slate-500 leading-tight truncate">{t.title}</p>
+                          </div>
+                          <p className="text-[11px] text-slate-400 truncate">{t.dateRange}</p>
+                          {t.highlight ? (
+                            <p className="text-[10px] text-slate-400 mt-0.5 italic truncate">"{t.highlight}"</p>
+                          ) : null}
+                        </div>
+                        <div className="pr-3 flex items-center flex-none">
+                          <span className="text-slate-200 text-sm">🗂</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </>
+        );
+      })()}
 
     </div>
   );

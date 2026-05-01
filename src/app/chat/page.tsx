@@ -43,9 +43,9 @@ const INVITE_CODE = "MAUI26";
 
 const QUICK_ACTIONS = [
   { key: "plan",    label: "Today's plan",  emoji: "📋" },
-  { key: "loc",     label: "Share location", emoji: "📍" },
+  { key: "weather", label: "Weather",       emoji: "🌤️" },
   { key: "dinner",  label: "Dinner details", emoji: "🐟" },
-  { key: "photo",   label: "Photo",          emoji: "📷" },
+  { key: "meetup",  label: "Meeting up",    emoji: "📍" },
 ];
 
 const AVATAR_OPTIONS = ["🧔", "👩", "👦", "👧", "👵", "👴", "🧑", "👨", "👩‍🦱", "👨‍🦳", "🧒", "👶"];
@@ -354,25 +354,28 @@ export default function ChatPage() {
         card_sub: "7:00 PM · Reservation confirmed · Party of 4",
         card_emoji: "🐟",
       });
-    } else if (key === "loc") {
-      if (navigator.share) {
-        try {
-          await navigator.share({ title: "My location", text: `${senderName} is near Ka'anapali Beach, Maui 📍` });
-        } catch { /* cancelled */ }
-      } else {
-        await supabase.from("messages").insert({
-          trip_id: TRIP_ID,
-          sender_name: senderName,
-          sender_avatar: avatar,
-          sender_user_id: user?.id ?? null,
-          card_type: "location",
-          card_title: `${senderName}'s location`,
-          card_sub: "Near Ka'anapali Beach, Maui",
-          card_emoji: "📍",
-        });
-      }
-    } else if (key === "photo") {
-      msgPhotoRef.current?.click();
+    } else if (key === "weather") {
+      await supabase.from("messages").insert({
+        trip_id: TRIP_ID,
+        sender_name: senderName,
+        sender_avatar: avatar,
+        sender_user_id: user?.id ?? null,
+        card_type: "weather",
+        card_title: "82°F · Partly cloudy",
+        card_sub: "Ka'anapali today — great beach weather ⛅",
+        card_emoji: "🌤️",
+      });
+    } else if (key === "meetup") {
+      await supabase.from("messages").insert({
+        trip_id: TRIP_ID,
+        sender_name: senderName,
+        sender_avatar: avatar,
+        sender_user_id: user?.id ?? null,
+        card_type: "location",
+        card_title: "Meet at the pool bar",
+        card_sub: "Sheraton Ka'anapali · Level 2",
+        card_emoji: "📍",
+      });
     }
   }
 
@@ -1090,6 +1093,13 @@ export default function ChatPage() {
           ))}
         </div>
         <div className="flex gap-2 pb-3">
+          <button
+            onClick={() => msgPhotoRef.current?.click()}
+            className="w-10 h-10 flex-none bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-base hover:bg-slate-200 transition-colors"
+            title="Send photo"
+          >
+            📷
+          </button>
           <input
             type="text"
             value={input}
@@ -1101,7 +1111,7 @@ export default function ChatPage() {
           <button
             onClick={send}
             disabled={!input.trim()}
-            className="w-10 h-10 bg-sky-600 text-white rounded-2xl flex items-center justify-center font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+            className="w-10 h-10 flex-none bg-sky-600 text-white rounded-2xl flex items-center justify-center font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
             ↑
           </button>

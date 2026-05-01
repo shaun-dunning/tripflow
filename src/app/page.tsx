@@ -313,6 +313,9 @@ export default function MyDayPage() {
   const [dayIdMap, setDayIdMap] = useState<Record<number, string>>({});
   const [tripInfo, setTripInfo] = useState<{ status: "upcoming" | "active" | "completed"; daysUntilTrip: number } | null>(null);
 
+  // Vibe check
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+
   // Edit / add sheet
   const [sheetItem, setSheetItem] = useState<Item | null>(null);
   const [draft, setDraft] = useState<Item>({ id: "", time: "", title: "", emoji: "📍", done: false, notes: "" });
@@ -867,6 +870,35 @@ export default function MyDayPage() {
           </div>
         )}
 
+        {/* ── Smart weather alert (today only, live data only) ── */}
+        {isToday && weather?.source === "live" && (() => {
+          const alert = getWeatherAlert(weather, items);
+          if (!alert) return null;
+          const isWarning = alert.type === "warning";
+          return (
+            <div className={`flex items-start gap-3 rounded-2xl px-4 py-3.5 border ${
+              isWarning
+                ? "bg-amber-50 border-amber-200"
+                : "bg-sky-50 border-sky-100"
+            }`}>
+              <span className="text-xl flex-none">{alert.emoji}</span>
+              <div className="flex-1 min-w-0">
+                <p className={`text-xs font-bold mb-0.5 ${isWarning ? "text-amber-800" : "text-sky-800"}`}>
+                  {alert.title}
+                </p>
+                <p className={`text-xs leading-snug ${isWarning ? "text-amber-700" : "text-sky-600"}`}>
+                  {alert.body}
+                </p>
+              </div>
+              {isWarning && (
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-2 py-1 rounded-full flex-none">
+                  Heads up
+                </span>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ── Pre-trip quick actions ── */}
         {tripInfo?.status === "upcoming" && (
           <button
@@ -945,13 +977,29 @@ export default function MyDayPage() {
         {/* ── Vibe Check (today only) ── */}
         {isToday && (
           <div>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Vibe Check</p>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Vibe Check</p>
+              {selectedMood && (
+                <span className="text-[10px] font-semibold text-slate-500">{selectedMood} selected</span>
+              )}
+            </div>
             <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-              {MOODS.map((m) => (
-                <button key={m.label} className={`flex-none flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-full ${m.color} whitespace-nowrap`}>
-                  {m.emoji} {m.label}
-                </button>
-              ))}
+              {MOODS.map((m) => {
+                const isSelected = selectedMood === m.label;
+                return (
+                  <button
+                    key={m.label}
+                    onClick={() => setSelectedMood(isSelected ? null : m.label)}
+                    className={`flex-none flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full whitespace-nowrap transition-all ${
+                      isSelected
+                        ? "bg-slate-900 text-white shadow-md scale-105"
+                        : `${m.color} opacity-80`
+                    }`}
+                  >
+                    {m.emoji} {m.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -1107,16 +1155,25 @@ export default function MyDayPage() {
         {isEditable && (
           <button
             onClick={() => router.push("/explore")}
-            className="w-full flex items-center gap-4 bg-white border-2 border-dashed border-slate-200 rounded-2xl px-4 py-4 text-left hover:border-slate-400 hover:bg-slate-50 transition-all group"
+            className="w-full relative overflow-hidden rounded-2xl text-left group"
+            style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0c4a6e 100%)" }}
           >
-            <div className="w-10 h-10 rounded-xl bg-slate-100 group-hover:bg-slate-200 flex items-center justify-center text-lg flex-none transition-colors">
-              🔍
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=200&fit=crop&q=70"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-20"
+            />
+            <div className="relative flex items-center gap-4 px-4 py-4">
+              <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-lg flex-none">
+                🔍
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-white">Discover something to add</p>
+                <p className="text-xs text-white/60 mt-0.5">Beaches, restaurants & activities nearby</p>
+              </div>
+              <span className="text-white/50 group-hover:text-white/80 transition-colors text-lg">→</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-slate-700">Discover something to add</p>
-              <p className="text-xs text-slate-400 mt-0.5">Browse beaches, restaurants & activities nearby</p>
-            </div>
-            <span className="text-slate-300 group-hover:text-slate-500 transition-colors text-lg">→</span>
           </button>
         )}
 
