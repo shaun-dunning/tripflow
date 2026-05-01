@@ -193,6 +193,17 @@ const MOODS = [
   { label: "Fancy Night", emoji: "✨", color: "bg-slate-100 text-slate-700" },
 ];
 
+type ForecastDay = {
+  date: string;
+  high: number;
+  low: number;
+  emoji: string;
+  condition: string;
+  precipChance: number;
+  uvIndex: number;
+  note?: string;
+};
+
 type LiveWeather = {
   temp: number;
   condition: string;
@@ -200,8 +211,18 @@ type LiveWeather = {
   high: number;
   low: number;
   humidity: number;
+  feelsLike?: number;
   source: "live" | "static";
+  forecast?: ForecastDay[];
 };
+
+// ISO date for each trip day (Jun 5 = day 1)
+const TRIP_START_ISO = "2026-06-05";
+function getDayISO(dayNum: number): string {
+  const d = new Date(TRIP_START_ISO + "T12:00:00");
+  d.setDate(d.getDate() + dayNum - 1);
+  return d.toISOString().slice(0, 10);
+}
 
 function nowMinutes(): number {
   const d = new Date();
@@ -211,27 +232,30 @@ function nowMinutes(): number {
 // ── Smart weather alert — cross-references forecast with today's activities ──
 type WeatherAlert = { emoji: string; type: "info" | "warning"; title: string; body: string };
 
-function getWeatherAlert(weather: LiveWeather | null, agenda: Item[]): WeatherAlert | null {
-  if (!weather) return null;
-  const cond = weather.condition.toLowerCase();
-  const isRainy = cond.includes("rain") || cond.includes("shower") || cond.includes("storm");
+type WeatherForAlert = { condition: string; high: number; precipChance?: number };
+
+function getWeatherAlert(w: WeatherForAlert | null, agenda: Item[], isToday: boolean): WeatherAlert | null {
+  if (!w) return null;
+  const cond = w.condition.toLowerCase();
+  const isRainy = cond.includes("rain") || cond.includes("shower") || cond.includes("storm") || (w.precipChance ?? 0) >= 50;
   const isWindy = cond.includes("wind");
-  const isHot = weather.high >= 88;
+  const isHot = w.high >= 88;
   const outdoor = ["snorkel", "beach", "hike", "swim", "surf", "ocean", "dive", "kayak", "boat"];
   const hasOutdoor = agenda.some((i) =>
     outdoor.some((k) => i.title.toLowerCase().includes(k) || (i.notes ?? "").toLowerCase().includes(k))
   );
+  const dayLabel = isToday ? "today" : "this day";
   if (isRainy && hasOutdoor) {
     return {
       emoji: "🌧️", type: "warning",
-      title: "Rain in the forecast",
-      body: "Some outdoor activities may be affected. Pack a light layer and have a backup plan ready.",
+      title: `Rain in the forecast${w.precipChance ? ` · ${w.precipChance}% chance` : ""}`,
+      body: `Some outdoor activities may be affected ${dayLabel}. Pack a light layer and have a backup plan ready.`,
     };
   }
   if (isHot && hasOutdoor) {
     return {
       emoji: "☀️", type: "warning",
-      title: `High of ${weather.high}°F today`,
+      title: `High of ${w.high}°F ${dayLabel}`,
       body: "Apply reef-safe sunscreen early — UV is intense. Stay hydrated and seek shade between 11am–3pm.",
     };
   }
@@ -242,11 +266,11 @@ function getWeatherAlert(weather: LiveWeather | null, agenda: Item[]): WeatherAl
       body: "Ocean may be choppy — check with tour operators before heading out. Great for kite surfing!",
     };
   }
-  if (!isRainy && weather.high >= 78 && weather.high <= 87) {
+  if (!isRainy && w.high >= 78 && w.high <= 87) {
     return {
       emoji: "🌺", type: "info",
       title: "Perfect Maui day",
-      body: `${weather.high}° and ${weather.condition.toLowerCase()} — ideal for everything on your list today.`,
+      body: `${w.high}° and ${w.condition.toLowerCase()} — ideal for everything on your list.`,
     };
   }
   return null;
@@ -799,40 +823,141 @@ export default function MyDayPage() {
           ))}
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
-          <div className="flex items-end justify-between">
-            <div>
-              <span className="text-xs font-semibold text-white/70 uppercase tracking-widest">{day.date}</span>
-              <h1 className="text-2xl font-bold text-white leading-tight">{day.theme}</h1>
-              <div className="flex items-center gap-2 mt-1">
-                {isToday && (
-                  <span className="text-[10px] font-bold bg-sky-400 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
-                    Today
-                  </span>
-                )}
-                {isPast && (
-                  <span className="text-[10px] font-bold bg-white/30 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
-                    Completed
-                  </span>
-                )}
+        {(() => {
+          // Per-day weather: use live current for today, forecast entry for other days
+          const dayISO = getDayISO(day.dayNum);
+          const forecastEntry = weather?.forecast?.find((f) => f.date === dayISO) ?? null;
+          const viewWeather = forecastEntry ?? (isToday && weather ? {
+            high: weather.high, low: weather.low,
+            emoji: weather.emoji, condition: weather.condition,
+            precipChance: 0, uvIndex: 0,
+          } : null);
+          const displayTemp = isToday && weather ? `${weather.temp}°F` : (viewWeather ? `${viewWeather.high}°F` : day.temp);
+          const displayEmoji = viewWeather?.emoji ?? day.weatherEmoji;
+          const displayCond = viewWeather?.condition ?? day.condition;
+
+          return (
+            <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
+              <div className="flex items-end justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-white/70 uppercase tracking-widest">{day.date}</span>
+                  <h1 className="text-2xl font-bold text-white leading-tight">{day.theme}</h1>
+                  <div className="flex items-center gap-2 mt-1">
+                    {isToday && (
+                      <span className="text-[10px] font-bold bg-sky-400 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        Today
+                      </span>
+                    )}
+                    {isPast && (
+                      <span className="text-[10px] font-bold bg-white/30 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
+                        Completed
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Weather pill — richer with Hi/Lo */}
+                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-3 py-2 border border-white/20 text-left">
+                  <span className="text-2xl leading-none">{displayEmoji}</span>
+                  <div>
+                    <div className="flex items-baseline gap-1">
+                      <p className="text-base font-black text-white leading-none">{displayTemp}</p>
+                      {weather?.source === "live" && isToday && (
+                        <span className="text-[9px] text-white/50 font-semibold">live</span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-white/70 mt-0.5 leading-none">{displayCond}</p>
+                    {viewWeather && (
+                      <p className="text-[9px] text-white/50 mt-0.5 leading-none">
+                        H:{viewWeather.high}° L:{viewWeather.low}°
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
-            <button
-              className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-white/20 text-left"
-              title={weather?.source === "live" ? `Hi ${weather.high}° · Lo ${weather.low}° · Humidity ${weather.humidity}%` : "Estimated weather"}
-            >
-              <span className="text-lg">{weather ? weather.emoji : day.weatherEmoji}</span>
-              <div>
-                <p className="text-sm font-bold text-white">
-                  {weather ? `${weather.temp}°F` : day.temp}
-                  {weather?.source === "live" && <span className="text-[9px] text-white/50 ml-1">live</span>}
-                </p>
-                <p className="text-[10px] text-white/70">{weather ? weather.condition : day.condition}</p>
-              </div>
-            </button>
-          </div>
-        </div>
+          );
+        })()}
       </div>
+
+      {/* ── Weather detail strip ── */}
+      {(() => {
+        const dayISO = getDayISO(day.dayNum);
+        const forecastEntry = weather?.forecast?.find((f) => f.date === dayISO) ?? null;
+        const viewWeather = forecastEntry ?? (isToday && weather ? {
+          high: weather.high, low: weather.low,
+          emoji: weather.emoji, condition: weather.condition,
+          precipChance: 0, uvIndex: 0, note: undefined,
+        } : null);
+        if (!viewWeather) return null;
+
+        const uvColor = viewWeather.uvIndex >= 11 ? "text-purple-600"
+          : viewWeather.uvIndex >= 8 ? "text-red-500"
+          : viewWeather.uvIndex >= 6 ? "text-orange-500"
+          : "text-amber-500";
+
+        return (
+          <div className="flex items-center gap-0 border-b border-slate-100 bg-white">
+            {/* Temp + condition */}
+            <div className="flex-1 flex items-center gap-2.5 px-4 py-2.5">
+              <span className="text-xl">{viewWeather.emoji}</span>
+              <div>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-sm font-black text-slate-900">
+                    {isToday && weather ? `${weather.temp}°` : `${viewWeather.high}°`}
+                  </span>
+                  <span className="text-xs text-slate-400">H:{viewWeather.high}° L:{viewWeather.low}°</span>
+                </div>
+                <p className="text-[10px] text-slate-500 leading-none">{viewWeather.condition}</p>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="w-px h-8 bg-slate-100" />
+
+            {/* Stats */}
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              {/* Precip */}
+              <div className="flex flex-col items-center gap-0.5">
+                <span className="text-base">🌧️</span>
+                <p className="text-[10px] font-bold text-slate-600">{viewWeather.precipChance}%</p>
+              </div>
+              {/* UV */}
+              {viewWeather.uvIndex > 0 && (
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-base">☀️</span>
+                  <p className={`text-[10px] font-bold ${uvColor}`}>UV {viewWeather.uvIndex}</p>
+                </div>
+              )}
+              {/* Humidity (today only with live data) */}
+              {isToday && weather?.humidity && (
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-base">💧</span>
+                  <p className="text-[10px] font-bold text-slate-600">{weather.humidity}%</p>
+                </div>
+              )}
+            </div>
+
+            {/* Source badge */}
+            <div className="pr-3 flex flex-col items-end gap-1">
+              {weather?.source === "live" && isToday ? (
+                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
+                  Live
+                </span>
+              ) : (
+                <span className="text-[9px] font-semibold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-full">
+                  Typical
+                </span>
+              )}
+              {viewWeather.note && (
+                <span className="text-[9px] text-amber-600 font-semibold text-right leading-tight max-w-[64px]">
+                  {viewWeather.note}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 
@@ -870,16 +995,19 @@ export default function MyDayPage() {
           </div>
         )}
 
-        {/* ── Smart weather alert (today only, live data only) ── */}
-        {isToday && weather?.source === "live" && (() => {
-          const alert = getWeatherAlert(weather, items);
+        {/* ── Smart weather alert (all days, uses per-day forecast) ── */}
+        {!isPast && (() => {
+          const dayISO = getDayISO(day.dayNum);
+          const forecastEntry = weather?.forecast?.find((f) => f.date === dayISO) ?? null;
+          const alertWeather: WeatherForAlert | null = forecastEntry ?? (isToday && weather
+            ? { condition: weather.condition, high: weather.high, precipChance: 0 }
+            : null);
+          const alert = getWeatherAlert(alertWeather, items, isToday);
           if (!alert) return null;
           const isWarning = alert.type === "warning";
           return (
             <div className={`flex items-start gap-3 rounded-2xl px-4 py-3.5 border ${
-              isWarning
-                ? "bg-amber-50 border-amber-200"
-                : "bg-sky-50 border-sky-100"
+              isWarning ? "bg-amber-50 border-amber-200" : "bg-sky-50 border-sky-100"
             }`}>
               <span className="text-xl flex-none">{alert.emoji}</span>
               <div className="flex-1 min-w-0">
