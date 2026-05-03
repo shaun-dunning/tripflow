@@ -696,7 +696,7 @@ export default function MyDayPage() {
           EDIT / ADD SHEET (bottom sheet)
       ══════════════════════════════════════ */}
       <div
-        className={`fixed inset-0 z-50 flex flex-col justify-end max-w-md mx-auto transition-opacity duration-200 ${
+        className={`fixed inset-0 z-[60] flex flex-col justify-end max-w-md mx-auto transition-opacity duration-200 ${
           sheetItem ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
       >
@@ -711,7 +711,7 @@ export default function MyDayPage() {
           className={`relative bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out flex flex-col ${
             sheetItem ? "translate-y-0" : "translate-y-full"
           }`}
-          style={{ maxHeight: "calc(100dvh - 72px)" }}
+          style={{ maxHeight: "90dvh" }}
         >
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1 flex-none">
@@ -928,6 +928,17 @@ export default function MyDayPage() {
             />
           ))}
         </div>
+
+        {/* Jump to Today pill — only visible when browsing away from today */}
+        {dayIndex !== todayDayIndex && (
+          <button
+            onClick={() => setDayIndex(todayDayIndex)}
+            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/20 backdrop-blur-md border border-white/30 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full shadow-lg hover:bg-white/30 transition-all"
+          >
+            <span>⬤</span>
+            <span>Jump to Today</span>
+          </button>
+        )}
 
         {(() => {
           // Per-day weather: use live current for today, forecast entry for other days
