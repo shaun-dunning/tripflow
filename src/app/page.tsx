@@ -368,9 +368,12 @@ export default function MyDayPage() {
   const [draft, setDraft] = useState<Item>({ id: "", time: "", title: "", emoji: "📍", done: false, notes: "" });
   const [sheetSaving, setSheetSaving] = useState(false);
   const [sheetDeleteConfirm, setSheetDeleteConfirm] = useState(false);
+  const [isAddingNew, setIsAddingNew] = useState(false);
   const emojiInputRef = useRef<HTMLInputElement>(null);
 
-  const isNewItem = sheetItem?.id.startsWith(NEW_ID_PREFIX) ?? false;
+  // Use explicit flag rather than id-prefix check so that optimistically-added
+  // items that failed to persist are still treated as editable (not new).
+  const isNewItem = isAddingNew;
 
   useEffect(() => {
     const clockTimer = setInterval(() => setCurrentMins(nowMinutes()), 60_000);
@@ -564,6 +567,7 @@ export default function MyDayPage() {
   // ── Sheet open/close ─────────────────────────────────────────────────────
   function openEdit(item: Item) {
     setSheetDeleteConfirm(false);
+    setIsAddingNew(false);
     setSheetItem(item);
     setDraft({ ...item });
   }
@@ -580,6 +584,7 @@ export default function MyDayPage() {
       fromSupabase: false,
     };
     setSheetDeleteConfirm(false);
+    setIsAddingNew(true);
     setSheetItem(newItem);
     setDraft({ ...newItem });
   }
@@ -587,6 +592,7 @@ export default function MyDayPage() {
   function closeSheet() {
     setSheetItem(null);
     setSheetDeleteConfirm(false);
+    setIsAddingNew(false);
   }
 
   // ── Save edit ─────────────────────────────────────────────────────────────
@@ -854,7 +860,8 @@ export default function MyDayPage() {
           </div>
 
           {/* Action bar — always visible, never clipped */}
-          <div className="px-5 pt-3 pb-8 flex gap-3 border-t border-slate-100 flex-none">
+          <div className="px-5 pt-3 flex gap-3 border-t border-slate-100 flex-none"
+            style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
             {!isNewItem && !sheetDeleteConfirm && (
               <button
                 onClick={() => setSheetDeleteConfirm(true)}
