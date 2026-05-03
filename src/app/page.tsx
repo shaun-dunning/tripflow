@@ -354,6 +354,11 @@ export default function MyDayPage() {
   const [weather, setWeather] = useState<LiveWeather | null>(null);
   // day_number → trip_day_id (for Supabase writes)
   const [dayIdMap, setDayIdMap] = useState<Record<number, string>>({});
+  // day_number → editable label stored in trip_days.label
+  const [dayLabels, setDayLabels] = useState<Record<number, string>>({});
+  // inline theme editor
+  const [editingTheme, setEditingTheme] = useState(false);
+  const [themeInput, setThemeInput] = useState("");
   const [tripInfo, setTripInfo] = useState<{ status: "upcoming" | "active" | "completed"; daysUntilTrip: number } | null>(null);
 
   // Pre-trip readiness
@@ -413,7 +418,7 @@ export default function MyDayPage() {
         supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
         supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
         supabase.from("agenda_items").select("*").order("sort_order", { ascending: true }),
-        supabase.from("trip_days").select("id, day_number").eq("trip_id", TRIP_ID),
+        supabase.from("trip_days").select("id, day_number, label").eq("trip_id", TRIP_ID),
         supabase.from("documents")
           .select("id, category, name, emoji, date, notes, confirmation, provider, status")
           .eq("trip_id", TRIP_ID),
@@ -440,11 +445,20 @@ export default function MyDayPage() {
         })));
       }
 
-      // Build dayIdMap for all days
+      // Build dayIdMap and dayLabels for all days
       if (tripDaysResult.data) {
         const map: Record<number, string> = {};
-        tripDaysResult.data.forEach((td) => { map[td.day_number] = td.id; });
+        const labels: Record<number, string> = {};
+        tripDaysResult.data.forEach((td) => {
+          map[td.day_number] = td.id;
+          if (td.label) {
+            // Strip "Day N · " prefix if present, keep just the description
+            const parts = (td.label as string).split(" · ");
+            labels[td.day_number] = parts.length > 1 ? parts.slice(1).join(" · ") : td.label;
+          }
+        });
         setDayIdMap(map);
+        setDayLabels(labels);
       }
 
       // Build agenda from Supabase agenda_items, then overlay doc-sourced reservations
@@ -546,6 +560,23 @@ export default function MyDayPage() {
   const isToday = dayIndex === todayDayIndex;
   const isPast = dayIndex < todayDayIndex;
   const isEditable = !isPast; // today and upcoming are editable
+
+  // Derived: theme for the current day (Supabase label overrides mock)
+  const currentTheme = dayLabels[day.dayNum] ?? day.theme;
+
+  // ── Save day theme ────────────────────────────────────────────────────────
+  async function saveTheme() {
+    const trimmed = themeInput.trim();
+    setEditingTheme(false);
+    if (!trimmed || trimmed === currentTheme) return;
+    const tripDayId = dayIdMap[day.dayNum];
+    if (tripDayId) {
+      await supabase.from("trip_days")
+        .update({ label: `Day ${day.dayNum} · ${trimmed}` })
+        .eq("id", tripDayId);
+    }
+    setDayLabels((prev) => ({ ...prev, [day.dayNum]: trimmed }));
+  }
 
   // ── Toggle done (quick tap, today only) ──────────────────────────────────
   async function toggle(id: string) {
@@ -902,7 +933,7 @@ export default function MyDayPage() {
 
         {dayIndex > 0 && (
           <button
-            onClick={() => setDayIndex((i) => i - 1)}
+            onClick={() => { setDayIndex((i) => i - 1); setEditingTheme(false); }}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-black/25 backdrop-blur-sm border border-white/20 text-white text-lg font-bold hover:bg-black/40 transition-all"
           >
             ‹
@@ -911,7 +942,7 @@ export default function MyDayPage() {
 
         {dayIndex < DAYS.length - 1 && (
           <button
-            onClick={() => setDayIndex((i) => i + 1)}
+            onClick={() => { setDayIndex((i) => i + 1); setEditingTheme(false); }}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-black/25 backdrop-blur-sm border border-white/20 text-white text-lg font-bold hover:bg-black/40 transition-all"
           >
             ›
@@ -922,7 +953,7 @@ export default function MyDayPage() {
           {DAYS.map((d, i) => (
             <button
               key={i}
-              onClick={() => setDayIndex(i)}
+              onClick={() => { setDayIndex(i); setEditingTheme(false); }}
               className={`rounded-full transition-all duration-200 ${
                 i === dayIndex
                   ? "w-5 h-1.5 bg-white"
@@ -939,7 +970,7 @@ export default function MyDayPage() {
         {/* Jump to Today pill — only visible when browsing away from today */}
         {dayIndex !== todayDayIndex && (
           <button
-            onClick={() => setDayIndex(todayDayIndex)}
+            onClick={() => { setDayIndex(todayDayIndex); setEditingTheme(false); }}
             className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/20 backdrop-blur-md border border-white/30 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full shadow-lg hover:bg-white/30 transition-all"
           >
             <span>⬤</span>
@@ -965,7 +996,25 @@ export default function MyDayPage() {
               <div className="flex items-end justify-between">
                 <div>
                   <span className="text-xs font-semibold text-white/70 uppercase tracking-widest">{day.date}</span>
-                  <h1 className="text-2xl font-bold text-white leading-tight">{day.theme}</h1>
+                  {editingTheme ? (
+                    <input
+                      autoFocus
+                      value={themeInput}
+                      onChange={(e) => setThemeInput(e.target.value)}
+                      onBlur={saveTheme}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveTheme(); if (e.key === "Escape") setEditingTheme(false); }}
+                      className="text-2xl font-bold text-white leading-tight bg-transparent border-b border-white/50 outline-none w-full placeholder-white/40"
+                      placeholder="Day theme…"
+                    />
+                  ) : (
+                    <button
+                      className="flex items-center gap-1.5 group text-left"
+                      onClick={() => { setThemeInput(currentTheme); setEditingTheme(true); }}
+                    >
+                      <h1 className="text-2xl font-bold text-white leading-tight">{currentTheme}</h1>
+                      <span className="text-white/50 text-sm opacity-0 group-hover:opacity-100 transition-opacity mt-0.5">✏️</span>
+                    </button>
+                  )}
                   <div className="flex items-center gap-2 mt-1">
                     {isToday && (
                       <span className="text-[10px] font-bold bg-sky-400 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">
