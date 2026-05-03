@@ -548,6 +548,8 @@ export default function ExplorePage() {
 
   // All trip days: dayNum → trip_day_id
   const [tripDayMap, setTripDayMap] = useState<Record<number, string>>({});
+  // dayNum → editable label from trip_days.label
+  const [dayLabels, setDayLabels] = useState<Record<number, string>>({});
   const [todayDayNum, setTodayDayNum] = useState<number | null>(null);
 
   // Day picker sheet
@@ -591,7 +593,7 @@ export default function ExplorePage() {
     async function fetchTripDays() {
       const [tripResult, daysResult] = await Promise.all([
         supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
-        supabase.from("trip_days").select("id, day_number").eq("trip_id", TRIP_ID).order("day_number"),
+        supabase.from("trip_days").select("id, day_number, label").eq("trip_id", TRIP_ID).order("day_number"),
       ]);
 
       if (tripResult.data) {
@@ -601,8 +603,16 @@ export default function ExplorePage() {
 
       if (daysResult.data) {
         const map: Record<number, string> = {};
-        daysResult.data.forEach((d) => { map[d.day_number] = d.id; });
+        const labels: Record<number, string> = {};
+        daysResult.data.forEach((d) => {
+          map[d.day_number] = d.id;
+          if (d.label) {
+            const parts = (d.label as string).split(" · ");
+            labels[d.day_number] = parts.length > 1 ? parts.slice(1).join(" · ") : d.label;
+          }
+        });
         setTripDayMap(map);
+        setDayLabels(labels);
       }
     }
     fetchTripDays();
@@ -657,8 +667,8 @@ export default function ExplorePage() {
 
     if (insertError) {
       console.error("addToDay insert error:", insertError);
-      setAddedToast(`Couldn't save — check permissions`);
-      setTimeout(() => setAddedToast(null), 3000);
+      setAddedToast(`Error: ${insertError.message}`);
+      setTimeout(() => setAddedToast(null), 4000);
       return;
     }
 
@@ -814,7 +824,7 @@ export default function ExplorePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-bold text-slate-900">Day {d.dayNum} · {d.theme}</p>
+                      <p className="text-sm font-bold text-slate-900">Day {d.dayNum} · {dayLabels[d.dayNum] ?? d.theme}</p>
                       {isToday && (
                         <span className="text-[9px] font-bold bg-sky-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">
                           Today

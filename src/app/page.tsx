@@ -52,6 +52,69 @@ type DayData = {
   agenda: Item[];
 };
 
+// ── Hero image picker: keyword-matched so the photo updates when themes change ──
+const THEME_PHOTOS: { keywords: string[]; url: string; alt: string }[] = [
+  {
+    keywords: ["travel", "fly", "flight", "airport", "depart", "return", "home"],
+    url: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=500&fit=crop&q=85",
+    alt: "Airport terminal",
+  },
+  {
+    keywords: ["beach", "snorkel", "swim", "ocean", "ka'anapali", "surf", "paddle", "kayak", "dive", "water", "coast"],
+    url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop&q=85",
+    alt: "Beautiful Maui beach",
+  },
+  {
+    keywords: ["hana", "waterfall", "road", "jungle", "forest", "lush", "hike", "trail", "rainforest", "bamboo"],
+    url: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=85",
+    alt: "Road to Hana",
+  },
+  {
+    keywords: ["spa", "relax", "massage", "wellness", "resort", "rest", "pool"],
+    url: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=800&h=500&fit=crop&q=85",
+    alt: "Spa and pool",
+  },
+  {
+    keywords: ["haleakala", "volcano", "sunrise", "summit", "crater", "bike", "downhill"],
+    url: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&h=500&fit=crop&q=85",
+    alt: "Haleakalā sunrise",
+  },
+  {
+    keywords: ["luau", "dinner", "dining", "restaurant", "food", "lunch", "breakfast", "eat", "market", "farm"],
+    url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&h=500&fit=crop&q=85",
+    alt: "Hawaiian dining",
+  },
+  {
+    keywords: ["snorkeling", "reef", "fish", "molokini", "turtle"],
+    url: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=800&h=500&fit=crop&q=85",
+    alt: "Snorkeling",
+  },
+  {
+    keywords: ["sunset", "golden hour", "evening", "sky"],
+    url: "https://images.unsplash.com/photo-1472396961693-142e6e269027?w=800&h=500&fit=crop&q=85",
+    alt: "Maui sunset",
+  },
+  {
+    keywords: ["shopping", "paia", "lahaina", "town", "explore", "upcountry", "market"],
+    url: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=800&h=500&fit=crop&q=85",
+    alt: "Maui island",
+  },
+];
+
+const FALLBACK_HEROES = [
+  { url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop&q=85", alt: "Maui beach" },
+  { url: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=800&h=500&fit=crop&q=85", alt: "Tropical island" },
+  { url: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=85", alt: "Maui scenery" },
+];
+
+function getHeroForTheme(theme: string, dayNum: number): { url: string; alt: string } {
+  const lower = theme.toLowerCase();
+  for (const photo of THEME_PHOTOS) {
+    if (photo.keywords.some((k) => lower.includes(k))) return photo;
+  }
+  return FALLBACK_HEROES[(dayNum - 1) % FALLBACK_HEROES.length];
+}
+
 const DAYS: DayData[] = [
   {
     dayNum: 1, date: "Fri · Jun 5", theme: "Travel Day",
@@ -349,7 +412,10 @@ export default function MyDayPage() {
   const [wishlist, setWishlist] = useState<WishlistEntry[]>([]);
   const [todayDayIndex, setTodayDayIndex] = useState(0);
   const [dayIndex, setDayIndex] = useState(0);
+  const savedDayRestored = useRef(false);
   const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
+  // Move-to-day sheet
+  const [showMoveSheet, setShowMoveSheet] = useState(false);
   const [crewMembers, setCrewMembers] = useState<{ name: string; avatar: string; avatar_url: string | null }[]>([]);
   const [weather, setWeather] = useState<LiveWeather | null>(null);
   // day_number → trip_day_id (for Supabase writes)
@@ -407,6 +473,23 @@ export default function MyDayPage() {
     return () => window.removeEventListener("focus", refresh);
   }, []);
 
+  // Restore last-viewed day from localStorage so navigation doesn't reset position
+  useEffect(() => {
+    const saved = localStorage.getItem("tripflow-dayIndex");
+    if (saved !== null) {
+      const idx = parseInt(saved, 10);
+      if (!isNaN(idx) && idx >= 0 && idx < DAYS.length) {
+        setDayIndex(idx);
+        savedDayRestored.current = true;
+      }
+    }
+  }, []);
+
+  // Persist dayIndex whenever it changes
+  useEffect(() => {
+    localStorage.setItem("tripflow-dayIndex", String(dayIndex));
+  }, [dayIndex]);
+
   useEffect(() => {
     fetch("/api/weather")
       .then((r) => r.json())
@@ -434,7 +517,8 @@ export default function MyDayPage() {
         setTripInfo({ status: info.status, daysUntilTrip: info.daysUntilTrip });
         const idx = Math.max(0, Math.min(info.currentDayNumber - 1, DAYS.length - 1));
         setTodayDayIndex(idx);
-        setDayIndex(idx);
+        // Only auto-jump to today if user hasn't manually selected a day
+        if (!savedDayRestored.current) setDayIndex(idx);
       }
 
       if (travelersResult.data?.length) {
@@ -624,6 +708,7 @@ export default function MyDayPage() {
     setSheetItem(null);
     setSheetDeleteConfirm(false);
     setIsAddingNew(false);
+    setShowMoveSheet(false);
   }
 
   // ── Save edit ─────────────────────────────────────────────────────────────
@@ -721,6 +806,34 @@ export default function MyDayPage() {
       await supabase.from("agenda_items").delete().eq("id", sheetItem.id);
     }
     setSheetSaving(false);
+    closeSheet();
+  }
+
+  // ── Move item to a different day ──────────────────────────────────────────
+  async function moveItemToDay(targetDayNum: number) {
+    if (!sheetItem) return;
+    const targetDayId = dayIdMap[targetDayNum];
+    if (!targetDayId) return;
+    const targetDayIndex = DAYS.findIndex((d) => d.dayNum === targetDayNum);
+    if (targetDayIndex < 0) return;
+
+    // Optimistic: remove from current day, add to target day
+    const moved = { ...sheetItem };
+    setAgendas((prev) =>
+      prev.map((agenda, i) => {
+        if (i === dayIndex) return agenda.filter((it) => it.id !== sheetItem.id);
+        if (i === targetDayIndex) return [...agenda, moved];
+        return agenda;
+      })
+    );
+
+    if (sheetItem.fromSupabase) {
+      await supabase.from("agenda_items")
+        .update({ trip_day_id: targetDayId })
+        .eq("id", sheetItem.id);
+    }
+
+    setShowMoveSheet(false);
     closeSheet();
   }
 
@@ -891,14 +1004,22 @@ export default function MyDayPage() {
           </div>
 
           {/* Action bar — always visible, never clipped */}
-          <div className="px-5 pt-3 flex gap-3 border-t border-slate-100 flex-none"
+          <div className="px-5 pt-3 flex gap-2 border-t border-slate-100 flex-none"
             style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
             {!isNewItem && !sheetDeleteConfirm && (
               <button
                 onClick={() => setSheetDeleteConfirm(true)}
-                className="px-4 py-3 text-sm font-bold text-red-500 border border-red-200 rounded-2xl hover:bg-red-50 transition-colors"
+                className="px-3 py-3 text-sm font-bold text-red-500 border border-red-200 rounded-2xl hover:bg-red-50 transition-colors"
               >
                 Delete
+              </button>
+            )}
+            {!isNewItem && !sheetDeleteConfirm && sheetItem?.fromSupabase && (
+              <button
+                onClick={() => setShowMoveSheet(true)}
+                className="px-3 py-3 text-sm font-bold text-slate-600 border border-slate-200 rounded-2xl hover:bg-slate-50 transition-colors"
+              >
+                Move
               </button>
             )}
             <button
@@ -914,12 +1035,54 @@ export default function MyDayPage() {
         </div>
       </div>
 
+      {/* ── Move to Day sheet ── */}
+      {showMoveSheet && (
+        <div className="fixed inset-0 z-[70] flex flex-col justify-end max-w-md mx-auto">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowMoveSheet(false)} />
+          <div className="relative bg-white rounded-t-3xl shadow-2xl">
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-slate-200 rounded-full" />
+            </div>
+            <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-slate-100">
+              <h3 className="text-base font-black text-slate-900">Move to Day</h3>
+              <button onClick={() => setShowMoveSheet(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold">✕</button>
+            </div>
+            <div className="px-4 pt-3 flex flex-col gap-2 max-h-[55vh] overflow-y-auto"
+              style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+              {DAYS.map((d) => {
+                const isCurrent = d.dayNum === day.dayNum;
+                const label = dayLabels[d.dayNum] ?? d.theme;
+                return (
+                  <button
+                    key={d.dayNum}
+                    disabled={isCurrent}
+                    onClick={() => moveItemToDay(d.dayNum)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-2xl border text-left transition-all active:scale-[0.98] ${
+                      isCurrent ? "bg-slate-50 border-slate-100 opacity-40 cursor-default" : "bg-white border-slate-100 hover:bg-sky-50 hover:border-sky-200"
+                    }`}
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-base flex-none">
+                      {d.dayNum}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-900 truncate">Day {d.dayNum} · {label}</p>
+                      <p className="text-xs text-slate-400">{d.date}</p>
+                    </div>
+                    {!isCurrent && <span className="text-slate-300 text-lg flex-none">›</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Hero (with embedded navigation) ── */}
       <div className="relative h-56 w-full overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={day.hero}
-          alt={day.heroAlt}
+          src={getHeroForTheme(currentTheme, day.dayNum).url}
+          alt={getHeroForTheme(currentTheme, day.dayNum).alt}
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/20" />
