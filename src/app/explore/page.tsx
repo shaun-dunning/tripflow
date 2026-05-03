@@ -693,7 +693,9 @@ export default function ExplorePage() {
     setAddedToast(`Day ${dayNum}: ${place.name}`);
     setTimeout(() => {
       setAddedToast(null);
-      router.push("/");
+      // Hard reload instead of client-side nav so My Day always mounts fresh
+      // and reads the localStorage bridge (Next.js router cache can skip remounting)
+      window.location.href = "/";
     }, 1500);
   }
 
