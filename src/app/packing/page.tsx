@@ -165,6 +165,21 @@ export default function PackingPage() {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }
 
+  function toggleCategory(cat: PackCategory) {
+    const allIds = cat.items.map((i) => i.id);
+    const allChecked = allIds.every((id) => checked.has(id));
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (allChecked) {
+        allIds.forEach((id) => next.delete(id));
+      } else {
+        allIds.forEach((id) => next.add(id));
+      }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  }
+
   return (
     <div className="flex flex-col bg-slate-50 min-h-screen">
 
@@ -216,6 +231,38 @@ export default function PackingPage() {
         )}
       </div>
 
+      {/* ── Don't Forget Banner ── */}
+      {(() => {
+        const urgentUnpacked = CATEGORIES.flatMap((c) => c.items).filter((i) => i.urgent && !checked.has(i.id));
+        if (urgentUnpacked.length === 0) return null;
+        return (
+          <div className="mx-4 mt-4 bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden flex-none">
+            <div className="flex items-center gap-2.5 px-4 pt-3.5 pb-3 border-b border-amber-100">
+              <span className="text-base">⚠️</span>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-amber-800">Don't Forget</p>
+                <p className="text-[10px] text-amber-600 mt-0.5">
+                  {urgentUnpacked.length} must-pack item{urgentUnpacked.length !== 1 ? "s" : ""} still unpacked
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col divide-y divide-amber-100/70">
+              {urgentUnpacked.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => toggle(item.id)}
+                  className="flex items-center gap-3 px-4 py-3 text-left active:bg-amber-100 transition-colors"
+                >
+                  <div className="w-5 h-5 rounded-full border-2 border-amber-400 flex items-center justify-center flex-none" />
+                  <p className="flex-1 text-sm font-semibold text-amber-900 leading-snug">{item.label}</p>
+                  <span className="text-[10px] font-bold text-amber-400 flex-none">Pack it ›</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Categories ── */}
       <div className="flex flex-col gap-4 px-4 pt-4 pb-10">
         {CATEGORIES.map((cat) => {
@@ -232,15 +279,27 @@ export default function PackingPage() {
                     <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">{cat.context}</p>
                   )}
                 </div>
-                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full flex-none ${
-                  catDone
-                    ? "bg-emerald-100 text-emerald-700"
-                    : catChecked > 0
-                    ? "bg-sky-50 text-sky-700"
-                    : "bg-slate-100 text-slate-500"
-                }`}>
-                  {catChecked}/{cat.items.length}
-                </span>
+                <div className="flex items-center gap-2 flex-none">
+                  <button
+                    onClick={() => toggleCategory(cat)}
+                    className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+                      catDone
+                        ? "bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                        : "bg-slate-900 text-white hover:bg-slate-700"
+                    }`}
+                  >
+                    {catDone ? "Unpack" : "Pack all"}
+                  </button>
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    catDone
+                      ? "bg-emerald-100 text-emerald-700"
+                      : catChecked > 0
+                      ? "bg-sky-50 text-sky-700"
+                      : "bg-slate-100 text-slate-500"
+                  }`}>
+                    {catChecked}/{cat.items.length}
+                  </span>
+                </div>
               </div>
 
               {/* Items */}

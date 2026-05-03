@@ -12,6 +12,7 @@ type Place = {
   id: number;
   name: string;
   category: string;
+  neighborhood: string;
   tags: string[];
   distance: string;
   drive: string;
@@ -32,7 +33,8 @@ type Place = {
 
 const PLACES: Place[] = [
   {
-    id: 1, name: "Kapalua Beach", category: "Beach", tags: ["beach", "activity", "kids"],
+    id: 1, name: "Kapalua Beach", category: "Beach", neighborhood: "Ka'anapali",
+    tags: ["beach", "activity", "kids", "free"],
     distance: "2.1 mi", drive: "8 min", price: "$", kidFriendly: true, rating: 4.9,
     photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=300&fit=crop&q=80",
     photoAlt: "Kapalua Beach Maui",
@@ -43,7 +45,8 @@ const PLACES: Place[] = [
     proTip: "Arrive before 9am. Parking fills fast and the calm morning water is stunning.",
   },
   {
-    id: 2, name: "Monkeypod Kitchen", category: "Food", tags: ["food", "lunch", "dinner", "kids"],
+    id: 2, name: "Monkeypod Kitchen", category: "Food", neighborhood: "Wailea",
+    tags: ["food", "lunch", "dinner", "kids"],
     distance: "0.8 mi", drive: "4 min", price: "$$", kidFriendly: true, rating: 4.7,
     photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
     photoAlt: "Restaurant interior",
@@ -54,7 +57,8 @@ const PLACES: Place[] = [
     proTip: "Walk-ins only — arrive right at opening (11am) or plan for a 30–45 min wait.",
   },
   {
-    id: 3, name: "Maui Ocean Center", category: "Activity", tags: ["activity", "kids", "rainy"],
+    id: 3, name: "Maui Ocean Center", category: "Activity", neighborhood: "Kihei",
+    tags: ["activity", "kids", "rainy"],
     distance: "3.4 mi", drive: "12 min", price: "$$", kidFriendly: true, rating: 4.6,
     photo: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=300&fit=crop&q=80",
     photoAlt: "Ocean aquarium",
@@ -65,7 +69,8 @@ const PLACES: Place[] = [
     proTip: "Book tickets online to skip the line. Plan 2–3 hours — there's more to see than you'd expect.",
   },
   {
-    id: 4, name: "Ululani's Hawaiian Shave Ice", category: "Food", tags: ["food", "snack", "kids"],
+    id: 4, name: "Ululani's Hawaiian Shave Ice", category: "Food", neighborhood: "Lahaina",
+    tags: ["food", "snack", "kids"],
     distance: "1.2 mi", drive: "5 min", price: "$", kidFriendly: true, rating: 4.8,
     photo: "https://images.unsplash.com/photo-1488900128323-21503983a07e?w=600&h=300&fit=crop&q=80",
     photoAlt: "Colorful shave ice",
@@ -76,7 +81,8 @@ const PLACES: Place[] = [
     proTip: "The Lahaina location has shorter lines than Kihei. Add azuki beans for an authentic local touch.",
   },
   {
-    id: 5, name: "Andaz Maui Spa", category: "Spa", tags: ["spa", "adults"],
+    id: 5, name: "Andaz Maui Spa", category: "Spa", neighborhood: "Wailea",
+    tags: ["spa", "adults"],
     distance: "0.3 mi", drive: "2 min", price: "$$$", kidFriendly: false, rating: 4.8,
     photo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600&h=300&fit=crop&q=80",
     photoAlt: "Luxury spa",
@@ -87,7 +93,8 @@ const PLACES: Place[] = [
     proTip: "Book 2+ weeks ahead for morning slots — they go fast. Ask for the lānai room.",
   },
   {
-    id: 6, name: "Surfing Goat Dairy", category: "Activity", tags: ["activity", "kids", "unique"],
+    id: 6, name: "Surfing Goat Dairy", category: "Activity", neighborhood: "Upcountry",
+    tags: ["activity", "kids", "unique"],
     distance: "8.2 mi", drive: "22 min", price: "$", kidFriendly: true, rating: 4.5,
     photo: "https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=600&h=300&fit=crop&q=80",
     photoAlt: "Goat farm",
@@ -98,7 +105,8 @@ const PLACES: Place[] = [
     proTip: "The Grand Dairy Tour includes cheese tasting — worth the upgrade. Book ahead on weekends.",
   },
   {
-    id: 7, name: "Down the Hatch", category: "Food", tags: ["food", "drinks", "adults", "lunch"],
+    id: 7, name: "Down the Hatch", category: "Food", neighborhood: "Lahaina",
+    tags: ["food", "drinks", "adults", "lunch"],
     distance: "4.1 mi", drive: "14 min", price: "$$", kidFriendly: true, rating: 4.4,
     photo: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&h=300&fit=crop&q=80",
     photoAlt: "Tropical cocktails",
@@ -109,7 +117,8 @@ const PLACES: Place[] = [
     proTip: "Grab a waterfront table by arriving 15 min before happy hour. They fill up instantly.",
   },
   {
-    id: 8, name: "Wailea Beach Path", category: "Activity", tags: ["activity", "kids", "free", "morning"],
+    id: 8, name: "Wailea Beach Path", category: "Activity", neighborhood: "Wailea",
+    tags: ["activity", "kids", "free", "morning"],
     distance: "0.1 mi", drive: "Walk", price: "$", kidFriendly: true, rating: 4.7,
     photo: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=600&h=300&fit=crop&q=80",
     photoAlt: "Coastal path",
@@ -119,6 +128,270 @@ const PLACES: Place[] = [
     reviewQuote: "Best free thing on Maui, full stop. Walk it early morning with a coffee — you'll have it nearly to yourself.",
     proTip: "Walk south to north for the best morning light. Ends near a great breakfast spot.",
   },
+  {
+    id: 9, name: "Mama's Fish House", category: "Food", neighborhood: "North Shore",
+    tags: ["food", "dinner", "adults", "seafood"],
+    distance: "14.2 mi", drive: "24 min", price: "$$$", kidFriendly: true, rating: 4.9,
+    photo: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Elegant seaside seafood restaurant",
+    blurb: "Legendary farm-to-ocean restaurant. Best seafood on Maui, possibly in Hawaii. Reservations essential.",
+    address: "Paia, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 8720, verifiedRating: 4.9,
+    reviewQuote: "We've been to Michelin-star restaurants around the world. This was better. The catch of the day with Maui onion sauce is life-changing.",
+    proTip: "Book 60+ days ahead — they often sell out. Request a table by the ocean. Lunch is slightly easier to book than dinner.",
+  },
+  {
+    id: 10, name: "Kapalua Coastal Trail", category: "Activity", neighborhood: "Ka'anapali",
+    tags: ["activity", "free", "morning", "kids"],
+    distance: "2.3 mi", drive: "9 min", price: "$", kidFriendly: true, rating: 4.8,
+    photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Scenic coastal walking trail",
+    blurb: "1.76-mile oceanfront trail connecting Kapalua to D.T. Fleming Beach. Tide pools, sea turtles, and stunning views.",
+    address: "Kapalua, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 2910, verifiedRating: 4.8,
+    reviewQuote: "Saw three sea turtles swimming right below the trail. Completely free, totally magical. Better than any paid tour.",
+    proTip: "Walk it early (6–8am) for the best chance of seeing turtles and nearly zero crowds. Bring water.",
+  },
+  {
+    id: 11, name: "Maui Brewing Co.", category: "Food", neighborhood: "Kihei",
+    tags: ["food", "drinks", "dinner", "adults"],
+    distance: "8.3 mi", drive: "18 min", price: "$$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Craft brewery with mountain views",
+    blurb: "Award-winning local craft brewery. Great food, great beer, and open-air seating with mountain views.",
+    address: "Kihei, Maui",
+    reviewSource: "Yelp", reviewCount: 1540, verifiedRating: 4.5,
+    reviewQuote: "The Bikini Blonde is crisp and perfect. Food is legitimately great — not just 'good for a brewery.' Kids love it too.",
+    proTip: "The Kihei flagship location has more space and better views than the Lahaina spot. Try the Coconut Hiwa Porter.",
+  },
+  {
+    id: 12, name: "Paia Town", category: "Activity", neighborhood: "North Shore",
+    tags: ["activity", "shopping", "unique", "morning"],
+    distance: "12.4 mi", drive: "22 min", price: "$", kidFriendly: true, rating: 4.6,
+    photo: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Colorful boutique shopping street",
+    blurb: "Funky North Shore surf town with art galleries, boutiques, and great food. Natural start of the Road to Hana.",
+    address: "Paia, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 4150, verifiedRating: 4.6,
+    reviewQuote: "The most charming little town. Every shop has something unique — not the tourist junk you find elsewhere. Go early.",
+    proTip: "Park on Baldwin Ave and explore on foot. Paia Fish Market has a line but moves fast — absolutely worth it.",
+  },
+  {
+    id: 13, name: "Makawao Town", category: "Activity", neighborhood: "Upcountry",
+    tags: ["activity", "shopping", "unique"],
+    distance: "9.1 mi", drive: "20 min", price: "$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Upcountry town with lush scenery",
+    blurb: "Cowboy-meets-artsy upcountry town. World-class art galleries, unique boutiques, and old-school bakeries.",
+    address: "Makawao, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 1820, verifiedRating: 4.5,
+    reviewQuote: "Totally unlike anything else on Maui. The art is world-class, the town is charming, and the drive up is beautiful.",
+    proTip: "Komoda Store & Bakery sells out of their famous cream puffs by 10am — get there early or miss them.",
+  },
+  {
+    id: 14, name: "Waiʻānapanapa Black Sand Beach", category: "Beach", neighborhood: "Hana",
+    tags: ["beach", "activity", "unique", "hana"],
+    distance: "49.5 mi", drive: "95 min", price: "$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Dramatic black sand beach with volcanic rock",
+    blurb: "Iconic black sand beach in Hana State Park. Dramatic lava rock, blowholes, sea caves, and turquoise water.",
+    address: "Hana, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 6340, verifiedRating: 4.7,
+    reviewQuote: "The most otherworldly beach I've ever seen. Black sand, sea caves, blowholes, turquoise water. Reserve parking ahead — it's worth it.",
+    proTip: "State park reservation required — book at parks.hawaii.gov weeks ahead. Best visited mid-morning. Don't swim, current is strong.",
+  },
+  {
+    id: 15, name: "Black Rock Cliff Dive Ceremony", category: "Activity", neighborhood: "Ka'anapali",
+    tags: ["activity", "free", "evening", "kids"],
+    distance: "0.1 mi", drive: "Walk", price: "$", kidFriendly: true, rating: 4.8,
+    photo: "https://images.unsplash.com/photo-1566895291281-ea63efd4bdab?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Kaanapali beach at golden hour sunset",
+    blurb: "Nightly torch-lighting and cliff dive ceremony at Black Rock (Pu'u Keka'a), right at your hotel beach.",
+    address: "Ka'anapali, Maui",
+    reviewSource: "Google", reviewCount: 5120, verifiedRating: 4.8,
+    reviewQuote: "Walked out at 6pm and watched the cliff dive ceremony as the sun set behind the ocean. Completely free, absolutely magical.",
+    proTip: "Ceremony is at dusk — roughly 6–6:30pm. Get drinks from Whalers Village and watch from the sand in front of the Sheraton.",
+  },
+  {
+    id: 16, name: "Ho'okipa Beach Park", category: "Beach", neighborhood: "North Shore",
+    tags: ["beach", "activity", "free", "morning", "unique"],
+    distance: "13.4 mi", drive: "22 min", price: "$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Sea turtles resting on beach",
+    blurb: "World-famous windsurfing beach and sea turtle sanctuary. Watch professional windsurfers from the cliff overlook — sea turtles nap on the sand below.",
+    address: "Paia, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 4210, verifiedRating: 4.8,
+    reviewQuote: "Seven sea turtles resting on the beach at once. The cliff overlook view is absolutely stunning — and it's all completely free.",
+    proTip: "Visit in the morning when turtles are most active. Do NOT approach them — stay 10 feet back. Combine with Paia Town nearby.",
+  },
+  {
+    id: 17, name: "Paia Fish Market", category: "Food", neighborhood: "North Shore",
+    tags: ["food", "lunch", "seafood"],
+    distance: "12.8 mi", drive: "22 min", price: "$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Fish tacos on paper tray",
+    blurb: "No-frills local institution. Best fish tacos on the island — paper plates, open windows, lines out the door for good reason.",
+    address: "Paia, Maui",
+    reviewSource: "Yelp", reviewCount: 3890, verifiedRating: 4.6,
+    reviewQuote: "Stood in line for 20 minutes and would do it again. Best fish tacos I've ever had. The mahi mahi plate is legendary.",
+    proTip: "Order the fish taco combo and a passionfruit lemonade. Line moves fast. Cash is quickest but they take card.",
+  },
+  {
+    id: 18, name: "Haliimaile General Store", category: "Food", neighborhood: "Upcountry",
+    tags: ["food", "dinner", "adults", "unique"],
+    distance: "9.5 mi", drive: "22 min", price: "$$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Upscale restaurant dining room",
+    blurb: "James Beard-recognized chef Beverly Gannon's legendary upcountry restaurant. Eclectic Hawaii-influenced cuisine in a converted 1920s plantation store.",
+    address: "Haliimaile, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 2670, verifiedRating: 4.8,
+    reviewQuote: "Drove 30 minutes upcountry on a whim and had the best meal of our trip. The pineapple upside-down cake at the end made us cry.",
+    proTip: "Reservations strongly recommended. Don't skip the Szechuan salmon appetizer — it's on every best-of-Maui list for a reason.",
+  },
+  {
+    id: 19, name: "Kapalua Ziplines", category: "Activity", neighborhood: "Ka'anapali",
+    tags: ["activity", "adventure", "kids"],
+    distance: "3.1 mi", drive: "10 min", price: "$$", kidFriendly: true, rating: 4.6,
+    photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Zipline over tropical forest canopy",
+    blurb: "Eight lines soaring over the West Maui pineapple highlands. Views all the way to Molokai. Safe for kids 60+ lbs.",
+    address: "Kapalua, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 1840, verifiedRating: 4.6,
+    reviewQuote: "The guides were incredible and the scenery is breathtaking. Kids were 8 and 10 — both said it was the highlight of the whole trip.",
+    proTip: "Book the Plantation Course tour for the longest lines. Morning slots have better visibility before afternoon clouds roll in.",
+  },
+  {
+    id: 20, name: "Ali'i Kula Lavender Farm", category: "Activity", neighborhood: "Upcountry",
+    tags: ["activity", "unique", "morning"],
+    distance: "9.8 mi", drive: "28 min", price: "$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Purple lavender fields on hillside",
+    blurb: "Stunning 13-acre lavender farm at 4,000 feet with panoramic West Maui views. Scented walking paths, lavender scones, and total serenity.",
+    address: "Kula, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 2320, verifiedRating: 4.5,
+    reviewQuote: "We almost skipped it and it ended up being our favorite hidden gem. The views, the lavender scones, the total quiet. Perfect.",
+    proTip: "Combine with Makawao Town (15 min away). Bring a jacket — it's 10-15 degrees cooler than the beach. Buy the lavender shortbread.",
+  },
+  {
+    id: 21, name: "Makena Big Beach", category: "Beach", neighborhood: "Kihei",
+    tags: ["beach", "free", "unique"],
+    distance: "11.2 mi", drive: "24 min", price: "$", kidFriendly: true, rating: 4.8,
+    photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Pristine wide golden sand beach",
+    blurb: "One of Maui's most spectacular undeveloped beaches — half a mile of wide golden sand with no hotels, no vendors. Raw and stunning.",
+    address: "Makena, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 5680, verifiedRating: 4.8,
+    reviewQuote: "This is what you imagine when you picture Maui. Half-mile of perfect golden sand, crystal water, and no crowds if you arrive early.",
+    proTip: "Arrive by 8am — limited parking fills by 9:30. Waves can be big; check surf conditions. Little Beach (clothing optional) is around the corner.",
+  },
+  {
+    id: 22, name: "Merriman's Maui", category: "Food", neighborhood: "Ka'anapali",
+    tags: ["food", "dinner", "adults", "seafood"],
+    distance: "0.8 mi", drive: "4 min", price: "$$$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Elegant beachfront dining at sunset",
+    blurb: "Peter Merriman's celebrated farm-to-table restaurant at Whalers Village. Unmatched sunset ocean views and exceptional locally-sourced seafood.",
+    address: "Ka'anapali, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 3140, verifiedRating: 4.7,
+    reviewQuote: "Sunset table right on the water. The Kona kampachi crudo and Molokai prawns were the best bites of our entire Hawaii trip.",
+    proTip: "Request sunset seating when you book — and book 2-3 weeks ahead. Happy hour at the bar (3-5pm) is excellent value.",
+  },
+  {
+    id: 23, name: "Whalers Village", category: "Activity", neighborhood: "Ka'anapali",
+    tags: ["activity", "shopping", "kids", "free", "evening"],
+    distance: "0.5 mi", drive: "3 min", price: "$", kidFriendly: true, rating: 4.4,
+    photo: "https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Beachfront shopping center at sunset",
+    blurb: "Beachfront open-air shopping center right on Ka'anapali Beach. Free hula shows, whale museum, restaurants, and sunset views.",
+    address: "Ka'anapali, Maui",
+    reviewSource: "Google", reviewCount: 6240, verifiedRating: 4.4,
+    reviewQuote: "Free hula shows every evening were a highlight for our kids. Great place to browse, grab ice cream, and watch the sunset.",
+    proTip: "Free hula shows Monday, Wednesday, Friday and Saturday evenings around 6pm. The whaling museum inside is free and genuinely interesting.",
+  },
+  {
+    id: 24, name: "Garden of Eden Arboretum", category: "Activity", neighborhood: "Hana",
+    tags: ["activity", "hana", "unique", "kids"],
+    distance: "37.4 mi", drive: "75 min", price: "$", kidFriendly: true, rating: 4.6,
+    photo: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Lush tropical rainforest garden",
+    blurb: "26-acre tropical botanical garden on the Road to Hana. The famous Jurassic Park helicopter shot was filmed here. Waterfalls, peacocks, and ocean overlooks.",
+    address: "Haiku, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 2890, verifiedRating: 4.6,
+    reviewQuote: "We've done the Road to Hana twice. This stop is non-negotiable. The view Spielberg chose for Jurassic Park is as stunning in person.",
+    proTip: "Best Road to Hana stop between mile markers 10-12. Self-guided tour takes 45-60 min. The peacocks roam free and love kids.",
+  },
+  {
+    id: 25, name: "Star Noodle", category: "Food", neighborhood: "Lahaina",
+    tags: ["food", "dinner", "lunch", "adults"],
+    distance: "4.8 mi", drive: "14 min", price: "$$", kidFriendly: true, rating: 4.6,
+    photo: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Asian noodle dishes on wood table",
+    blurb: "Lahaina's beloved Asian fusion noodle bar. The garlic noodles and Happy Hour soup dumplings are legendary among repeat visitors.",
+    address: "Lahaina, Maui",
+    reviewSource: "Yelp", reviewCount: 2740, verifiedRating: 4.6,
+    reviewQuote: "Those garlic noodles have haunted me for three years. We drove back twice. Not a typo. Twice. In the same week.",
+    proTip: "The Happy Hour (3-5pm) has the best value on Maui — soup dumplings and cocktails at half price. Don't miss the Agedashi tofu.",
+  },
+  {
+    id: 26, name: "Kihei Caffe", category: "Food", neighborhood: "Kihei",
+    tags: ["food", "breakfast", "morning"],
+    distance: "9.1 mi", drive: "19 min", price: "$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Local breakfast plates",
+    blurb: "Cash-only Kihei institution. Massive portions, local prices, BYOB mimosas. The lines mean it's worth it.",
+    address: "Kihei, Maui",
+    reviewSource: "Yelp", reviewCount: 3180, verifiedRating: 4.5,
+    reviewQuote: "Bring cash and bring a bottle of prosecco. The loco moco is the size of your head and costs $12. This is the real Maui.",
+    proTip: "Cash only. BYOB means bring your own champagne for mimosas — they provide OJ and glasses. Line is outside but moves in 20-30 min.",
+  },
+  {
+    id: 27, name: "Napili Bay", category: "Beach", neighborhood: "Ka'anapali",
+    tags: ["beach", "kids", "free", "morning"],
+    distance: "3.8 mi", drive: "11 min", price: "$", kidFriendly: true, rating: 4.8,
+    photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Calm crescent bay with sea turtles",
+    blurb: "Crescent-shaped cove just north of Kapalua. Sea turtles come in daily, water stays remarkably calm, and the snorkeling is world-class.",
+    address: "Napili, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 3920, verifiedRating: 4.8,
+    reviewQuote: "Seven sea turtles came right up to us while snorkeling. Our kids will never forget it. The water is like glass even when it's windy.",
+    proTip: "Snorkel along the rocky edge on the right (north) side — that's where the turtles feed. Parking is free at Napili Kai Resort lot.",
+  },
+  {
+    id: 28, name: "Three's Bar & Grill", category: "Food", neighborhood: "Kihei",
+    tags: ["food", "dinner", "drinks", "adults"],
+    distance: "9.3 mi", drive: "20 min", price: "$$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Casual restaurant with tropical drinks",
+    blurb: "Beloved South Maui neighborhood restaurant. Creative global small plates, killer cocktails, and a warm local vibe.",
+    address: "Kihei, Maui",
+    reviewSource: "Yelp", reviewCount: 2120, verifiedRating: 4.5,
+    reviewQuote: "This is where locals take visiting friends when they want to impress them. Creative, delicious, not trying too hard. Genuinely great.",
+    proTip: "The tuna poke tacos and short rib sliders are the move. Happy hour runs until 6pm — the crafted cocktails are excellent.",
+  },
+  {
+    id: 29, name: "Maui Stand Up Paddle", category: "Activity", neighborhood: "Ka'anapali",
+    tags: ["activity", "morning", "adults", "adventure"],
+    distance: "0.3 mi", drive: "Walk", price: "$$", kidFriendly: false, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Stand up paddleboarding at sunrise",
+    blurb: "Sunrise SUP tour along the Ka'anapali coast. Expert guides take you past reefs where green sea turtles surface alongside your board.",
+    address: "Ka'anapali, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 1240, verifiedRating: 4.7,
+    reviewQuote: "I've never paddleboarded before. An hour later I'm gliding through glassy water watching a sea turtle surface three feet away. Peak Hawaii.",
+    proTip: "Book the 7am tour for glassy water and guaranteed turtle sightings. All experience levels welcome — they'll have you confident in 10 minutes.",
+  },
+  {
+    id: 30, name: "Charley's Restaurant & Saloon", category: "Food", neighborhood: "North Shore",
+    tags: ["food", "breakfast", "dinner", "drinks", "adults"],
+    distance: "12.9 mi", drive: "23 min", price: "$", kidFriendly: true, rating: 4.4,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Funky saloon-style restaurant",
+    blurb: "Paia institution since 1969. Famous for their enormous breakfasts, random celebrity sightings, and live music nights that feel like Old Hawaii.",
+    address: "Paia, Maui",
+    reviewSource: "Yelp", reviewCount: 1870, verifiedRating: 4.4,
+    reviewQuote: "Willie Nelson used to play here. That alone earns five stars. The breakfast burritos are massive and perfect. Classic old Maui.",
+    proTip: "Go for breakfast — massive portions at local prices. Check their Facebook for live music nights. Cash is faster but they take cards.",
+  },
 ];
 
 const CATEGORIES = [
@@ -127,6 +400,91 @@ const CATEGORIES = [
   { label: "Food",     icon: "🍜", key: "Food"     },
   { label: "Activity", icon: "🪁", key: "Activity"  },
   { label: "Spa",      icon: "🌺", key: "Spa"       },
+];
+
+const NEIGHBORHOODS = [
+  "All Areas",
+  "Ka'anapali",
+  "Lahaina",
+  "Wailea",
+  "Kihei",
+  "North Shore",
+  "Upcountry",
+  "Hana",
+];
+
+type Collection = {
+  id: string;
+  title: string;
+  emoji: string;
+  subtitle: string;
+  photo: string;
+  accentFrom: string;
+  accentTo: string;
+  placeIds: number[];
+};
+
+const BEST_OF: Collection[] = [
+  {
+    id: "families",
+    title: "Best for Families",
+    emoji: "👨‍👩‍👧",
+    subtitle: "Kid-approved picks",
+    photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&h=240&fit=crop&q=80",
+    accentFrom: "#0ea5e9",
+    accentTo: "#0369a1",
+    placeIds: [1, 3, 4, 6, 27, 23],
+  },
+  {
+    id: "locals",
+    title: "Local Favorites",
+    emoji: "🌺",
+    subtitle: "Where residents actually eat",
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=240&fit=crop&q=80",
+    accentFrom: "#16a34a",
+    accentTo: "#14532d",
+    placeIds: [17, 26, 25, 28, 30, 12],
+  },
+  {
+    id: "gems",
+    title: "Hidden Gems",
+    emoji: "💎",
+    subtitle: "Less-crowded, off the path",
+    photo: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=240&fit=crop&q=80",
+    accentFrom: "#7c3aed",
+    accentTo: "#4c1d95",
+    placeIds: [18, 20, 24, 16, 27, 13],
+  },
+  {
+    id: "splurge",
+    title: "Worth the Splurge",
+    emoji: "✨",
+    subtitle: "Premium, no regrets",
+    photo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&h=240&fit=crop&q=80",
+    accentFrom: "#b45309",
+    accentTo: "#78350f",
+    placeIds: [5, 9, 22, 18, 7],
+  },
+  {
+    id: "sunset",
+    title: "Best at Sunset",
+    emoji: "🌅",
+    subtitle: "Golden hour is everything",
+    photo: "https://images.unsplash.com/photo-1566895291281-ea63efd4bdab?w=400&h=240&fit=crop&q=80",
+    accentFrom: "#dc2626",
+    accentTo: "#9a3412",
+    placeIds: [22, 7, 15, 8, 23],
+  },
+  {
+    id: "morning",
+    title: "Best Morning Starts",
+    emoji: "☀️",
+    subtitle: "Early birds win in Maui",
+    photo: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=400&h=240&fit=crop&q=80",
+    accentFrom: "#f59e0b",
+    accentTo: "#b45309",
+    placeIds: [8, 10, 29, 16, 26, 21],
+  },
 ];
 
 const TRIP_DAYS_INFO = [
@@ -155,7 +513,12 @@ function driveMinutes(drive: string): number {
   return parseInt(drive);
 }
 
-const WHAT_NOW_IDS = [4, 8, 1];
+function getWhatNowIds(hour: number): number[] {
+  if (hour < 9)  return [8, 10, 26, 29];   // early morning: walks + breakfast + SUP
+  if (hour < 13) return [1, 27, 17, 19];   // late morning: beach + activities
+  if (hour < 17) return [5, 21, 6, 20];    // afternoon: spa + beaches + upcountry
+  return [9, 15, 22, 7];                   // evening: dinner + sunset spots
+}
 
 const AI_QUICK_PROMPTS = [
   "Best snorkeling spot for kids?",
@@ -200,6 +563,10 @@ export default function ExplorePage() {
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Neighborhood + Best Of
+  const [activeNeighborhood, setActiveNeighborhood] = useState("All Areas");
+  const [activeBestOf, setActiveBestOf] = useState<string | null>(null);
 
   // AI assistant
   const [showAI, setShowAI] = useState(false);
@@ -331,6 +698,8 @@ export default function ExplorePage() {
 
   const scenario = activeScenario !== null ? SCENARIOS[activeScenario] : null;
 
+  const bestOfCollection = activeBestOf ? BEST_OF.find((c) => c.id === activeBestOf) : null;
+
   const filtered = PLACES.filter((p) => {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -340,14 +709,17 @@ export default function ExplorePage() {
         p.reviewQuote.toLowerCase().includes(q) ||
         p.proTip.toLowerCase().includes(q) ||
         p.address.toLowerCase().includes(q) ||
+        p.neighborhood.toLowerCase().includes(q) ||
         p.tags.some((t) => t.includes(q)) ||
         p.category.toLowerCase().includes(q);
       if (!hit) return false;
     }
     if (activeFilter !== "All" && p.category !== activeFilter) return false;
+    if (activeNeighborhood !== "All Areas" && p.neighborhood !== activeNeighborhood) return false;
     if (kidsOnly && !p.kidFriendly) return false;
     if (driveMinutes(p.drive) > maxDrive) return false;
     if (scenario && !scenario.tags.some((t) => p.tags.includes(t))) return false;
+    if (bestOfCollection && !bestOfCollection.placeIds.includes(p.id)) return false;
     return true;
   });
 
@@ -356,7 +728,7 @@ export default function ExplorePage() {
     .sort((a, b) => b.verifiedRating * Math.log(b.reviewCount) - a.verifiedRating * Math.log(a.reviewCount))
     .slice(0, 3);
 
-  const activeFilterCount = (kidsOnly ? 1 : 0) + (maxDrive < 30 ? 1 : 0) + (activeScenario !== null ? 1 : 0);
+  const activeFilterCount = (kidsOnly ? 1 : 0) + (maxDrive < 30 ? 1 : 0) + (activeScenario !== null ? 1 : 0) + (activeNeighborhood !== "All Areas" ? 1 : 0) + (activeBestOf ? 1 : 0);
 
   return (
     <div className="flex flex-col bg-white relative">
@@ -706,7 +1078,7 @@ export default function ExplorePage() {
 
             {activeFilterCount > 0 && (
               <button
-                onClick={() => { setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); }}
+                onClick={() => { setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); setActiveNeighborhood("All Areas"); setActiveBestOf(null); }}
                 className="text-xs font-semibold text-rose-500 self-start"
               >
                 Clear all filters
@@ -745,7 +1117,84 @@ export default function ExplorePage() {
         </div>
       </div>
 
+      {/* ── Neighborhood chips ── */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-50 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex-none">Area:</span>
+        {NEIGHBORHOODS.map((n) => {
+          const active = activeNeighborhood === n;
+          return (
+            <button
+              key={n}
+              onClick={() => setActiveNeighborhood(n)}
+              className={`flex-none text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all whitespace-nowrap ${
+                active
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
+              }`}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
+
+        {/* ══════════════════════════════════════
+            BEST OF COLLECTIONS
+        ══════════════════════════════════════ */}
+        {!searchQuery && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">Best Of Maui</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Curated from TripAdvisor, Yelp & Google</p>
+              </div>
+              {activeBestOf && (
+                <button
+                  onClick={() => setActiveBestOf(null)}
+                  className="text-[11px] font-semibold text-rose-500"
+                >
+                  Clear ✕
+                </button>
+              )}
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+              {BEST_OF.map((col) => {
+                const isActive = activeBestOf === col.id;
+                return (
+                  <button
+                    key={col.id}
+                    onClick={() => setActiveBestOf(isActive ? null : col.id)}
+                    className={`flex-none w-44 rounded-2xl overflow-hidden text-left transition-all active:scale-[0.97] ${
+                      isActive ? "ring-2 ring-slate-900 ring-offset-1" : ""
+                    }`}
+                  >
+                    <div className="relative h-28 overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={col.photo} alt={col.title} className="w-full h-full object-cover" />
+                      <div
+                        className="absolute inset-0"
+                        style={{ background: `linear-gradient(160deg, ${col.accentFrom}cc 0%, ${col.accentTo}ee 100%)` }}
+                      />
+                      {isActive && (
+                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
+                          <span className="text-slate-900 text-[10px] font-black">✓</span>
+                        </div>
+                      )}
+                      <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
+                        <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest mb-0.5">
+                          {col.subtitle}
+                        </p>
+                        <p className="text-sm font-black text-white leading-tight">{col.emoji} {col.title}</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* ── Saved for Later ── */}
         {wishlistIds.size > 0 && (
@@ -789,58 +1238,63 @@ export default function ExplorePage() {
         )}
 
         {/* ── Traveler Picks ── */}
-        {!searchQuery && (
+        {!searchQuery && !activeBestOf && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-sm font-black text-slate-900">Traveler Picks</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Highest rated by verified visitors</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Top-ranked by verified visitors</p>
               </div>
-              <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span className="text-amber-500">★</span> Top Rated
+              <div className="flex items-center gap-1 bg-amber-50 border border-amber-100 rounded-full px-2.5 py-1">
+                <span className="text-amber-500 text-[11px]">★</span>
+                <span className="text-[10px] font-bold text-amber-700">Verified</span>
               </div>
             </div>
             <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-              {travelerPicks.map((place) => (
-                <button
-                  key={place.id}
-                  onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
-                  className="flex-none w-52 bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm text-left active:scale-[0.98] transition-transform"
-                >
-                  <div className="relative h-28 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full">
-                      <span className="text-amber-400">★</span>
-                      <span>{place.verifiedRating.toFixed(1)}</span>
-                      <span className="text-white/60 font-normal">{place.reviewSource}</span>
+              {travelerPicks.map((place, rankIdx) => {
+                const rankLabels = ["#1 Pick", "#2 Pick", "#3 Pick"];
+                const rankColors = ["bg-amber-400 text-amber-900", "bg-slate-300 text-slate-700", "bg-orange-300 text-orange-900"];
+                return (
+                  <button
+                    key={place.id}
+                    onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
+                    className="flex-none w-56 bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-md text-left active:scale-[0.97] transition-transform"
+                  >
+                    <div className="relative h-36 overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+                      {/* Rank badge */}
+                      <div className={`absolute top-2.5 left-2.5 text-[10px] font-black px-2 py-0.5 rounded-full ${rankColors[rankIdx]}`}>
+                        {rankLabels[rankIdx]}
+                      </div>
+                      {/* Rating badge */}
+                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-full">
+                        <span className="text-amber-400">★</span>
+                        <span>{place.verifiedRating.toFixed(1)}</span>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
+                        <p className="text-[10px] font-semibold text-white/60 mb-0.5">{place.neighborhood} · {place.reviewSource}</p>
+                        <p className="text-sm font-bold text-white leading-tight">{place.name}</p>
+                      </div>
                     </div>
-                    {place.kidFriendly && (
-                      <span className="absolute top-2.5 right-2.5 text-[9px] font-bold bg-emerald-500/90 text-white px-1.5 py-0.5 rounded-full">
-                        👦 Family
-                      </span>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 px-3 pb-2">
-                      <p className="text-xs font-bold text-white leading-tight truncate">{place.name}</p>
-                    </div>
-                  </div>
-                  <div className="px-3 py-2.5">
-                    <p className="text-[10px] text-slate-500 leading-snug line-clamp-2 italic">
-                      &ldquo;{place.reviewQuote.split(".")[0]}.&rdquo;
-                    </p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-[10px] text-slate-400">{place.drive} · {place.price}</span>
+                    <div className="px-3 py-2.5">
+                      <p className="text-[10px] text-slate-500 leading-snug line-clamp-2 italic">
+                        &ldquo;{place.reviewQuote.split(".")[0]}.&rdquo;
+                      </p>
+                      <div className="flex items-center justify-between mt-2.5">
+                        <span className="text-[10px] text-slate-400">{place.drive} · {place.price} · {place.reviewCount.toLocaleString()} reviews</span>
+                      </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); setDayPickerPlace(place); }}
-                        className="text-[10px] font-bold bg-slate-900 text-white px-2.5 py-1 rounded-lg"
+                        className="mt-2 w-full text-[11px] font-bold bg-slate-900 text-white py-2 rounded-xl"
                       >
-                        + Add
+                        + Add to Trip
                       </button>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -885,7 +1339,7 @@ export default function ExplorePage() {
             <div>
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest mb-2">Best picks for right now</p>
               <div className="flex flex-col gap-3">
-                {WHAT_NOW_IDS.map((id) => {
+                {getWhatNowIds(new Date().getHours()).map((id) => {
                   const place = PLACES.find((p) => p.id === id)!;
                   return (
                     <div key={place.id} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex">
@@ -968,15 +1422,16 @@ export default function ExplorePage() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-bold text-slate-800">
               {filtered.length} {filtered.length === 1 ? "place" : "places"}
-              {searchQuery ? ` for "${searchQuery}"` : activeFilter !== "All" ? ` · ${activeFilter}` : ""}
+              {searchQuery ? ` for "${searchQuery}"` : bestOfCollection ? ` · ${bestOfCollection.emoji} ${bestOfCollection.title}` : activeFilter !== "All" ? ` · ${activeFilter}` : ""}
+              {activeNeighborhood !== "All Areas" ? ` · ${activeNeighborhood}` : ""}
               {scenario ? ` · ${scenario.label}` : ""}
             </p>
-            {(searchQuery || activeFilter !== "All" || scenario || kidsOnly || maxDrive < 30) && (
+            {(searchQuery || activeFilter !== "All" || scenario || kidsOnly || maxDrive < 30 || activeNeighborhood !== "All Areas" || activeBestOf) && (
               <button
-                onClick={() => { setSearchQuery(""); setActiveFilter("All"); setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); }}
+                onClick={() => { setSearchQuery(""); setActiveFilter("All"); setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); setActiveNeighborhood("All Areas"); setActiveBestOf(null); }}
                 className="text-xs font-semibold text-rose-500"
               >
-                Clear
+                Clear all
               </button>
             )}
           </div>

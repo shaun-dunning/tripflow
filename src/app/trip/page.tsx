@@ -340,7 +340,13 @@ export default function TripPage() {
   const [copied, setCopied] = useState(false);
 
   // ── Trips lifecycle state ───────────────────────────────────────────────────
-  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(INITIAL_UPCOMING);
+  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("tripflow-upcoming-trips") : null;
+      if (raw) return JSON.parse(raw) as UpcomingTrip[];
+    } catch { /* ignore */ }
+    return INITIAL_UPCOMING;
+  });
   const [archivedTrips, setArchivedTrips] = useState<ArchivedTrip[]>(INITIAL_ARCHIVED);
   const [showArchived, setShowArchived] = useState(false);
 
@@ -470,6 +476,11 @@ export default function TripPage() {
       copyLink();
     }
   }
+
+  // Persist upcoming trips to localStorage whenever they change
+  useEffect(() => {
+    try { localStorage.setItem("tripflow-upcoming-trips", JSON.stringify(upcomingTrips)); } catch { /* ignore */ }
+  }, [upcomingTrips]);
 
   useEffect(() => {
     async function fetchTripData() {
@@ -958,10 +969,10 @@ export default function TripPage() {
             {/* Progress bar */}
             <div className="mt-3">
               <div className="flex justify-between mb-1.5">
-                {TRIP.map((d) => (
-                  <div key={d.id} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
+                {days.map((d) => (
+                  <div key={d.id} title={d.theme} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
                     d.status === "past"    ? "bg-white border-white text-sky-700" :
-                    d.status === "today"  ? "bg-sky-400 border-white text-white ring-2 ring-white/50 scale-110" :
+                    d.status === "today"  ? "bg-sky-400 border-white text-white ring-2 ring-white/60 scale-125 shadow-md" :
                                             "bg-white/20 border-white/40 text-white/60"
                   }`}>
                     {d.status === "past" ? "✓" : d.id}
@@ -1018,7 +1029,7 @@ export default function TripPage() {
                 key={day.id}
                 onClick={() => setSelected(isExpanded ? null : day.id)}
                 className={`w-full text-left rounded-2xl overflow-hidden border shadow-sm bg-white transition-all ${
-                  day.status === "today"  ? "border-sky-400 ring-2 ring-sky-300" :
+                  day.status === "today"  ? "border-sky-400 ring-2 ring-sky-300 shadow-sky-100 shadow-lg" :
                   day.status === "past"   ? "border-slate-200" :
                                             "border-white hover:border-sky-200"
                 }`}
@@ -1106,8 +1117,10 @@ export default function TripPage() {
             <div className="flex items-center gap-2 bg-white/70 backdrop-blur-sm border border-sky-100 rounded-full px-4 py-1.5">
               <span className="text-base">✈️</span>
               <div>
-                <p className="text-xs font-bold text-slate-700">Fly home · Tue May 28</p>
-                <p className="text-[10px] text-slate-400">OGG → LAX · Departs 4:10 PM</p>
+                <p className="text-xs font-bold text-slate-700">
+                  Fly home · {trip?.endDate ? new Date(trip.endDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "Jun 11"}
+                </p>
+                <p className="text-[10px] text-slate-400">OGG → LAX · Departs 10:30 AM</p>
               </div>
             </div>
             <div className="flex-1 h-px bg-sky-200/60" />

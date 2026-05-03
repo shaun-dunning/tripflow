@@ -42,10 +42,10 @@ const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 const INVITE_CODE = "MAUI26";
 
 const QUICK_ACTIONS = [
-  { key: "plan",    label: "Today's plan",  emoji: "📋" },
-  { key: "weather", label: "Weather",       emoji: "🌤️" },
-  { key: "dinner",  label: "Dinner details", emoji: "🐟" },
-  { key: "meetup",  label: "Meeting up",    emoji: "📍" },
+  { key: "plan",    label: "Today's plan",   emoji: "📋", bg: "bg-sky-50",     border: "border-sky-200",     text: "text-sky-700"     },
+  { key: "weather", label: "Weather",        emoji: "🌤️", bg: "bg-indigo-50",  border: "border-indigo-200",  text: "text-indigo-700"  },
+  { key: "dinner",  label: "Dinner details", emoji: "🐟", bg: "bg-amber-50",   border: "border-amber-200",   text: "text-amber-700"   },
+  { key: "meetup",  label: "Meeting up",     emoji: "📍", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
 ];
 
 const AVATAR_OPTIONS = ["🧔", "👩", "👦", "👧", "👵", "👴", "🧑", "👨", "👩‍🦱", "👨‍🦳", "🧒", "👶"];
@@ -62,6 +62,24 @@ function statusLabel(status: string) {
 
 function formatTime(isoString: string) {
   return new Date(isoString).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function formatDateLabel(isoString: string): string {
+  const date = new Date(isoString);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  if (sameDay(date, now)) return "Today";
+  if (sameDay(date, yesterday)) return "Yesterday";
+  return date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
+}
+
+function isSameDay(a: string, b: string): boolean {
+  const da = new Date(a);
+  const db = new Date(b);
+  return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
 }
 
 // Unified avatar — shows photo if available, else emoji
@@ -873,16 +891,30 @@ export default function ChatPage() {
       <div className="bg-white border-b border-slate-100 px-4 pt-5 pb-3 flex-none">
 
         {/* Title row */}
-        <div className="flex items-start justify-between mb-3">
+        <div className="flex items-start justify-between mb-2.5">
           <div>
-            <h1 className="text-lg font-black text-slate-900">{tripTitle}</h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {tripDateInfo
-                ? tripDateInfo.status === "upcoming"
-                  ? `${tripDateInfo.daysUntilTrip} days away · ${travelers.length} travelers`
-                  : tripDateInfo.status === "completed"
-                  ? `Trip complete · ${travelers.length} travelers`
-                  : `Day ${tripDateInfo.currentDayNumber} of ${tripDateInfo.totalDays} · ${travelers.length} travelers`
+            <div className="flex items-center gap-2 mb-0.5">
+              <h1 className="text-lg font-black text-slate-900">{tripTitle}</h1>
+              {tripDateInfo?.status === "active" && (
+                <span className="flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse inline-block" />
+                  Live
+                </span>
+              )}
+              {tripDateInfo?.status === "upcoming" && (
+                <span className="bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                  ✈️ {tripDateInfo.daysUntilTrip}d
+                </span>
+              )}
+              {tripDateInfo?.status === "completed" && (
+                <span className="bg-slate-100 text-slate-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                  Complete
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400">
+              {tripDateInfo?.status === "active"
+                ? `Day ${tripDateInfo.currentDayNumber} of ${tripDateInfo.totalDays} · ${travelers.length} travelers`
                 : `${travelers.length} travelers`}
             </p>
           </div>
@@ -1007,10 +1039,20 @@ export default function ChatPage() {
           const showAvatar =
             !isMe &&
             (!prevMsg || prevMsg.sender_name !== msg.sender_name || prevIsMe);
+          const showDateDivider = !prevMsg || !isSameDay(prevMsg.created_at, msg.created_at);
 
           return (
+            <React.Fragment key={msg.id}>
+              {showDateDivider && (
+                <div className="flex items-center gap-3 my-2 px-1">
+                  <div className="flex-1 h-px bg-slate-100" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">
+                    {formatDateLabel(msg.created_at)}
+                  </span>
+                  <div className="flex-1 h-px bg-slate-100" />
+                </div>
+              )}
             <div
-              key={msg.id}
               className={`flex gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
             >
               {!isMe && (
@@ -1069,6 +1111,7 @@ export default function ChatPage() {
                 </p>
               </div>
             </div>
+            </React.Fragment>
           );
         })}
         <div ref={bottomRef} />
@@ -1086,9 +1129,10 @@ export default function ChatPage() {
             <button
               key={a.key}
               onClick={() => handleQuickAction(a.key)}
-              className="flex-none flex items-center gap-1.5 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full whitespace-nowrap active:bg-slate-200 transition-colors"
+              className={`flex-none flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-full whitespace-nowrap border transition-colors active:opacity-70 ${a.bg} ${a.border} ${a.text}`}
             >
-              {a.emoji} {a.label}
+              <span className="text-sm">{a.emoji}</span>
+              {a.label}
             </button>
           ))}
         </div>

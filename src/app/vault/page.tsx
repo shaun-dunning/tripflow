@@ -366,6 +366,7 @@ export default function VaultPage() {
 
   // File upload
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [vaultSearch, setVaultSearch] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadingDocId = useRef<string | null>(null);
 
@@ -518,7 +519,17 @@ export default function VaultPage() {
   }
 
   // ── Derived ────────────────────────────────────────────────────────────
-  const filtered = docs.filter((d) => activeCategory === "All" || d.category === activeCategory);
+  const searchLower = vaultSearch.toLowerCase();
+  const filtered = docs.filter((d) => {
+    const matchCat = activeCategory === "All" || d.category === activeCategory;
+    if (!searchLower) return matchCat;
+    return matchCat && (
+      d.name.toLowerCase().includes(searchLower) ||
+      d.provider.toLowerCase().includes(searchLower) ||
+      d.confirmation.toLowerCase().includes(searchLower) ||
+      (d.notes ?? "").toLowerCase().includes(searchLower)
+    );
+  });
   const grouped = CATEGORIES.slice(1).reduce<Record<string, Doc[]>>((acc, cat) => {
     const items = filtered.filter((d) => d.category === cat);
     if (items.length > 0) acc[cat] = items;
@@ -976,6 +987,23 @@ export default function VaultPage() {
         </div>
       </div>
 
+      {/* ── Search bar ── */}
+      <div className="px-4 pt-3 pb-1">
+        <div className="flex items-center gap-2 bg-slate-100 rounded-2xl px-3.5 py-2.5">
+          <span className="text-slate-400 text-sm">🔍</span>
+          <input
+            type="text"
+            placeholder="Search reservations, confirmations..."
+            value={vaultSearch}
+            onChange={(e) => setVaultSearch(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
+          />
+          {vaultSearch && (
+            <button onClick={() => setVaultSearch("")} className="text-slate-400 text-sm font-bold leading-none">✕</button>
+          )}
+        </div>
+      </div>
+
       {/* ── Quick Access strip ── */}
       {docs.length > 0 && (() => {
         const quickDocs = docs.filter((d) => d.status === "confirmed")
@@ -1156,11 +1184,18 @@ export default function VaultPage() {
         {/* Empty state */}
         {filtered.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-16 text-slate-400">
-            <span className="text-4xl">📭</span>
-            <p className="text-sm font-medium">No documents yet</p>
+            <span className="text-4xl">{vaultSearch ? "🔎" : "📭"}</span>
+            <p className="text-sm font-medium">{vaultSearch ? `No results for "${vaultSearch}"` : "No documents yet"}</p>
             <p className="text-xs text-slate-300">
-              {activeCategory === "All" ? "Add your flights, hotel, and bookings below" : `No ${activeCategory.toLowerCase()} added yet`}
+              {vaultSearch
+                ? "Try searching by name, provider, or confirmation number"
+                : activeCategory === "All" ? "Add your flights, hotel, and bookings below" : `No ${activeCategory.toLowerCase()} added yet`}
             </p>
+            {vaultSearch && (
+              <button onClick={() => setVaultSearch("")} className="text-xs font-bold text-slate-900 bg-slate-100 px-4 py-2 rounded-full mt-1">
+                Clear search
+              </button>
+            )}
           </div>
         )}
 
