@@ -474,6 +474,7 @@ export default function MyDayPage() {
   }, []);
 
   // Restore last-viewed day from localStorage so navigation doesn't reset position
+  // Also pick up any item bridged from Explore and inject it immediately
   useEffect(() => {
     const saved = localStorage.getItem("tripflow-dayIndex");
     if (saved !== null) {
@@ -482,6 +483,36 @@ export default function MyDayPage() {
         setDayIndex(idx);
         savedDayRestored.current = true;
       }
+    }
+
+    // Consume a pending item passed from the Explore tab
+    const bridgeStr = localStorage.getItem("tripflow-explore-add");
+    if (bridgeStr) {
+      localStorage.removeItem("tripflow-explore-add");
+      try {
+        const bridged = JSON.parse(bridgeStr) as {
+          dayIndex: number; id: string; title: string; emoji: string;
+          time: string; notes: string; done: boolean; reservation: boolean; fromSupabase: boolean;
+        };
+        if (bridged.dayIndex >= 0 && bridged.dayIndex < DAYS.length) {
+          setAgendas((prev) =>
+            prev.map((agenda, i) =>
+              i === bridged.dayIndex
+                ? [...agenda.filter((a) => a.title !== bridged.title), {
+                    id: bridged.id,
+                    title: bridged.title,
+                    emoji: bridged.emoji,
+                    time: bridged.time,
+                    notes: bridged.notes,
+                    done: bridged.done,
+                    reservation: bridged.reservation,
+                    fromSupabase: bridged.fromSupabase,
+                  }]
+                : agenda
+            )
+          );
+        }
+      } catch { /* ignore bad data */ }
     }
   }, []);
 
@@ -583,23 +614,39 @@ export default function MyDayPage() {
         setAgendas((prev) => {
           const updated = [...prev];
 
-          // Layer 1: replace mock days that have real agenda_items
+          // Layer 1: replace mock days that have real agenda_items from Supabase.
+          // Preserve any items added via the Explore bridge (id starts with "explore-").
           if (tripDaysResult.data) {
             tripDaysResult.data.forEach((td) => {
-              const items = byDay[td.id];
-              if (!items?.length) return;
+              const supabaseItems = byDay[td.id];
               const idx = td.day_number - 1;
               if (idx < 0 || idx >= updated.length) return;
-              updated[idx] = items.map((ai) => ({
-                id: ai.id,
-                time: ai.time,
-                title: ai.title,
-                emoji: ai.emoji,
-                done: ai.done,
-                notes: ai.subtitle ?? "",
-                reservation: ai.is_reservation,
-                fromSupabase: true,
-              }));
+
+              // Items already in state that came from the Explore bridge
+              const bridgedItems = updated[idx].filter((a) => a.id.startsWith("explore-"));
+
+              if (supabaseItems?.length) {
+                // Replace with real Supabase items, dropping any bridge duplicates by title
+                const supabaseTitles = new Set(supabaseItems.map((a) => a.title));
+                const surviving = bridgedItems.filter((b) => !supabaseTitles.has(b.title));
+                updated[idx] = [
+                  ...supabaseItems.map((ai) => ({
+                    id: ai.id,
+                    time: ai.time,
+                    title: ai.title,
+                    emoji: ai.emoji,
+                    done: ai.done,
+                    notes: ai.subtitle ?? "",
+                    reservation: ai.is_reservation,
+                    fromSupabase: true,
+                  })),
+                  ...surviving,
+                ];
+              } else if (bridgedItems.length) {
+                // No Supabase items yet but we have a bridge item — show only that,
+                // not the stale mock data
+                updated[idx] = bridgedItems;
+              }
             });
           }
 

@@ -672,8 +672,23 @@ export default function ExplorePage() {
       return;
     }
 
-    // Tell My Day which day to show when we land there
+    // Tell My Day which day to show AND pass the new item so it renders immediately
+    // (bypasses any SELECT latency or RLS issues on the fetch side)
     localStorage.setItem("tripflow-dayIndex", String(dayNum - 1));
+    localStorage.setItem("tripflow-explore-add", JSON.stringify({
+      dayIndex: dayNum - 1,
+      id: `explore-${Date.now()}`,
+      title: place.name,
+      emoji: place.category === "Beach" ? "🏖️"
+           : place.category === "Food"  ? "🍽️"
+           : place.category === "Spa"   ? "💆"
+           : "📍",
+      time: "TBD",
+      notes: `${place.drive} · ${place.address}`,
+      done: false,
+      reservation: false,
+      fromSupabase: true,
+    }));
 
     setAddedToast(`Day ${dayNum}: ${place.name}`);
     setTimeout(() => {
