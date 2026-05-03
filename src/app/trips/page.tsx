@@ -46,6 +46,8 @@ const INITIAL_TRIPS: UpcomingTrip[] = [
   },
 ];
 
+const UPCOMING_TRIPS_KEY = "tripflow-upcoming-trips";
+
 // Fallback when Supabase agenda isn't available yet
 const FALLBACK_TODAY: AgendaItem[] = [
   { emoji: "😴", title: "Nap / downtime", time: "3:00 PM" },
@@ -63,7 +65,14 @@ function getGreeting(): string {
 export default function TripsPage() {
   const router = useRouter();
   const [greeting] = useState(getGreeting);
-  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(INITIAL_TRIPS);
+  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => {
+    if (typeof window === "undefined") return INITIAL_TRIPS;
+    try {
+      const saved = localStorage.getItem(UPCOMING_TRIPS_KEY);
+      if (saved) return JSON.parse(saved) as UpcomingTrip[];
+    } catch { /* ignore parse errors */ }
+    return INITIAL_TRIPS;
+  });
 
   // ── Live trip data ──────────────────────────────────────────────────────────
   const [tripTitle, setTripTitle] = useState("Maui Family Trip");
@@ -113,6 +122,13 @@ export default function TripsPage() {
 
     loadTrip();
   }, []);
+
+  // Persist upcoming trips to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem(UPCOMING_TRIPS_KEY, JSON.stringify(upcomingTrips));
+    } catch { /* ignore storage errors */ }
+  }, [upcomingTrips]);
 
   // ── Derived display values ──────────────────────────────────────────────────
   const isUpcoming = !tripInfo || tripInfo.status === "upcoming";
