@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
 
 type Doc = {
   id: string;
@@ -343,7 +342,6 @@ function AddFields({ form, set }: { form: AddForm; set: (f: AddForm) => void }) 
 
 // ── Main component ─────────────────────────────────────────────────────────
 export default function VaultPage() {
-  const { user } = useAuth();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -378,10 +376,9 @@ export default function VaultPage() {
         .order("created_at", { ascending: true });
       if (error) { setError(error.message); setLoading(false); return; }
       if (!data || data.length === 0) {
-        const uid = (await supabase.auth.getUser()).data.user?.id;
         const { data: seeded, error: seedError } = await supabase
           .from("documents")
-          .insert(SEED_DOCS.map((d) => ({ ...d, trip_id: TRIP_ID, ...(uid ? { user_id: uid } : {}) })))
+          .insert(SEED_DOCS.map((d) => ({ ...d, trip_id: TRIP_ID })))
           .select();
         if (seedError) setError(seedError.message);
         else if (seeded) setDocs(seeded as Doc[]);
@@ -436,11 +433,7 @@ export default function VaultPage() {
         })()
       : (editFields.date ?? detailDoc.date);
 
-    const payload = {
-      ...editFields,
-      date: newDate,
-      ...(user?.id ? { user_id: user.id } : {}),
-    };
+    const payload = { ...editFields, date: newDate };
     const { error } = await supabase.from("documents").update(payload).eq("id", detailDoc.id);
     if (error) { setSaveError(error.message); setSaving(false); return; }
     const updated = { ...detailDoc, ...payload } as Doc;
@@ -498,7 +491,7 @@ export default function VaultPage() {
 
     const { data, error } = await supabase
       .from("documents")
-      .insert({ ...docPayload, trip_id: TRIP_ID, ...(user?.id ? { user_id: user.id } : {}) })
+      .insert({ ...docPayload, trip_id: TRIP_ID })
       .select()
       .single();
 
