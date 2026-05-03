@@ -967,16 +967,7 @@ export default function MyDayPage() {
           ))}
         </div>
 
-        {/* Jump to Today pill — only visible when browsing away from today */}
-        {dayIndex !== todayDayIndex && (
-          <button
-            onClick={() => { setDayIndex(todayDayIndex); setEditingTheme(false); }}
-            className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-white/20 backdrop-blur-md border border-white/30 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-full shadow-lg hover:bg-white/30 transition-all"
-          >
-            <span>⬤</span>
-            <span>Jump to Today</span>
-          </button>
-        )}
+        {/* Jump to Today removed from hero — shown below instead */}
 
         {(() => {
           // Per-day weather: use live current for today, forecast entry for other days
@@ -1131,6 +1122,19 @@ export default function MyDayPage() {
           </div>
         );
       })()}
+
+      {/* ── Jump to Today — below hero, never overlaps title ── */}
+      {dayIndex !== todayDayIndex && (
+        <div className="flex justify-center pt-2 pb-0 px-4">
+          <button
+            onClick={() => { setDayIndex(todayDayIndex); setEditingTheme(false); }}
+            className="flex items-center gap-1.5 bg-slate-900 text-white text-[11px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-slate-700 transition-colors"
+          >
+            <span className="text-[8px]">⬤</span>
+            <span>Jump to Today</span>
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 

@@ -622,32 +622,46 @@ export default function ExplorePage() {
     const tripDayId = tripDayMap[dayNum];
     setDayPickerAdding(true);
 
-    if (tripDayId) {
-      const { data: existing } = await supabase
-        .from("agenda_items")
-        .select("sort_order")
-        .eq("trip_day_id", tripDayId)
-        .order("sort_order", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      await supabase.from("agenda_items").insert({
-        trip_day_id: tripDayId,
-        title: place.name,
-        subtitle: `${place.drive} · ${place.address}`,
-        emoji: place.category === "Beach" ? "🏖️"
-             : place.category === "Food"  ? "🍽️"
-             : place.category === "Spa"   ? "💆"
-             : "📍",
-        time: "TBD",
-        done: false,
-        sort_order: (existing?.sort_order ?? 0) + 10,
-        is_reservation: false,
-      });
+    if (!tripDayId) {
+      setDayPickerAdding(false);
+      setDayPickerPlace(null);
+      setAddedToast(`Couldn't find day ${dayNum}`);
+      setTimeout(() => setAddedToast(null), 2000);
+      return;
     }
+
+    const { data: existing } = await supabase
+      .from("agenda_items")
+      .select("sort_order")
+      .eq("trip_day_id", tripDayId)
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const { error: insertError } = await supabase.from("agenda_items").insert({
+      trip_day_id: tripDayId,
+      title: place.name,
+      subtitle: `${place.drive} · ${place.address}`,
+      emoji: place.category === "Beach" ? "🏖️"
+           : place.category === "Food"  ? "🍽️"
+           : place.category === "Spa"   ? "💆"
+           : "📍",
+      time: "TBD",
+      done: false,
+      sort_order: (existing?.sort_order ?? 0) + 10,
+      is_reservation: false,
+    });
 
     setDayPickerAdding(false);
     setDayPickerPlace(null);
+
+    if (insertError) {
+      console.error("addToDay insert error:", insertError);
+      setAddedToast(`Couldn't save — check permissions`);
+      setTimeout(() => setAddedToast(null), 3000);
+      return;
+    }
+
     setAddedToast(`Day ${dayNum}: ${place.name}`);
     setTimeout(() => {
       setAddedToast(null);
