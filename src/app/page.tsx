@@ -337,6 +337,10 @@ export default function MyDayPage() {
   const [dayIdMap, setDayIdMap] = useState<Record<number, string>>({});
   const [tripInfo, setTripInfo] = useState<{ status: "upcoming" | "active" | "completed"; daysUntilTrip: number } | null>(null);
 
+  // Pre-trip readiness
+  const [packingProgress, setPackingProgress] = useState<{ packed: number; total: number }>({ packed: 0, total: 46 });
+  const [docReadiness, setDocReadiness] = useState<{ confirmed: number; total: number } | null>(null);
+
   // Vibe check
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
@@ -354,6 +358,20 @@ export default function MyDayPage() {
     return () => clearInterval(clockTimer);
   }, []);
 
+  // Load packing progress from localStorage
+  useEffect(() => {
+    const loadPacking = () => {
+      try {
+        const raw = localStorage.getItem("tripflow-packing-maui26");
+        const ids: string[] = raw ? JSON.parse(raw) : [];
+        setPackingProgress({ packed: ids.length, total: 46 });
+      } catch { /* ignore */ }
+    };
+    loadPacking();
+    window.addEventListener("focus", loadPacking);
+    return () => window.removeEventListener("focus", loadPacking);
+  }, []);
+
   // Load wishlist from localStorage (also refresh when tab gains focus)
   useEffect(() => {
     const refresh = () => setWishlist(loadWishlist());
@@ -369,12 +387,18 @@ export default function MyDayPage() {
       .catch(() => {});
 
     async function fetchData() {
-      const [tripResult, travelersResult, agendaResult, tripDaysResult] = await Promise.all([
+      const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult] = await Promise.all([
         supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
         supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
         supabase.from("agenda_items").select("*").order("sort_order", { ascending: true }),
         supabase.from("trip_days").select("id, day_number").eq("trip_id", TRIP_ID),
+        supabase.from("documents").select("status").eq("trip_id", TRIP_ID),
       ]);
+
+      if (docsResult.data?.length) {
+        const confirmed = docsResult.data.filter((d) => d.status === "confirmed").length;
+        setDocReadiness({ confirmed, total: docsResult.data.length });
+      }
 
       if (tripResult.data) {
         const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
@@ -961,36 +985,27 @@ export default function MyDayPage() {
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 
-        {/* ── Trip Countdown (pre-trip only) ── */}
+        {/* ── Trip Countdown (pre-trip only) — compact strip ── */}
         {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
-          <div className="relative rounded-2xl overflow-hidden" style={{ height: "152px" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=400&fit=crop&q=85"
-              alt="Maui beach"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-
-            {/* Top label */}
-            <div className="absolute top-3.5 left-4 right-4 flex items-center justify-between">
-              <p className="text-[10px] font-semibold text-white/80 uppercase tracking-widest">Maui, Hawaii</p>
-              <p className="text-[10px] text-white/50">Jun 5–11, 2026</p>
+          <div className="flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-3 py-2.5 shadow-sm">
+            {/* Thumbnail */}
+            <div className="relative flex-none w-11 h-11 rounded-xl overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=120&h=120&fit=crop&q=80"
+                alt="Maui"
+                className="w-full h-full object-cover"
+              />
             </div>
-
-            {/* Bottom: number + details */}
-            <div className="absolute bottom-0 left-0 right-0 px-4 pb-4 flex items-end justify-between">
-              <div className="flex items-baseline gap-2">
-                <span className="text-[48px] font-black text-white leading-none tracking-tight tabular-nums">
-                  {tripInfo.daysUntilTrip}
-                </span>
-                <span className="text-sm font-normal text-white/60 pb-0.5">days away</span>
-              </div>
-              <div className="text-right pb-0.5">
-                <p className="text-[11px] text-white/60 leading-relaxed">
-                  7 days · 4 travelers<br />Sheraton Ka&apos;anapali
-                </p>
-              </div>
+            {/* Text */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-slate-800 leading-tight">✈ Maui, Hawaii</p>
+              <p className="text-xs text-slate-400 leading-tight mt-0.5">Jun 5–11 · 4 travelers</p>
+            </div>
+            {/* Pill */}
+            <div className="flex-none flex flex-col items-center bg-sky-50 border border-sky-100 rounded-xl px-3 py-1.5">
+              <span className="text-lg font-black text-sky-600 leading-none tabular-nums">{tripInfo.daysUntilTrip}</span>
+              <span className="text-[9px] font-semibold text-sky-400 uppercase tracking-wide leading-none mt-0.5">days</span>
             </div>
           </div>
         )}
@@ -1027,19 +1042,103 @@ export default function MyDayPage() {
           );
         })()}
 
-        {/* ── Pre-trip quick actions ── */}
-        {tripInfo?.status === "upcoming" && (
-          <button
-            onClick={() => router.push("/packing")}
-            className="flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow w-full"
-          >
-            <span className="text-xl">🧳</span>
-            <div className="text-left">
-              <p className="text-sm font-bold text-slate-900">Packing List</p>
-              <p className="text-[11px] text-slate-400">Tailored to your itinerary</p>
+        {/* ── Pre-trip Smart Readiness Panel ── */}
+        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+            {/* Header */}
+            <div className="px-4 pt-4 pb-3 border-b border-slate-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Before You Go</p>
+                  <p className="text-sm font-black text-slate-900">Trip Readiness</p>
+                </div>
+                <div className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
+                  (packingProgress.packed / packingProgress.total) > 0.8 && (docReadiness?.confirmed === docReadiness?.total)
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-amber-100 text-amber-700"
+                }`}>
+                  {tripInfo.daysUntilTrip} days left
+                </div>
+              </div>
             </div>
-            <span className="text-slate-300 ml-auto">›</span>
-          </button>
+
+            {/* Readiness items */}
+            <div className="px-4 py-3 flex flex-col gap-3">
+
+              {/* Packing */}
+              <button onClick={() => router.push("/packing")} className="flex items-center gap-3 w-full text-left group">
+                <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center flex-none text-lg">🧳</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-bold text-slate-700">Packing list</p>
+                    <p className="text-[10px] font-semibold text-slate-500">
+                      {packingProgress.packed}/{packingProgress.total}
+                    </p>
+                  </div>
+                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        packingProgress.packed === packingProgress.total ? "bg-emerald-500" : "bg-sky-500"
+                      }`}
+                      style={{ width: `${Math.round((packingProgress.packed / packingProgress.total) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-slate-300 group-hover:text-slate-500 text-sm flex-none">›</span>
+              </button>
+
+              {/* Docs */}
+              {docReadiness && (
+                <button onClick={() => router.push("/vault")} className="flex items-center gap-3 w-full text-left group">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-none text-lg">📋</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs font-bold text-slate-700">Docs & reservations</p>
+                      <p className="text-[10px] font-semibold text-slate-500">
+                        {docReadiness.confirmed}/{docReadiness.total} confirmed
+                      </p>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          docReadiness.confirmed === docReadiness.total ? "bg-emerald-500" : "bg-amber-500"
+                        }`}
+                        style={{ width: `${Math.round((docReadiness.confirmed / docReadiness.total) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <span className="text-slate-300 group-hover:text-slate-500 text-sm flex-none">›</span>
+                </button>
+              )}
+
+              {/* Smart reminders based on days away */}
+              <div className="bg-slate-50 rounded-xl px-3 py-2.5 flex flex-col gap-2">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Smart reminders</p>
+                {tripInfo.daysUntilTrip <= 3 && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-base flex-none">🚨</span>
+                    <p className="text-[11px] text-slate-700 leading-snug">Check in online for AA271 — opens 24 hrs before departure</p>
+                  </div>
+                )}
+                {tripInfo.daysUntilTrip <= 7 && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-base flex-none">🗺️</span>
+                    <p className="text-[11px] text-slate-700 leading-snug">Download offline maps for Road to Hana — cell service drops along the route</p>
+                  </div>
+                )}
+                {tripInfo.daysUntilTrip <= 14 && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-base flex-none">💳</span>
+                    <p className="text-[11px] text-slate-700 leading-snug">Alert your bank and credit cards about Hawaii travel</p>
+                  </div>
+                )}
+                <div className="flex items-start gap-2">
+                  <span className="text-base flex-none">🌡️</span>
+                  <p className="text-[11px] text-slate-700 leading-snug">Forecast for Jun 5–11: 78–84°F, mix of sun and showers — typical for Maui</p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Next Up (today only) ── */}
@@ -1135,14 +1234,31 @@ export default function MyDayPage() {
         {/* ── Time Sections ── */}
         {sections.map((section) => {
           const doneCount = section.items.filter((i) => i.done).length;
+          const sectionProgress = section.items.length > 0 ? doneCount / section.items.length : 0;
+          const allDone = doneCount === section.items.length && section.items.length > 0;
           return (
             <div key={section.key}>
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-2.5 mb-3">
                 <span className="text-base">{section.emoji}</span>
-                <span className="text-sm font-bold text-slate-800">{section.label}</span>
-                <span className="text-xs text-slate-400">{section.range}</span>
-                <div className="flex-1 h-px bg-slate-100" />
-                <span className="text-xs text-slate-400">{doneCount}/{section.items.length}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-slate-800">{section.label}</span>
+                      <span className="text-[11px] text-slate-400">{section.range}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold ${allDone ? "text-emerald-600" : "text-slate-400"}`}>
+                      {allDone ? "✓ Done" : `${doneCount}/${section.items.length}`}
+                    </span>
+                  </div>
+                  {isToday && section.items.length > 0 && (
+                    <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-emerald-500" : section.key === "morning" ? "bg-amber-400" : section.key === "afternoon" ? "bg-sky-400" : "bg-indigo-400"}`}
+                        style={{ width: `${sectionProgress * 100}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex flex-col">
@@ -1267,9 +1383,9 @@ export default function MyDayPage() {
               {isEditable && (
                 <button
                   onClick={() => openAdd(section.defaultTime)}
-                  className="mt-2 w-full flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-700 py-2 px-1 transition-colors group"
+                  className="mt-2 w-full flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-600 py-2 px-2 rounded-xl hover:bg-slate-50 transition-all group"
                 >
-                  <div className="w-5 h-5 rounded-full border-2 border-current flex items-center justify-center text-xs leading-none font-bold group-hover:border-slate-700">
+                  <div className="w-5 h-5 rounded-full border-[1.5px] border-slate-300 group-hover:border-slate-500 flex items-center justify-center text-xs leading-none font-bold transition-colors">
                     +
                   </div>
                   Add to {section.label.toLowerCase()}
