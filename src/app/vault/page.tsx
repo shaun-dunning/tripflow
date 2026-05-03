@@ -636,7 +636,7 @@ export default function VaultPage() {
       {/* ════════════════════════════════════════
           DETAIL / EDIT SHEET
       ════════════════════════════════════════ */}
-      <div className={`fixed inset-0 z-50 flex flex-col justify-end max-w-md mx-auto transition-opacity duration-200 ${detailDoc ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
+      <div className={`fixed inset-0 z-[60] flex flex-col justify-end max-w-md mx-auto transition-opacity duration-200 ${detailDoc ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}>
         <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeSheet} />
         <div className={`relative bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out max-h-[90vh] flex flex-col ${detailDoc ? "translate-y-0" : "translate-y-full"}`}>
 

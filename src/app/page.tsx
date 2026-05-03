@@ -224,6 +224,25 @@ function getDayISO(dayNum: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Parse a doc's stored date string (e.g. "Jun 8 · 5:30 PM") into
+// { dayIndex: 0-based trip day, time: "5:30 PM" } so it can be
+// merged into the My Day agenda.
+function parseDocForAgenda(dateStr: string): { dayIndex: number; time: string } | null {
+  const MONTHS: Record<string, number> = {
+    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
+  };
+  const m = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
+  if (!m) return null;
+  const docDate = new Date(2026, MONTHS[m[1]], parseInt(m[2]), 12);
+  const tripStart = new Date(TRIP_START_ISO + "T12:00:00");
+  const dayIndex = Math.round((docDate.getTime() - tripStart.getTime()) / 86_400_000);
+  if (dayIndex < 0 || dayIndex > 13) return null; // outside a 2-week window
+  const tMatch = dateStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  const time = tMatch ? `${tMatch[1]}:${tMatch[2]} ${tMatch[3].toUpperCase()}` : "";
+  return { dayIndex, time };
+}
+
 function nowMinutes(): number {
   const d = new Date();
   return d.getHours() * 60 + d.getMinutes();
@@ -392,7 +411,9 @@ export default function MyDayPage() {
         supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
         supabase.from("agenda_items").select("*").order("sort_order", { ascending: true }),
         supabase.from("trip_days").select("id, day_number").eq("trip_id", TRIP_ID),
-        supabase.from("documents").select("status").eq("trip_id", TRIP_ID),
+        supabase.from("documents")
+          .select("id, category, name, emoji, date, notes, confirmation, provider, status")
+          .eq("trip_id", TRIP_ID),
       ]);
 
       if (docsResult.data?.length) {
@@ -423,31 +444,92 @@ export default function MyDayPage() {
         setDayIdMap(map);
       }
 
-      if (agendaResult.data?.length && tripDaysResult.data) {
-        const byDay: Record<string, typeof agendaResult.data> = {};
-        agendaResult.data.forEach((item) => {
+      // Build agenda from Supabase agenda_items, then overlay doc-sourced reservations
+      {
+        const byDay: Record<string, NonNullable<typeof agendaResult.data>> = {};
+        (agendaResult.data ?? []).forEach((item) => {
           if (!byDay[item.trip_day_id]) byDay[item.trip_day_id] = [];
           byDay[item.trip_day_id].push(item);
         });
 
+        // Dining / Activity docs → pseudo agenda items
+        const docItems: Array<{ dayIndex: number; item: Item }> = [];
+        (docsResult.data ?? [])
+          .filter((d) => d.category === "Dining" || d.category === "Activities")
+          .forEach((doc) => {
+            const parsed = parseDocForAgenda(doc.date ?? "");
+            if (!parsed) return;
+            const notesParts = [
+              doc.confirmation ? `Confirmation: ${doc.confirmation}` : "",
+              doc.provider ?? "",
+              doc.notes ?? "",
+            ].filter(Boolean);
+            docItems.push({
+              dayIndex: parsed.dayIndex,
+              item: {
+                id: `doc-${doc.id}`,
+                time: parsed.time,
+                title: doc.name,
+                emoji: doc.emoji ?? (doc.category === "Dining" ? "🍽️" : "🎯"),
+                done: doc.status === "completed",
+                notes: notesParts.join(" · "),
+                reservation: true,
+                fromSupabase: true,
+              },
+            });
+          });
+
         setAgendas((prev) => {
           const updated = [...prev];
-          tripDaysResult.data!.forEach((td) => {
-            const items = byDay[td.id];
-            if (!items?.length) return;
-            const idx = td.day_number - 1;
-            if (idx < 0 || idx >= updated.length) return;
-            updated[idx] = items.map((ai) => ({
-              id: ai.id,
-              time: ai.time,
-              title: ai.title,
-              emoji: ai.emoji,
-              done: ai.done,
-              notes: ai.subtitle ?? "",
-              reservation: ai.is_reservation,
-              fromSupabase: true,
-            }));
+
+          // Layer 1: replace mock days that have real agenda_items
+          if (tripDaysResult.data) {
+            tripDaysResult.data.forEach((td) => {
+              const items = byDay[td.id];
+              if (!items?.length) return;
+              const idx = td.day_number - 1;
+              if (idx < 0 || idx >= updated.length) return;
+              updated[idx] = items.map((ai) => ({
+                id: ai.id,
+                time: ai.time,
+                title: ai.title,
+                emoji: ai.emoji,
+                done: ai.done,
+                notes: ai.subtitle ?? "",
+                reservation: ai.is_reservation,
+                fromSupabase: true,
+              }));
+            });
+          }
+
+          // Layer 2: merge doc-sourced items, skipping duplicates by title
+          const toMins = (t: string) => {
+            const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+            if (!match) return 0;
+            let h = parseInt(match[1]);
+            const m = parseInt(match[2]);
+            const pm = match[3].toUpperCase() === "PM";
+            if (pm && h !== 12) h += 12;
+            if (!pm && h === 12) h = 0;
+            return h * 60 + m;
+          };
+          docItems.forEach(({ dayIndex, item }) => {
+            if (dayIndex < 0 || dayIndex >= updated.length) return;
+            const existing = updated[dayIndex];
+            const titleLC = item.title.toLowerCase();
+            const dupe = existing.some(
+              (e) =>
+                e.title.toLowerCase().includes(titleLC) ||
+                titleLC.includes(e.title.toLowerCase()),
+            );
+            if (dupe) return;
+            updated[dayIndex] = [...existing, item].sort((a, b) => {
+              if (!a.time) return 1;
+              if (!b.time) return -1;
+              return toMins(a.time) - toMins(b.time);
+            });
           });
+
           return updated;
         });
       }
