@@ -672,6 +672,9 @@ export default function ExplorePage() {
       return;
     }
 
+    // Tell My Day which day to show when we land there
+    localStorage.setItem("tripflow-dayIndex", String(dayNum - 1));
+
     setAddedToast(`Day ${dayNum}: ${place.name}`);
     setTimeout(() => {
       setAddedToast(null);

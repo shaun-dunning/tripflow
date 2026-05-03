@@ -636,6 +636,11 @@ export default function MyDayPage() {
       }
     }
     fetchData();
+
+    // Re-fetch agenda any time the tab regains focus (e.g. returning from Explore)
+    const handleFocus = () => fetchData();
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
   }, []);
 
   const day = DAYS[dayIndex];
