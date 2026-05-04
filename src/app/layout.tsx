@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import AuthGuard from "@/components/AuthGuard";
+import { ExploreProvider } from "@/lib/exploreContext";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -39,22 +40,24 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 max-w-md mx-auto relative">
-        <AuthGuard>
-          {/*
-           * pb accounts for the fixed BottomNav (≈56 px) plus the iOS home
-           * indicator safe area (env(safe-area-inset-bottom)).
-           * Falls back to 80 px on non-notched devices.
-           */}
-          <main
-            className="flex-1"
-            style={{
-              paddingBottom:
-                "calc(64px + env(safe-area-inset-bottom, 0px))",
-            }}
-          >
-            {children}
-          </main>
-        </AuthGuard>
+        <ExploreProvider>
+          <AuthGuard>
+            {/*
+             * pb accounts for the fixed BottomNav (≈56 px) plus the iOS home
+             * indicator safe area (env(safe-area-inset-bottom)).
+             * Falls back to 80 px on non-notched devices.
+             */}
+            <main
+              className="flex-1"
+              style={{
+                paddingBottom:
+                  "calc(64px + env(safe-area-inset-bottom, 0px))",
+              }}
+            >
+              {children}
+            </main>
+          </AuthGuard>
+        </ExploreProvider>
       </body>
     </html>
   );

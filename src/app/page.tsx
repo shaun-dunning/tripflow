@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, type WishlistEntry } from "@/lib/wishlist";
+import { useExploreContext } from "@/lib/exploreContext";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -408,6 +409,7 @@ const NEW_ID_PREFIX = "optimistic-";
 
 export default function MyDayPage() {
   const router = useRouter();
+  const { pendingItem, setPendingItem } = useExploreContext();
   const [currentMins, setCurrentMins] = useState(nowMinutes);
   const [wishlist, setWishlist] = useState<WishlistEntry[]>([]);
   const [todayDayIndex, setTodayDayIndex] = useState(0);
@@ -520,6 +522,34 @@ export default function MyDayPage() {
   useEffect(() => {
     localStorage.setItem("tripflow-dayIndex", String(dayIndex));
   }, [dayIndex]);
+
+  // Consume an item pushed from the Explore tab via shared layout context.
+  // This fires any time pendingItem changes — works even when My Day is
+  // served from the Next.js router cache and never fully remounts.
+  useEffect(() => {
+    if (!pendingItem) return;
+    const { dayIndex: targetDay, ...item } = pendingItem;
+    if (targetDay >= 0 && targetDay < DAYS.length) {
+      setDayIndex(targetDay);
+      setAgendas((prev) =>
+        prev.map((agenda, i) =>
+          i === targetDay
+            ? [...agenda.filter((a) => a.title !== item.title), {
+                id: item.id,
+                title: item.title,
+                emoji: item.emoji,
+                time: item.time,
+                notes: item.notes,
+                done: item.done,
+                reservation: item.reservation,
+                fromSupabase: true,
+              }]
+            : agenda
+        )
+      );
+    }
+    setPendingItem(null); // clear so it doesn't fire again
+  }, [pendingItem, setPendingItem]);
 
   useEffect(() => {
     fetch("/api/weather")

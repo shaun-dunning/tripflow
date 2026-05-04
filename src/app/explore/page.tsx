@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
+import { useExploreContext } from "@/lib/exploreContext";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -531,6 +532,7 @@ type AiMessage = { role: "user" | "assistant"; content: string };
 
 export default function ExplorePage() {
   const router = useRouter();
+  const { setPendingItem } = useExploreContext();
   const [activeFilter, setActiveFilter] = useState("All");
   const [activeScenario, setActiveScenario] = useState<number | null>(null);
   const [maxDrive, setMaxDrive] = useState(30);
@@ -566,9 +568,10 @@ export default function ExplorePage() {
   // Search
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Neighborhood + Best Of
+  // Neighborhood + Best Of + Source
   const [activeNeighborhood, setActiveNeighborhood] = useState("All Areas");
   const [activeBestOf, setActiveBestOf] = useState<string | null>(null);
+  const [activeSource, setActiveSource] = useState<string | null>(null);
 
   // AI assistant
   const [showAI, setShowAI] = useState(false);
@@ -672,10 +675,10 @@ export default function ExplorePage() {
       return;
     }
 
-    // Tell My Day which day to show AND pass the new item so it renders immediately
-    // (bypasses any SELECT latency or RLS issues on the fetch side)
+    // Push the new item straight into My Day's agenda via shared layout context.
+    // The layout never unmounts during tab navigation so this is always reliable.
     localStorage.setItem("tripflow-dayIndex", String(dayNum - 1));
-    localStorage.setItem("tripflow-explore-add", JSON.stringify({
+    setPendingItem({
       dayIndex: dayNum - 1,
       id: `explore-${Date.now()}`,
       title: place.name,
@@ -687,15 +690,12 @@ export default function ExplorePage() {
       notes: `${place.drive} · ${place.address}`,
       done: false,
       reservation: false,
-      fromSupabase: true,
-    }));
+    });
 
     setAddedToast(`Day ${dayNum}: ${place.name}`);
     setTimeout(() => {
       setAddedToast(null);
-      // Hard reload instead of client-side nav so My Day always mounts fresh
-      // and reads the localStorage bridge (Next.js router cache can skip remounting)
-      window.location.href = "/";
+      router.push("/");
     }, 1500);
   }
 
@@ -744,10 +744,12 @@ export default function ExplorePage() {
 
   const bestOfCollection = activeBestOf ? BEST_OF.find((c) => c.id === activeBestOf) : null;
 
+  const isSearching = searchQuery.trim().length > 0;
+
   const filtered = PLACES.filter((p) => {
-    if (searchQuery.trim()) {
+    if (isSearching) {
       const q = searchQuery.toLowerCase();
-      const hit =
+      return (
         p.name.toLowerCase().includes(q) ||
         p.blurb.toLowerCase().includes(q) ||
         p.reviewQuote.toLowerCase().includes(q) ||
@@ -755,11 +757,14 @@ export default function ExplorePage() {
         p.address.toLowerCase().includes(q) ||
         p.neighborhood.toLowerCase().includes(q) ||
         p.tags.some((t) => t.includes(q)) ||
-        p.category.toLowerCase().includes(q);
-      if (!hit) return false;
+        p.category.toLowerCase().includes(q)
+      );
+      // When actively searching, bypass proximity/scenario/collection filters
+      // so you can always find a specific place by name regardless of drive time
     }
     if (activeFilter !== "All" && p.category !== activeFilter) return false;
     if (activeNeighborhood !== "All Areas" && p.neighborhood !== activeNeighborhood) return false;
+    if (activeSource && p.reviewSource !== activeSource) return false;
     if (kidsOnly && !p.kidFriendly) return false;
     if (driveMinutes(p.drive) > maxDrive) return false;
     if (scenario && !scenario.tags.some((t) => p.tags.includes(t))) return false;
@@ -772,7 +777,14 @@ export default function ExplorePage() {
     .sort((a, b) => b.verifiedRating * Math.log(b.reviewCount) - a.verifiedRating * Math.log(a.reviewCount))
     .slice(0, 3);
 
-  const activeFilterCount = (kidsOnly ? 1 : 0) + (maxDrive < 30 ? 1 : 0) + (activeScenario !== null ? 1 : 0) + (activeNeighborhood !== "All Areas" ? 1 : 0) + (activeBestOf ? 1 : 0);
+  const activeFilterCount = (kidsOnly ? 1 : 0) + (maxDrive < 30 ? 1 : 0) + (activeScenario !== null ? 1 : 0) + (activeNeighborhood !== "All Areas" ? 1 : 0) + (activeBestOf ? 1 : 0) + (activeSource ? 1 : 0);
+
+  // Top picks per review source (used for "Verified by" sections)
+  const topBySource = (source: string) =>
+    [...PLACES]
+      .filter((p) => p.reviewSource === source)
+      .sort((a, b) => b.verifiedRating * Math.log(b.reviewCount) - a.verifiedRating * Math.log(a.reviewCount))
+      .slice(0, 4);
 
   return (
     <div className="flex flex-col bg-white relative">
@@ -1122,7 +1134,7 @@ export default function ExplorePage() {
 
             {activeFilterCount > 0 && (
               <button
-                onClick={() => { setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); setActiveNeighborhood("All Areas"); setActiveBestOf(null); }}
+                onClick={() => { setActiveScenario(null); setKidsOnly(false); setMaxDrive(30); setActiveNeighborhood("All Areas"); setActiveBestOf(null); setActiveSource(null); }}
                 className="text-xs font-semibold text-rose-500 self-start"
               >
                 Clear all filters
@@ -1180,6 +1192,25 @@ export default function ExplorePage() {
             </button>
           );
         })}
+      </div>
+
+      {/* ── Verified Source filter ── */}
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-50 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex-none">Source:</span>
+        {[
+          { key: null,           label: "All Reviews",   color: activeSource === null ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200" },
+          { key: "TripAdvisor",  label: "TripAdvisor",   color: activeSource === "TripAdvisor" ? "bg-[#00AF87] text-white border-[#00AF87]" : "bg-white text-slate-500 border-slate-200" },
+          { key: "Yelp",         label: "Yelp",          color: activeSource === "Yelp" ? "bg-[#D32323] text-white border-[#D32323]" : "bg-white text-slate-500 border-slate-200" },
+          { key: "Google",       label: "Google",        color: activeSource === "Google" ? "bg-[#4285F4] text-white border-[#4285F4]" : "bg-white text-slate-500 border-slate-200" },
+        ].map((s) => (
+          <button
+            key={String(s.key)}
+            onClick={() => setActiveSource(s.key)}
+            className={`flex-none text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all whitespace-nowrap ${s.color}`}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
@@ -1278,6 +1309,95 @@ export default function ExplorePage() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* ── Search result count ── */}
+        {isSearching && (
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-bold text-slate-900">
+              {filtered.length === 0
+                ? "No results"
+                : `${filtered.length} place${filtered.length !== 1 ? "s" : ""} found`}
+            </p>
+            <span className="text-xs text-slate-400">for &ldquo;{searchQuery}&rdquo;</span>
+            <button
+              onClick={() => setSearchQuery("")}
+              className="ml-auto text-[11px] font-semibold text-rose-500"
+            >
+              Clear ✕
+            </button>
+          </div>
+        )}
+
+        {/* ── Verified by Source — curated strips ── */}
+        {!isSearching && !activeBestOf && (
+          <div className="flex flex-col gap-6">
+            {[
+              { source: "TripAdvisor", label: "Top on TripAdvisor", badge: "bg-[#00AF87] text-white", icon: "🦉", sub: "Ranked by traveler reviews" },
+              { source: "Yelp",        label: "Yelp Favorites",     badge: "bg-[#D32323] text-white", icon: "⭐", sub: "Highest-rated by local community" },
+              { source: "Google",      label: "Google Best",        badge: "bg-[#4285F4] text-white", icon: "🔍", sub: "Top picks from Google Maps" },
+            ]
+              .filter((s) => !activeSource || activeSource === s.source)
+              .map((s) => {
+                const picks = topBySource(s.source);
+                return (
+                  <div key={s.source}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${s.badge}`}>{s.source}</span>
+                          <p className="text-sm font-black text-slate-900">{s.label}</p>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{s.sub}</p>
+                      </div>
+                      {!activeSource && (
+                        <button
+                          onClick={() => setActiveSource(s.source)}
+                          className="ml-auto text-[11px] font-semibold text-slate-400 hover:text-slate-700 flex-none"
+                        >
+                          See all →
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                      {picks.map((place) => (
+                        <button
+                          key={place.id}
+                          onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
+                          className="flex-none w-48 bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm text-left active:scale-[0.97] transition-transform"
+                        >
+                          <div className="relative h-28 overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                            <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                              <span className="text-amber-400">★</span>
+                              <span>{place.verifiedRating.toFixed(1)}</span>
+                            </div>
+                            <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2">
+                              <p className="text-[9px] text-white/60 font-semibold">{place.neighborhood}</p>
+                              <p className="text-xs font-bold text-white leading-tight">{place.name}</p>
+                            </div>
+                          </div>
+                          <div className="px-2.5 py-2">
+                            <p className="text-[9px] text-slate-500 leading-snug line-clamp-2 italic">
+                              &ldquo;{place.reviewQuote.slice(0, 80)}…&rdquo;
+                            </p>
+                            <p className="text-[9px] text-slate-400 mt-1">{place.reviewCount.toLocaleString()} reviews · {place.drive}</p>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setDayPickerPlace(place); }}
+                              className="mt-2 w-full text-[10px] font-bold bg-slate-900 text-white py-1.5 rounded-lg"
+                            >
+                              + Add to Trip
+                            </button>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         )}
 
