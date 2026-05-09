@@ -1,28 +1,27 @@
 # TripFlow – Agent Task List
                                                                                                                         
   ## Critical
-  - [ ] Verify Explore→My Day context fix works (ExploreProvider in layout.tsx was committed — confirm item appears on  
-  My Day after adding from Explore)                                                                                     
-  - [ ] Investigate why Supabase SELECT doesn't return newly inserted agenda_items on page reload (items appear via 
-  context bridge but don't persist across sessions)
-                                                                 
+  - [ ]                                                          
                                                                                                                       
   ## High Priority                                                                                                      
-  - [ ] Add confirmed Reservations from Docs tab to the respective My Day pages
-  - [ ] Update AI fallback model: change `claude-3-5-haiku-20241022` → `claude-haiku-4-5-20251001` in `/api/assistant`
-  - [ ] Build trip share button on Trips page (the `/join/[code]` route exists — just needs a share button UI)          
+- [ ] Clean up  My Day page. It's become overloaded. We have too much stuck at the top of the page before getting to the itinerary. Figure out if there's a better design, layout, UX. Clean up redundant info like weather appearing twice. Create a visually compelling UX like you'd expect on a high end consumer app. Optimize and polish the experience so it looks world class.
+- [ ] Drag-to-reorder + drag-between-sections in My Day (using @dnd-kit/sortable)
+- [ ] AI day-planner that respects existing items — make /api/assistant aware of current day's items and free time gaps, propose activities that slot in    
+- [ ] Map view for the day — toggle on My Day shows pins color-coded by section with optimal route, Apple/Google Maps deep-link on tap
+- [ ] Smart trip recap / memory book — auto-generated day cards after each day passes, swipeable "Trip Memories" reel at trip end
                                                                                                                         
   ## Next Up                                                                                                            
-  - [ ] Inline activity editing in My Day (tap an item to edit title, time, notes in place)                             
-  - [ ] Test and finalize "Add to Trip" day-picker in Explore (todayTripDayId is null pre-trip)
-  - [ ]  Loading skeletons  Right now the app probably shows blank/jarring states while Supabase fetches. Adding skeleton loaders (animated grey bars) would make it feel 10x more professional and "app-like."
-  - [ ]  Empty state for My Day agenda  If a day has no items yet, there should be a friendly illustration/message + a nudge to add from Explore. Right now it's likely just blank.
-  - [ ]  Pull-to-refresh  On mobile, users expect to swipe down to refresh. This is a standard gesture that's currently missing.
-  - [ ]  Better error states  If Supabase fails or is offline, the user sees nothing. A friendly "couldn't load your trip" message with a retry button would go a long way.
-  - [ ]  Packing list  A simple checklist scoped to the trip (sunscreen, passports, kids' gear). Dead simple to build, huge value for families.
-  - [ ]  Weather widget on the hero  Embed a 7-day Maui forecast pulled from Open-Meteo (free, no API key). Showing "82°F ☀️" on the hero card would be a wow moment.
-  - [ ]  Trip countdown   "xx days until Maui! 🌺" on the home screen until the trip starts. Families love this.
-  - [ ]  Reservation badge/reminders  Items marked as `reservation: true` could have a small calendar badge and a note about when to confirm. Could eventually tie into push notifications.
+- [ ] Packing list  A simple checklist scoped to the trip (sunscreen, passports, kids' gear). Dead simple to build, huge value for families. Trip-aware suggestions — if "Molokini Snorkel Tour" is on your agenda, automatically suggest snorkel gear, underwater camera, sea-sickness meds. Per-person assignment — "Dad: passports · Sarah: sunscreen · Liam: boogie board". Supabase persistence — if it's currently localStorage-only, sharing the list with family members won't work. Smart categories — Documents, Clothing, Beach Gear, Kids, Pharmacy auto-grouped.
+- [ ] Shared family presence — per-item "who's going" toggles with avatars + real-time "I'm in / I'll skip" via Supabase Realtime
+- [ ] Offline-first / PWA caching — service worker + IndexedDB cache so app works on airplane / bad Wi-Fi, syncs when reconnected
+- [ ] Smart pre-trip readiness dashboard — combine docReadiness + packingProgress + weather warnings into single "87% trip-ready" card
+- [ ] Design system pass — consistent shadow elevation tiers, formalize accent color roles (sky/emerald/amber/indigo)
+- [ ] Add haptic feedback on key actions (navigator.vibrate(10) on toggle/add)
+- [ ] Smooth page transitions between tabs (View Transitions API)
+- [ ] First-trip onboarding — 3-screen welcome for users joining via /join/[code], includes avatar picker
+- [ ] Clean up 49 duplicate test agenda items in Supabase from debugging sessions  [ ] Better error states  If Supabase fails or is offline, the user sees nothing. A friendly "couldn't load your trip" message with a retry button would go a long way.
+- [ ] Weather widget under the Trips hero  Embed a 7-day Maui forecast pulled from Open-Meteo (free, no API key). Showing "82°F ☀️" on the hero card would be a wow moment.
+- [ ] Reservation badge/reminders  Items marked as `reservation: true` could have a small calendar badge and a note about when to confirm. Could eventually tie into push notifications.
 
 ## Future Milestone – iOS App (Capacitor)
 - [ ] Move `/api/assistant` route to Supabase Edge Function (required for static export)
