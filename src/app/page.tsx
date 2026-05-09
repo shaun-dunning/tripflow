@@ -412,6 +412,9 @@ export default function MyDayPage() {
   const { pendingItem, setPendingItem } = useExploreContext();
   const [currentMins, setCurrentMins] = useState(nowMinutes);
   const [wishlist, setWishlist] = useState<WishlistEntry[]>([]);
+  // ── TEMP DEBUG ── remove once Supabase issue is resolved ──────────────────
+  const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  // ────────────────────────────────────────────────────────────────────────
   const [todayDayIndex, setTodayDayIndex] = useState(0);
   const [dayIndex, setDayIndex] = useState(0);
   const savedDayRestored = useRef(false);
@@ -568,11 +571,12 @@ export default function MyDayPage() {
           .eq("trip_id", TRIP_ID),
       ]);
 
-      // ── DEBUG: log Supabase results to understand persistence issues ──────────
-      console.log("[fetchData] agenda_items returned:", agendaResult.data?.length ?? 0, "rows", agendaResult.error ?? "no error");
-      console.log("[fetchData] trip_days returned:", tripDaysResult.data?.length ?? 0, "rows", tripDaysResult.error ?? "no error");
-      if (agendaResult.data) {
-        agendaResult.data.forEach((ai) => console.log("  agenda_item:", ai.id, "|", ai.title, "| day:", ai.trip_day_id));
+      // ── DEBUG: surface Supabase results visually (no DevTools needed) ────────
+      {
+        const itemCount = agendaResult.data?.length ?? 0;
+        const err = agendaResult.error?.message ?? tripDaysResult.error?.message ?? null;
+        const titles = agendaResult.data?.map((ai) => ai.title).join(", ") ?? "(none)";
+        setDebugInfo(`fetchData: ${itemCount} agenda items${err ? " | ERR: " + err : ""}\n${titles}`);
       }
       // ────────────────────────────────────────────────────────────────────────
 
@@ -1412,6 +1416,12 @@ export default function MyDayPage() {
         );
       })()}
 
+      {/* ── TEMP DEBUG PANEL — remove once Supabase issue resolved ── */}
+      {debugInfo && (
+        <div className="mx-4 mt-2 p-3 bg-yellow-100 border border-yellow-400 rounded-xl text-[11px] text-yellow-900 whitespace-pre-wrap break-all">
+          🔍 {debugInfo}
+        </div>
+      )}
       {/* ── Jump to Today — below hero, never overlaps title ── */}
       {dayIndex !== todayDayIndex && (
         <div className="flex justify-center pt-2 pb-0 px-4">
