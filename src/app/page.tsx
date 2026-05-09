@@ -435,6 +435,15 @@ export default function MyDayPage() {
   const [packingProgress, setPackingProgress] = useState<{ packed: number; total: number }>({ packed: 0, total: 46 });
   const [docReadiness, setDocReadiness] = useState<{ confirmed: number; total: number } | null>(null);
 
+  // Loading / pull-to-refresh
+  const [loading, setLoading] = useState(true);
+  const [pullDistance, setPullDistance] = useState(0);  // visual only
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const fetchDataRef = useRef<(() => Promise<void>) | null>(null);
+  const pullStartY = useRef<number | null>(null);
+  const pullDistanceRef = useRef(0);  // for logic in touch handlers (no re-render cost)
+  const isPulling = useRef(false);
+
   // Vibe check
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
@@ -699,8 +708,10 @@ export default function MyDayPage() {
         });
 
         setAgendas(fresh);
+        setLoading(false);
       }
     }
+    fetchDataRef.current = fetchData;
     fetchData();
 
     // Re-fetch agenda any time the tab regains focus (e.g. returning from Explore)
@@ -739,9 +750,51 @@ export default function MyDayPage() {
     };
     window.addEventListener("tripflow:explore-add", handleExploreAdd);
 
+    // Pull-to-refresh touch handlers
+    const PULL_THRESHOLD = 64; // px of damped pull before release triggers refresh
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY > 0) return; // only activate at the very top
+      pullStartY.current = e.touches[0].clientY;
+      isPulling.current = false;
+    };
+    const handleTouchMove = (e: TouchEvent) => {
+      if (pullStartY.current === null) return;
+      const delta = e.touches[0].clientY - pullStartY.current;
+      if (delta <= 0) { pullDistanceRef.current = 0; setPullDistance(0); return; }
+      isPulling.current = true;
+      const damped = Math.min(delta * 0.4, PULL_THRESHOLD + 16);
+      pullDistanceRef.current = damped;
+      setPullDistance(damped);
+      if (damped > 8) e.preventDefault();
+    };
+    const handleTouchEnd = async () => {
+      if (!isPulling.current || pullStartY.current === null) {
+        pullStartY.current = null;
+        pullDistanceRef.current = 0;
+        setPullDistance(0);
+        return;
+      }
+      pullStartY.current = null;
+      const dist = pullDistanceRef.current;
+      pullDistanceRef.current = 0;
+      setPullDistance(0);
+      isPulling.current = false;
+      if (dist >= PULL_THRESHOLD * 0.4) {
+        setPullRefreshing(true);
+        await fetchDataRef.current?.();
+        setPullRefreshing(false);
+      }
+    };
+    document.addEventListener("touchstart", handleTouchStart, { passive: true });
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
+    document.addEventListener("touchend", handleTouchEnd, { passive: true });
+
     return () => {
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("tripflow:explore-add", handleExploreAdd);
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleTouchEnd);
     };
   }, []);
 
@@ -1406,6 +1459,21 @@ export default function MyDayPage() {
         </div>
       )}
 
+      {/* ── Pull-to-refresh indicator ── */}
+      {(pullDistance > 0 || pullRefreshing) && (
+        <div
+          className="flex items-center justify-center overflow-hidden transition-all duration-150"
+          style={{ height: pullRefreshing ? 40 : pullDistance }}
+        >
+          <div className={`w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center transition-transform ${pullRefreshing ? "animate-spin" : ""}`}
+            style={{ transform: pullRefreshing ? undefined : `rotate(${Math.min(pullDistance / 64, 1) * 180}deg)` }}>
+            <svg viewBox="0 0 24 24" className="w-4 h-4 text-sky-500" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 
         {/* ── Trip Countdown (pre-trip only) — compact strip ── */}
@@ -1784,8 +1852,52 @@ export default function MyDayPage() {
           </div>
         )}
 
+        {/* ── Skeleton loaders (initial page load) ── */}
+        {loading && (
+          <div className="flex flex-col gap-4 animate-pulse">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="flex flex-col gap-2">
+                {/* Section header skeleton */}
+                <div className="flex items-center gap-2.5 mb-1">
+                  <div className="w-5 h-5 rounded-full bg-slate-200" />
+                  <div className="h-3.5 w-20 rounded-full bg-slate-200" />
+                  <div className="h-3 w-12 rounded-full bg-slate-100 ml-1" />
+                </div>
+                {/* Card skeletons */}
+                {[1, 2].map((c) => (
+                  <div key={c} className="bg-white rounded-2xl border border-slate-100 shadow-sm flex items-stretch h-16 overflow-hidden">
+                    <div className="w-14 flex flex-col items-center justify-center gap-1 bg-slate-50 flex-none">
+                      <div className="w-6 h-6 rounded-full bg-slate-200" />
+                      <div className="w-8 h-2 rounded-full bg-slate-100" />
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center px-3 gap-2">
+                      <div className="h-3 w-3/4 rounded-full bg-slate-200" />
+                      <div className="h-2.5 w-1/2 rounded-full bg-slate-100" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Empty state (no items after loading) ── */}
+        {!loading && sections.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div className="text-5xl mb-4">🌴</div>
+            <p className="text-base font-bold text-slate-800 mb-1">Nothing planned yet</p>
+            <p className="text-sm text-slate-400 mb-6">Tap below to discover beaches,<br />restaurants and activities nearby</p>
+            <button
+              onClick={() => router.push("/explore")}
+              className="bg-sky-500 text-white text-sm font-bold px-6 py-3 rounded-2xl shadow-md hover:bg-sky-600 active:scale-95 transition-all"
+            >
+              Browse Activities
+            </button>
+          </div>
+        )}
+
         {/* ── Time Sections ── */}
-        {sections.map((section) => {
+        {!loading && sections.map((section) => {
           const doneCount = section.items.filter((i) => i.done).length;
           const sectionProgress = section.items.length > 0 ? doneCount / section.items.length : 0;
           const allDone = doneCount === section.items.length && section.items.length > 0;
