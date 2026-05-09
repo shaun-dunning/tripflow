@@ -941,19 +941,17 @@ export default function ExplorePage() {
       reservation: false,
     };
 
-    // Channel 1: window custom event — fires even when My Day is in the
-    // Next.js router cache (frozen components receive window events).
-    window.dispatchEvent(new CustomEvent("tripflow:explore-add", { detail: exploreItem }));
-
-    // Channel 2: shared layout context — fires on fresh mounts where My Day
-    // hasn't been visited yet this session and isn't in the router cache.
+    // Write the target day to localStorage so My Day restores it on fresh mount.
     localStorage.setItem("tripflow-dayIndex", String(dayNum - 1));
-    setPendingItem(exploreItem);
 
+    // Use a full page reload instead of router.push so My Day always mounts fresh,
+    // re-runs fetchData, and picks up the newly inserted Supabase item.
+    // (router.push serves My Day from the Next.js router cache — a frozen component
+    //  that doesn't re-run effects or re-fetch data.)
     setAddedToast(`Day ${dayNum}: ${place.name}`);
     setTimeout(() => {
       setAddedToast(null);
-      router.push("/");
+      window.location.href = "/";
     }, 1500);
   }
 
