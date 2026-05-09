@@ -997,7 +997,42 @@ export default function MyDayPage() {
     closeSheet();
   }
 
-  const nextUp = isToday ? items.find((i) => !i.done) : null;
+  // ── Live Now mode (today only) ────────────────────────────────────────────
+  // Compute the most relevant item: if an item's time has passed and it's not
+  // done yet, treat it as "happening now". Otherwise show the next upcoming
+  // undone item. Also track day progress for the bar.
+  const liveNow = (() => {
+    if (!isToday) return null;
+    const undone = items.filter((i) => !i.done);
+    if (undone.length === 0) return null;
+    const timed = undone
+      .map((i) => ({ item: i, mins: i.time && i.time !== "TBD" ? timeToMinutes(i.time) : null }))
+      .filter((x) => x.mins !== null) as Array<{ item: Item; mins: number }>;
+    // Prefer an item whose start has passed by ≤ 90 min and isn't done — that's "now"
+    const inProgress = timed
+      .filter((x) => x.mins <= currentMins && currentMins - x.mins <= 90)
+      .sort((a, b) => b.mins - a.mins)[0]; // most recent
+    if (inProgress) {
+      return { item: inProgress.item, mins: inProgress.mins, status: "now" as const };
+    }
+    // Otherwise next upcoming
+    const upcoming = timed
+      .filter((x) => x.mins > currentMins)
+      .sort((a, b) => a.mins - b.mins)[0];
+    if (upcoming) {
+      return { item: upcoming.item, mins: upcoming.mins, status: "upcoming" as const };
+    }
+    // Fallback: undone TBD items
+    const tbd = undone.find((i) => !i.time || i.time === "TBD");
+    if (tbd) return { item: tbd, mins: null, status: "tbd" as const };
+    // All timed items are in the past and undone — show the latest
+    const past = timed.sort((a, b) => b.mins - a.mins)[0];
+    return past ? { item: past.item, mins: past.mins, status: "now" as const } : null;
+  })();
+  const dayProgress = isToday && items.length > 0
+    ? { done: items.filter((i) => i.done).length, total: items.length }
+    : null;
+  const allDoneToday = isToday && items.length > 0 && items.every((i) => i.done);
 
   return (
     <div className="flex flex-col">
@@ -1762,39 +1797,113 @@ export default function MyDayPage() {
           </div>
         )}
 
-        {/* ── Next Up (today only) ── */}
-        {nextUp && isToday && (() => {
-          const nextMins = nextUp.time && nextUp.time !== "TBD" ? timeToMinutes(nextUp.time) : null;
-          const minsAway = nextMins !== null ? Math.max(0, nextMins - currentMins) : null;
-          const isUrgent = minsAway !== null && minsAway <= 15;
-          const isWarning = minsAway !== null && minsAway <= 60;
-          const timeLabel = minsAway === null ? "Scheduled"
-            : minsAway === 0 ? "Now!"
-            : minsAway < 60 ? `${minsAway} min away`
-            : `${Math.floor(minsAway / 60)} hr ${minsAway % 60 > 0 ? `${minsAway % 60} min` : ""} away`;
-          const bannerBg = isUrgent ? "bg-red-500 shadow-red-200" : isWarning ? "bg-orange-500 shadow-orange-200" : "bg-sky-600 shadow-sky-200";
-          const mutedText = isUrgent ? "text-red-200" : isWarning ? "text-orange-200" : "text-sky-200";
+        {/* ── Live Now mode (today only) — sticky card that auto-advances ── */}
+        {allDoneToday && (
+          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white rounded-2xl px-4 py-4 flex items-center gap-4 shadow-md shadow-emerald-200">
+            <span className="text-4xl">🎉</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-100">Day Complete</p>
+              <p className="font-bold text-base mt-0.5">All done — great day!</p>
+              <p className="text-xs text-emerald-100 mt-0.5">{items.length} of {items.length} activities checked off</p>
+            </div>
+          </div>
+        )}
+        {liveNow && isToday && !allDoneToday && (() => {
+          const { item, mins, status } = liveNow;
+          const minsAway = mins !== null ? mins - currentMins : null;
+          const minsIntoNow = mins !== null && status === "now" ? Math.max(0, currentMins - mins) : 0;
+          const isUrgent = status === "upcoming" && minsAway !== null && minsAway <= 15;
+          const isWarning = status === "upcoming" && minsAway !== null && minsAway <= 60 && minsAway > 15;
+
+          // Status label + countdown copy
+          let statusLabel: string;
+          let countdownPrimary: string;
+          let countdownSecondary: string | null = null;
+          if (status === "now") {
+            statusLabel = "Happening Now";
+            countdownPrimary = minsIntoNow === 0 ? "Now" : minsIntoNow < 60 ? `${minsIntoNow} min in` : `${Math.floor(minsIntoNow / 60)}h in`;
+            countdownSecondary = item.time && item.time !== "TBD" ? `Started ${item.time}` : null;
+          } else if (status === "tbd") {
+            statusLabel = "Up Next";
+            countdownPrimary = "Whenever";
+            countdownSecondary = "No set time";
+          } else {
+            // upcoming
+            statusLabel = isUrgent ? "Leaving Soon" : isWarning ? "Coming Up" : "Up Next";
+            if (minsAway === null || minsAway <= 0) countdownPrimary = "Now";
+            else if (minsAway < 60) countdownPrimary = `in ${minsAway} min`;
+            else countdownPrimary = `in ${Math.floor(minsAway / 60)}h ${minsAway % 60 > 0 ? `${minsAway % 60}m` : ""}`.trim();
+            countdownSecondary = item.time && item.time !== "TBD" ? `Starts ${item.time}` : null;
+          }
+
+          // Color theme by status
+          const theme = status === "now"
+            ? { bg: "bg-gradient-to-br from-emerald-500 to-emerald-600", shadow: "shadow-emerald-200", muted: "text-emerald-100", dot: "bg-emerald-200", dotPing: "bg-emerald-300" }
+            : isUrgent
+            ? { bg: "bg-gradient-to-br from-red-500 to-red-600", shadow: "shadow-red-200", muted: "text-red-100", dot: "bg-red-200", dotPing: "bg-red-300" }
+            : isWarning
+            ? { bg: "bg-gradient-to-br from-amber-500 to-orange-500", shadow: "shadow-amber-200", muted: "text-amber-100", dot: "bg-amber-200", dotPing: "bg-amber-300" }
+            : { bg: "bg-gradient-to-br from-sky-600 to-sky-700", shadow: "shadow-sky-200", muted: "text-sky-100", dot: "bg-sky-200", dotPing: "bg-sky-300" };
+
           return (
-            <div className={`${bannerBg} text-white rounded-2xl px-4 py-3 flex items-center justify-between shadow-md`}>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <p className={`text-[10px] font-semibold uppercase tracking-widest ${mutedText}`}>Next Up</p>
-                  {isWarning && (
-                    <span className="flex h-2 w-2">
-                      <span className={`animate-ping absolute inline-flex h-2 w-2 rounded-full opacity-75 ${isUrgent ? "bg-red-300" : "bg-orange-300"}`} />
-                      <span className={`relative inline-flex h-2 w-2 rounded-full ${isUrgent ? "bg-red-200" : "bg-orange-200"}`} />
-                    </span>
-                  )}
+            <div className="sticky top-2 z-30 -mx-1 px-1">
+              <div className={`${theme.bg} ${theme.shadow} text-white rounded-2xl shadow-lg overflow-hidden`}>
+                {/* Top row: status + tap area */}
+                <button
+                  onClick={() => openEdit(item)}
+                  className="w-full text-left active:scale-[0.99] transition-transform"
+                >
+                  <div className="px-4 pt-3 pb-3 flex items-center gap-3">
+                    {/* Big emoji */}
+                    <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-none">
+                      <span className="text-3xl">{item.emoji}</span>
+                    </div>
+                    {/* Middle */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className={`absolute inline-flex h-2 w-2 rounded-full opacity-75 animate-ping ${theme.dotPing}`} />
+                          <span className={`relative inline-flex h-2 w-2 rounded-full ${theme.dot}`} />
+                        </span>
+                        <p className={`text-[10px] font-bold uppercase tracking-widest ${theme.muted}`}>{statusLabel}</p>
+                      </div>
+                      <p className="font-bold text-sm leading-snug truncate">{item.title}</p>
+                      {countdownSecondary && (
+                        <p className={`text-[11px] mt-0.5 ${theme.muted}`}>{countdownSecondary}</p>
+                      )}
+                    </div>
+                    {/* Right: countdown */}
+                    <div className="text-right flex-none">
+                      <p className="text-lg font-black leading-none">{countdownPrimary}</p>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Bottom row: progress bar + done button */}
+                <div className="px-4 pb-3 flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    {dayProgress && (
+                      <>
+                        <div className={`text-[10px] ${theme.muted} mb-1 font-semibold`}>
+                          {dayProgress.done} of {dayProgress.total} done today
+                        </div>
+                        <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-white rounded-full transition-all duration-500"
+                            style={{ width: `${(dayProgress.done / dayProgress.total) * 100}%` }}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggle(item.id); }}
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all flex-none"
+                  >
+                    <span className="text-sm leading-none">✓</span>
+                    Done
+                  </button>
                 </div>
-                <p className="font-semibold mt-0.5 text-sm">{nextUp.emoji} {nextUp.title}</p>
-                <p className={`text-xs mt-0.5 ${mutedText}`}>{nextUp.time}</p>
-              </div>
-              <div className="text-right">
-                <p className={`text-[10px] ${mutedText}`}>{isUrgent ? "🚨 Leaving soon!" : isWarning ? "⏰ Coming up" : "Up next"}</p>
-                <p className="text-xl font-bold">{timeLabel}</p>
-                {!isUrgent && !isWarning && minsAway !== null && minsAway > 60 && (
-                  <p className={`text-[10px] ${mutedText}`}>{nextUp.time}</p>
-                )}
               </div>
             </div>
           );
