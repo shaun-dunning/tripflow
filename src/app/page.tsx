@@ -10,10 +10,12 @@ import { useExploreContext } from "@/lib/exploreContext";
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
 function timeToMinutes(t: string): number {
+  if (!t || t === "TBD" || t === "tbd") return -1; // TBD items sort to top of Morning
   const [time, mer] = t.split(" ");
   const parts = time.split(":").map(Number);
   let h = parts[0];
   const m = parts[1] ?? 0;
+  if (isNaN(h) || isNaN(m)) return -1;
   if (mer === "PM" && h !== 12) h += 12;
   if (mer === "AM" && h === 12) h = 0;
   return h * 60 + m;

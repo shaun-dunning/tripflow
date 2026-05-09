@@ -24,3 +24,15 @@
   - [ ]  Trip countdown   "xx days until Maui! 🌺" on the home screen until the trip starts. Families love this.
   - [ ]  Reservation badge/reminders  Items marked as `reservation: true` could have a small calendar badge and a note about when to confirm. Could eventually tie into push notifications.
 
+## Future Milestone – iOS App (Capacitor)
+- [ ] Move `/api/assistant` route to Supabase Edge Function (required for static export)
+- [ ] Move `/api/weather` route to Supabase Edge Function (required for static export)
+- [ ] Add `output: "export"` to next.config.ts and verify static build works
+- [ ] Install and configure Capacitor (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`)
+- [ ] Fix Unsplash hero image caching for mobile (add Cache-Control or switch to local copies)
+- [ ] Replace `next/font` Geist with static CSS import in globals.css
+- [ ] Pre-generate app icons as static PNGs in /public (replace next/og icon routes)
+- [ ] Configure Capacitor for iOS — bundle ID, display name, splash screen, safe area insets
+- [ ] Test full app in iOS Simulator
+- [ ] Submit to App Store (requires $99/yr Apple Developer account)
+
