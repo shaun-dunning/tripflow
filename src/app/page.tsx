@@ -568,6 +568,14 @@ export default function MyDayPage() {
           .eq("trip_id", TRIP_ID),
       ]);
 
+      // ── DEBUG: log Supabase results to understand persistence issues ──────────
+      console.log("[fetchData] agenda_items returned:", agendaResult.data?.length ?? 0, "rows", agendaResult.error ?? "no error");
+      console.log("[fetchData] trip_days returned:", tripDaysResult.data?.length ?? 0, "rows", tripDaysResult.error ?? "no error");
+      if (agendaResult.data) {
+        agendaResult.data.forEach((ai) => console.log("  agenda_item:", ai.id, "|", ai.title, "| day:", ai.trip_day_id));
+      }
+      // ────────────────────────────────────────────────────────────────────────
+
       if (docsResult.data?.length) {
         const confirmed = docsResult.data.filter((d) => d.status === "confirmed").length;
         setDocReadiness({ confirmed, total: docsResult.data.length });
@@ -717,7 +725,43 @@ export default function MyDayPage() {
     // Re-fetch agenda any time the tab regains focus (e.g. returning from Explore)
     const handleFocus = () => fetchData();
     window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
+
+    // Custom event dispatched by Explore immediately before router.push("/").
+    // window-level listeners fire even when My Day is in the Next.js router cache
+    // (frozen components don't receive context/state updates, but window events always work).
+    const handleExploreAdd = (e: Event) => {
+      const item = (e as CustomEvent).detail as {
+        dayIndex: number; id: string; title: string; emoji: string;
+        time: string; notes: string; done: boolean; reservation: boolean;
+      };
+      if (item.dayIndex < 0 || item.dayIndex >= DAYS.length) return;
+      setDayIndex(item.dayIndex);
+      setAgendas((prev) =>
+        prev.map((agenda, i) =>
+          i === item.dayIndex
+            ? [
+                ...agenda.filter((a) => a.title !== item.title),
+                {
+                  id: item.id,
+                  title: item.title,
+                  emoji: item.emoji,
+                  time: item.time,
+                  notes: item.notes,
+                  done: item.done,
+                  reservation: item.reservation,
+                  fromSupabase: false,
+                },
+              ]
+            : agenda
+        )
+      );
+    };
+    window.addEventListener("tripflow:explore-add", handleExploreAdd);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("tripflow:explore-add", handleExploreAdd);
+    };
   }, []);
 
   const day = DAYS[dayIndex];
@@ -1440,6 +1484,81 @@ export default function MyDayPage() {
           );
         })()}
 
+        {/* ── Trip Health Score ── */}
+        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (() => {
+          const packingPct = packingProgress.total > 0
+            ? Math.round((packingProgress.packed / packingProgress.total) * 100)
+            : 0;
+          const docPct = docReadiness && docReadiness.total > 0
+            ? Math.round((docReadiness.confirmed / docReadiness.total) * 100)
+            : 0;
+          const healthScore = Math.round(packingPct * 0.5 + docPct * 0.5);
+          const color = healthScore >= 80 ? "#10b981" : healthScore >= 50 ? "#f59e0b" : "#ef4444";
+          const trackColor = healthScore >= 80 ? "#d1fae5" : healthScore >= 50 ? "#fef3c7" : "#fee2e2";
+          const label = healthScore >= 80 ? "Trip Ready" : healthScore >= 50 ? "Almost Ready" : "Needs Attention";
+          const r = 40;
+          const circ = 2 * Math.PI * r;
+          const dash = (healthScore / 100) * circ;
+          return (
+            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+              <div className="px-4 pt-4 pb-4">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Pre-Trip Health</p>
+                <div className="flex items-center gap-5">
+                  {/* SVG arc progress */}
+                  <div className="relative flex-none w-24 h-24">
+                    <svg width="96" height="96" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r={r} fill="none" stroke={trackColor} strokeWidth="9" />
+                      <circle
+                        cx="50" cy="50" r={r} fill="none"
+                        stroke={color} strokeWidth="9"
+                        strokeDasharray={`${dash} ${circ}`}
+                        strokeLinecap="round"
+                        transform="rotate(-90 50 50)"
+                        style={{ transition: "stroke-dasharray 0.6s ease" }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-black text-slate-900 leading-none">{healthScore}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">score</span>
+                    </div>
+                  </div>
+                  {/* Details */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black mb-0.5" style={{ color }}>{label}</p>
+                    <p className="text-[11px] text-slate-400 mb-3 leading-snug">
+                      {healthScore >= 80
+                        ? "You're all set for Maui! 🌺"
+                        : healthScore >= 50
+                        ? "A few more items and you're good to go"
+                        : "Complete your checklist to be trip-ready"}
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-[10px] font-semibold text-slate-500">🧳 Packing</span>
+                          <span className="text-[10px] font-bold text-slate-700">{packingPct}%</span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${packingPct}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between mb-1">
+                          <span className="text-[10px] font-semibold text-slate-500">📋 Docs</span>
+                          <span className="text-[10px] font-bold text-slate-700">{docPct}%</span>
+                        </div>
+                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${docPct}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── Pre-trip Smart Readiness Panel ── */}
         {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
           <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
@@ -1535,6 +1654,61 @@ export default function MyDayPage() {
                   <p className="text-[11px] text-slate-700 leading-snug">Forecast for Jun 5–11: 78–84°F, mix of sun and showers — typical for Maui</p>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Trip Timeline (pre-trip only) — Feature 3: quick-glance day overview ── */}
+        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 pt-3.5 pb-3 border-b border-slate-50 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Your Itinerary</p>
+                <p className="text-sm font-black text-slate-900">7-Day Overview</p>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jun 5–11</span>
+            </div>
+            <div className="flex gap-2 px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              {DAYS.map((d, idx) => {
+                const reservedDay = d.agenda.some((a) => a.reservation);
+                const themeEmojis: Record<string, string> = {
+                  "Travel Day": "✈️", "Beach + Snorkel": "🤿", "Road to Hana": "🚗",
+                  "Beach + Spa": "💆", "Free Day": "🌺", "Haleakalā Sunrise": "🌋", "Fly Home": "✈️",
+                };
+                const emoji = themeEmojis[d.theme] ?? "📍";
+                const isSelected = idx === dayIndex;
+                return (
+                  <button
+                    key={d.dayNum}
+                    onClick={() => setDayIndex(idx)}
+                    className={`flex-none flex flex-col items-center gap-1 px-3 py-2.5 rounded-2xl border transition-all ${
+                      isSelected
+                        ? "bg-slate-900 border-slate-900 shadow-sm"
+                        : "bg-slate-50 border-slate-100 hover:border-slate-300"
+                    }`}
+                  >
+                    <span className="text-base leading-none">{emoji}</span>
+                    <p className={`text-[10px] font-black leading-none mt-0.5 ${isSelected ? "text-white" : "text-slate-700"}`}>
+                      Day {d.dayNum}
+                    </p>
+                    <p className={`text-[9px] leading-none ${isSelected ? "text-white/70" : "text-slate-400"}`}>
+                      {d.date.split("·")[1]?.trim() ?? d.date}
+                    </p>
+                    {reservedDay && (
+                      <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isSelected ? "bg-emerald-400" : "bg-emerald-500"}`} />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="px-4 pb-3">
+              <p className="text-[10px] text-slate-400 leading-snug">
+                <span className="inline-flex items-center gap-1 mr-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                  Reservation confirmed
+                </span>
+                Tap a day to preview its agenda
+              </p>
             </div>
           </div>
         )}

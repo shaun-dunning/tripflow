@@ -41,52 +41,52 @@ type TripMeta = {
 
 const TRIP: Day[] = [
   {
-    id: 1, date: "Wed · May 22", label: "Day 1", theme: "Travel Day",
+    id: 1, date: "Fri · Jun 5", label: "Day 1", theme: "Travel Day",
     photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&h=300&fit=crop&q=80",
     photoAlt: "Airport terminal",
-    activities: [{ emoji: "✈️", label: "Depart 7am" }, { emoji: "🏨", label: "Check in" }, { emoji: "🍕", label: "Dinner near hotel" }],
-    status: "past", weather: "☁️", temp: "68°F",
+    activities: [{ emoji: "✈️", label: "AA271 departs LAX" }, { emoji: "🏨", label: "Check in Sheraton" }, { emoji: "🍝", label: "Dinner near resort" }],
+    status: "upcoming", weather: "☁️", temp: "68°F",
   },
   {
-    id: 2, date: "Thu · May 23", label: "Day 2", theme: "Beach + Snorkel",
+    id: 2, date: "Sat · Jun 6", label: "Day 2", theme: "Beach + Snorkel",
     photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Maui beach",
-    activities: [{ emoji: "🏖️", label: "Beach AM" }, { emoji: "🤿", label: "Molokini" }, { emoji: "🐟", label: "Mama's Fish House" }],
-    status: "today", weather: "⛅", temp: "82°F",
+    photoAlt: "Ka'anapali beach",
+    activities: [{ emoji: "🏖️", label: "Ka'anapali Beach" }, { emoji: "🤿", label: "Molokini Crater" }, { emoji: "🐟", label: "Mama's Fish House" }],
+    status: "upcoming", weather: "⛅", temp: "82°F",
   },
   {
-    id: 3, date: "Fri · May 24", label: "Day 3", theme: "Road to Hana",
+    id: 3, date: "Sun · Jun 7", label: "Day 3", theme: "Road to Hana",
     photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=300&fit=crop&q=80",
     photoAlt: "Road to Hana",
-    activities: [{ emoji: "🚗", label: "Scenic drive" }, { emoji: "🌊", label: "Black sand beach" }, { emoji: "🌿", label: "Bamboo forest" }],
+    activities: [{ emoji: "🚗", label: "Scenic drive" }, { emoji: "🖤", label: "Black sand beach" }, { emoji: "🌿", label: "Hana Farms lunch" }],
     status: "upcoming", weather: "🌦️", temp: "76°F",
   },
   {
-    id: 4, date: "Sat · May 25", label: "Day 4", theme: "Beach + Spa",
+    id: 4, date: "Mon · Jun 8", label: "Day 4", theme: "Beach + Spa",
     photo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600&h=300&fit=crop&q=80",
     photoAlt: "Spa and pool",
-    activities: [{ emoji: "💆", label: "Couples massage" }, { emoji: "🏊", label: "Pool day" }, { emoji: "🌅", label: "Sunset dinner" }],
+    activities: [{ emoji: "💆", label: "Couples massage" }, { emoji: "🏊", label: "Pool day" }, { emoji: "🌅", label: "Humble Market dinner" }],
     status: "upcoming", weather: "☀️", temp: "84°F",
   },
   {
-    id: 5, date: "Sun · May 26", label: "Day 5", theme: "Free Day",
+    id: 5, date: "Tue · Jun 9", label: "Day 5", theme: "Free Day",
     photo: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=600&h=300&fit=crop&q=80",
     photoAlt: "Tropical island",
-    activities: [{ emoji: "😎", label: "No plans" }, { emoji: "🛍️", label: "Shops + market" }, { emoji: "🍹", label: "Luau night" }],
+    activities: [{ emoji: "🥭", label: "Upcountry Market" }, { emoji: "🛍️", label: "Paia Town" }, { emoji: "🌺", label: "Old Lahaina Luau" }],
     status: "upcoming", weather: "☀️", temp: "83°F",
   },
   {
-    id: 6, date: "Mon · May 27", label: "Day 6", theme: "Haleakalā Sunrise",
+    id: 6, date: "Wed · Jun 10", label: "Day 6", theme: "Haleakalā Sunrise",
     photo: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=600&h=300&fit=crop&q=80",
     photoAlt: "Volcano sunrise",
-    activities: [{ emoji: "🌋", label: "Sunrise hike" }, { emoji: "🚲", label: "Crater bike" }, { emoji: "🍺", label: "Brewery dinner" }],
+    activities: [{ emoji: "🌋", label: "Sunrise at summit" }, { emoji: "🥾", label: "Sliding Sands hike" }, { emoji: "🍺", label: "Maui Brewing Co." }],
     status: "upcoming", weather: "🌤️", temp: "55°F",
   },
   {
-    id: 7, date: "Tue · May 28", label: "Day 7", theme: "Travel Home",
+    id: 7, date: "Thu · Jun 11", label: "Day 7", theme: "Fly Home",
     photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&h=300&fit=crop&q=80",
     photoAlt: "Airport departure",
-    activities: [{ emoji: "🧳", label: "Pack up" }, { emoji: "🏝️", label: "Last swim" }, { emoji: "✈️", label: "Depart 4pm" }],
+    activities: [{ emoji: "🌅", label: "Last sunrise walk" }, { emoji: "🏊", label: "Final swim" }, { emoji: "✈️", label: "AS844 departs OGG" }],
     status: "upcoming", weather: "☀️", temp: "81°F",
   },
 ];
@@ -338,8 +338,13 @@ export default function TripPage() {
   const [travelers, setTravelers] = useState<Traveler[]>([]);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [savedTripToast, setSavedTripToast] = useState<string | null>(null);
 
   // ── Trips lifecycle state ───────────────────────────────────────────────────
+  const [tripPackingPct, setTripPackingPct] = useState(0);
+  const [tripPackingCount, setTripPackingCount] = useState(0);
+  const PACKING_TOTAL = 46;
+
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => {
     try {
       const raw = typeof window !== "undefined" ? localStorage.getItem("tripflow-upcoming-trips") : null;
@@ -386,12 +391,13 @@ export default function TripPage() {
   function saveEditTrip() {
     if (!editingTrip) return;
     const photo = editPhotoOptions[editPhotoIdx] ?? editPhotoOptions[0];
+    const savedTitle = editTitle || editingTrip.title;
     setUpcomingTrips((prev) =>
       prev.map((t) =>
         t.id === editingTrip.id
           ? {
               ...t,
-              title: editTitle,
+              title: savedTitle,
               destination: editDestination,
               startDate: editStartDate,
               nights: editNights,
@@ -404,6 +410,8 @@ export default function TripPage() {
       )
     );
     setEditingTrip(null);
+    setSavedTripToast(savedTitle);
+    setTimeout(() => setSavedTripToast(null), 2500);
   }
 
   function archivePlanningTrip() {
@@ -481,6 +489,19 @@ export default function TripPage() {
   useEffect(() => {
     try { localStorage.setItem("tripflow-upcoming-trips", JSON.stringify(upcomingTrips)); } catch { /* ignore */ }
   }, [upcomingTrips]);
+
+  // Load packing progress from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("tripflow-packing-maui26");
+      if (raw) {
+        const ids = JSON.parse(raw) as string[];
+        const count = ids.length;
+        setTripPackingCount(count);
+        setTripPackingPct(Math.round((count / PACKING_TOTAL) * 100));
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   useEffect(() => {
     async function fetchTripData() {
@@ -595,6 +616,15 @@ export default function TripPage() {
 
   return (
     <div className="flex flex-col gap-5 px-4 pt-4 pb-6">
+
+      {/* ── Trip saved toast ────────────────────────────────────────────── */}
+      {savedTripToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-emerald-600 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <span>✓</span>
+          <span className="truncate max-w-[200px]">{savedTripToast}</span>
+          <span className="text-white/70">saved</span>
+        </div>
+      )}
 
       {/* ── Edit upcoming trip sheet ─────────────────────────────────────── */}
       {editingTrip && (
@@ -959,11 +989,18 @@ export default function TripPage() {
           {/* Trip identity */}
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-5">
             <div className="flex items-end justify-between">
-              <div>
+              <div className="flex-1 min-w-0 pr-3">
                 <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-1">{activeTripLabel}</p>
                 <h2 className="text-2xl font-black text-white leading-tight">{trip?.title ?? "Maui Family Trip"}</h2>
                 <p className="text-sm text-white/70 mt-0.5">{trip?.subtitle ?? "Jun 5–11 · 4 travelers"}</p>
               </div>
+              <button
+                onClick={() => setShowShareSheet(true)}
+                className="flex-none flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-xs font-bold px-3 py-2 rounded-full hover:bg-white/30 transition-colors"
+              >
+                <span>🔗</span>
+                <span>Invite</span>
+              </button>
             </div>
 
             {/* Progress bar */}
@@ -1214,14 +1251,24 @@ export default function TripPage() {
             {/* ── Packing list — tied to active trip ── */}
             <button
               onClick={() => router.push("/packing")}
-              className="w-full flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow"
+              className="w-full flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3.5 shadow-sm hover:shadow-md transition-shadow"
             >
-              <span className="text-base">🧳</span>
-              <div className="flex-1 text-left">
-                <p className="text-xs font-bold text-slate-700">Packing List</p>
-                <p className="text-[10px] text-slate-400">Tailored to your Maui itinerary</p>
+              <span className="text-xl">🧳</span>
+              <div className="flex-1 text-left min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-bold text-slate-700">Packing List</p>
+                  <p className="text-[10px] font-semibold text-slate-500">
+                    {tripPackingCount}/{PACKING_TOTAL} {tripPackingPct === 100 ? "✓" : "packed"}
+                  </p>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${tripPackingPct === 100 ? "bg-emerald-500" : "bg-sky-500"}`}
+                    style={{ width: `${tripPackingPct}%` }}
+                  />
+                </div>
               </div>
-              <span className="text-slate-300 text-sm">›</span>
+              <span className="text-slate-300 text-sm flex-none ml-1">›</span>
             </button>
 
             {/* ── Up Next ───────────────────────────────────────────── */}

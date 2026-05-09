@@ -393,6 +393,246 @@ const PLACES: Place[] = [
     reviewQuote: "Willie Nelson used to play here. That alone earns five stars. The breakfast burritos are massive and perfect. Classic old Maui.",
     proTip: "Go for breakfast — massive portions at local prices. Check their Facebook for live music nights. Cash is faster but they take cards.",
   },
+  {
+    id: 31, name: "Flatbread Company", category: "Food", neighborhood: "North Shore",
+    tags: ["food", "dinner", "lunch", "kids"],
+    distance: "12.4 mi", drive: "22 min", price: "$", kidFriendly: true, rating: 4.6,
+    photo: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Wood-fired pizza with fresh toppings",
+    blurb: "Paia's beloved wood-fired pizza spot with an emphasis on organic, locally sourced ingredients. Kids love the casual energy; adults love the craft beers.",
+    address: "Paia, Maui",
+    reviewSource: "Yelp", reviewCount: 2180, verifiedRating: 4.6,
+    reviewQuote: "The best pizza outside of Italy — no exaggeration. The organic ingredients make a difference you can actually taste. Kids were obsessed.",
+    proTip: "Tuesdays are benefit nights (10% goes to local charity). Arrive at opening — it fills up fast and they don't take reservations.",
+  },
+  {
+    id: 32, name: "Leoda's Kitchen & Pie Shop", category: "Food", neighborhood: "Ka'anapali",
+    tags: ["food", "breakfast", "lunch", "kids", "unique"],
+    distance: "5.2 mi", drive: "11 min", price: "$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1464219789935-c2d9d9aba644?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Artisan pie slices on display",
+    blurb: "Roadside gem in Olowalu famous for their banana cream and chocolate haupia pies. Cozy breakfast sandwiches, fresh soups, and some of the best pie on the island.",
+    address: "Olowalu, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 3140, verifiedRating: 4.7,
+    reviewQuote: "The banana cream pie ruined all other pie for me forever. My husband went back the next day just for pie. No regrets.",
+    proTip: "Go early — the most popular pies (banana cream, chocolate haupia) sell out by 2pm. The grilled cheese sandwich is criminally underrated.",
+  },
+  {
+    id: 33, name: "The Plantation House", category: "Food", neighborhood: "Ka'anapali",
+    tags: ["food", "dinner", "adults", "breakfast"],
+    distance: "3.4 mi", drive: "10 min", price: "$$$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Fine dining overlooking green golf course",
+    blurb: "Elevated farm-to-table dining perched above the Kapalua Golf Course with sweeping ocean views. The breakfast is legendary; the sunset dinner even more so.",
+    address: "Kapalua, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 2890, verifiedRating: 4.7,
+    reviewQuote: "Breakfast here with those views is the perfect start to a Maui day. The eggs benedict is exceptional and the coffee is locally sourced. Worth every cent.",
+    proTip: "The breakfast is the best deal — same stunning views, lower price. Reserve a table on the lanai. Portions are generous.",
+  },
+  {
+    id: 34, name: "Pipiwai Trail (Bamboo Forest)", category: "Activity", neighborhood: "Hana",
+    tags: ["activity", "hana", "unique", "morning"],
+    distance: "52.3 mi", drive: "105 min", price: "$", kidFriendly: true, rating: 4.9,
+    photo: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Dense towering bamboo forest path",
+    blurb: "The crown jewel of Road to Hana — a 4-mile round-trip hike through a magical bamboo forest to the 400-ft Waimoku Falls. Absolutely unforgettable.",
+    address: "Haleakalā National Park, Hana",
+    reviewSource: "TripAdvisor", reviewCount: 7820, verifiedRating: 4.9,
+    reviewQuote: "Walking through the bamboo section felt like being in a different world. Then the waterfall appears and your jaw drops. Best hike on Maui, no debate.",
+    proTip: "Requires Haleakalā National Park entry ($35/car). Start early — trail gets crowded by 10am. The bamboo section makes an eerie, musical sound in the wind.",
+  },
+  {
+    id: 35, name: "Lahaina Banyan Tree Park", category: "Activity", neighborhood: "Lahaina",
+    tags: ["activity", "free", "kids", "morning", "unique"],
+    distance: "4.6 mi", drive: "14 min", price: "$", kidFriendly: true, rating: 4.6,
+    photo: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Massive historic banyan tree spreading over plaza",
+    blurb: "A sprawling, 150-year-old banyan tree that covers nearly an acre of the historic Lahaina waterfront. The largest banyan in the US — kids can run wild in its root networks.",
+    address: "Lahaina, Maui",
+    reviewSource: "Google", reviewCount: 8940, verifiedRating: 4.6,
+    reviewQuote: "We spent an hour just exploring the roots and branches with our kids. It's completely free and genuinely one of the most impressive living things I've ever seen.",
+    proTip: "Free parking 2 blocks away on Shaw Street. Art shows happen under the tree on Saturdays. Go early to beat the tour groups.",
+  },
+  {
+    id: 36, name: "D.T. Fleming Beach", category: "Beach", neighborhood: "Ka'anapali",
+    tags: ["beach", "free", "morning", "unique"],
+    distance: "3.1 mi", drive: "10 min", price: "$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Wild, wide crescent beach with breaking waves",
+    blurb: "One of the most scenic beaches in all of Maui — a wide, wild crescent with ironwood trees and fewer crowds than Ka'anapali. Popular with bodysurfers and boogie boarders.",
+    address: "Kapalua, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 3240, verifiedRating: 4.7,
+    reviewQuote: "We stumbled on this instead of Kapalua Beach and found pure paradise. Less crowded, dramatic surf, beautiful ironwood trees. A much better vibe.",
+    proTip: "Strong shore break — not great for small kids but incredible for bodysurfers. Free parking lot fills by 9am. Walk north along the coast for the best photos.",
+  },
+  {
+    id: 37, name: "Honolua Bay", category: "Beach", neighborhood: "Ka'anapali",
+    tags: ["beach", "activity", "unique", "morning"],
+    distance: "4.8 mi", drive: "13 min", price: "$", kidFriendly: true, rating: 4.8,
+    photo: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Crystal clear bay with coral reef snorkeling",
+    blurb: "A protected marine preserve with some of the best snorkeling in West Maui. When surf is flat, the visibility is extraordinary — coral gardens, reef fish, and sea turtles.",
+    address: "Kapalua, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 4180, verifiedRating: 4.8,
+    reviewQuote: "Snorkeled here as the sun came up. Counted over 40 species of fish in 30 minutes. The coral is pristine. Skip Molokini if you find this.",
+    proTip: "Only snorkel when surf is under 2 feet — in big swells this is a world-class surf break only. Short walk down a dirt path from roadside parking. No facilities.",
+  },
+  {
+    id: 38, name: "Maui Tropical Plantation", category: "Activity", neighborhood: "Ka'anapali",
+    tags: ["activity", "kids", "unique", "morning"],
+    distance: "7.8 mi", drive: "18 min", price: "$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Tropical plantation with tram and mountains",
+    blurb: "45-acre working plantation with a narrated tram tour through pineapple, papaya, coffee, and macadamia orchards. The Mill House restaurant is exceptional.",
+    address: "Waikapu, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 2670, verifiedRating: 4.5,
+    reviewQuote: "The tram tour is surprisingly educational and the produce stand had the best pineapple I've ever tasted. Kids loved every second of the tour.",
+    proTip: "Tram tours run on the hour. The Mill House restaurant attached is excellent for lunch — farm-to-table with ingredients from the plantation itself. Book ahead.",
+  },
+  {
+    id: 39, name: "Baby Beach", category: "Beach", neighborhood: "Lahaina",
+    tags: ["beach", "kids", "free", "morning"],
+    distance: "5.1 mi", drive: "14 min", price: "$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Calm shallow beach perfect for toddlers",
+    blurb: "A small, calm beach behind a protective reef — the shallowest, safest swimming spot on Maui for little kids. Barely waist-deep even far out.",
+    address: "Lahaina, Maui",
+    reviewSource: "Yelp", reviewCount: 1820, verifiedRating: 4.5,
+    reviewQuote: "Our 2-year-old splashed around for two hours in knee-deep water. We felt completely safe. This is the Maui beach for families with very small kids.",
+    proTip: "Street parking on Front Street. Best before 10am before it gets crowded. Bring your own shade — no facilities. Combine with Banyan Tree Park nearby.",
+  },
+  {
+    id: 40, name: "5 Palms Restaurant", category: "Food", neighborhood: "Kihei",
+    tags: ["food", "breakfast", "lunch", "adults", "drinks"],
+    distance: "10.4 mi", drive: "22 min", price: "$$", kidFriendly: true, rating: 4.6,
+    photo: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Oceanfront brunch table with sunset view",
+    blurb: "Stunning oceanfront dining right on Keawakapu Beach in Kihei. The weekly sunset dinner and Sunday brunch on the beach is one of the most romantic meals on Maui.",
+    address: "Kihei, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 2140, verifiedRating: 4.6,
+    reviewQuote: "Sat six feet from the ocean at sunset. The fresh catch of the day was flawless and the cocktails were perfect. One of our top three meals ever.",
+    proTip: "Sunday brunch on the sand is legendary — book 2+ weeks ahead. The weekday sunset dinner is slightly easier to get in but equally beautiful.",
+  },
+  {
+    id: 41, name: "Grandma's Coffee House", category: "Food", neighborhood: "Upcountry",
+    tags: ["food", "breakfast", "morning", "unique", "adults"],
+    distance: "14.1 mi", drive: "35 min", price: "$", kidFriendly: true, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Cozy upcountry cafe with coffee and pastries",
+    blurb: "A genuine upcountry institution since 1984. Single-origin Maui coffee grown right on the property, homemade pastries, and a porch overlooking Kula's rolling hills.",
+    address: "Keokea, Maui",
+    reviewSource: "Yelp", reviewCount: 1560, verifiedRating: 4.7,
+    reviewQuote: "The best coffee I've ever had anywhere in the world. I don't even say that lightly. Grown on-site, roasted on-site, brewed perfectly. The view is free.",
+    proTip: "Combine with the Upcountry Farmer's Market nearby. Cash preferred. Bring a jacket — Keokea is cooler and often misty. Open until 5pm.",
+  },
+  {
+    id: 42, name: "Kapalua Wine & Food Festival", category: "Activity", neighborhood: "Ka'anapali",
+    tags: ["activity", "adults", "drinks", "unique"],
+    distance: "3.0 mi", drive: "10 min", price: "$$$", kidFriendly: false, rating: 4.7,
+    photo: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Wine tasting at oceanfront luxury resort",
+    blurb: "One of the most prestigious food & wine events in the Pacific. World-class chefs, renowned winemakers, and stunning Ka'anapali views — held each June.",
+    address: "Kapalua, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 890, verifiedRating: 4.7,
+    reviewQuote: "James Beard winners cooking against a backdrop of the Pacific Ocean. This is the kind of bucket-list experience you talk about for years.",
+    proTip: "Check kapaluawineandfoodfestival.com for exact June dates. Individual events sell out — book specific dinners early. The Grand Tasting is the most accessible event.",
+  },
+  {
+    id: 43, name: "Kō Restaurant", category: "Food", neighborhood: "Wailea",
+    tags: ["food", "dinner", "adults", "unique"],
+    distance: "1.2 mi", drive: "5 min", price: "$$$", kidFriendly: true, rating: 4.6,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Elegant restaurant with Hawaiian-inspired decor",
+    blurb: "Fairmont Kea Lani's farm-to-table restaurant celebrating the multicultural plantation heritage of Maui. Creative Hawaii regional cuisine by award-winning chefs.",
+    address: "Wailea, Maui",
+    reviewSource: "TripAdvisor", reviewCount: 1920, verifiedRating: 4.6,
+    reviewQuote: "The heirloom tomato salad and Kiawe-smoked pork were perfection. A sophisticated, unique menu that tells the story of Maui's history through food.",
+    proTip: "The 'Kō Table' experience (private chef's menu in the kitchen) is extraordinary if you can book it. Request sunset timing. Dress: resort elegant.",
+  },
+  {
+    id: 44, name: "Maui Ocean Center Whale Discovery Center", category: "Activity", neighborhood: "Ka'anapali",
+    tags: ["activity", "kids", "rainy", "unique"],
+    distance: "5.3 mi", drive: "14 min", price: "$$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Whale exhibit with life-size model",
+    blurb: "World-class whale education center at Maalaea Harbor. Life-size humpback skeleton, interactive exhibits, and the best rainy-day activity for kids outside of the main aquarium.",
+    address: "Maalaea, Maui",
+    reviewSource: "Google", reviewCount: 2340, verifiedRating: 4.5,
+    reviewQuote: "The life-size whale model hanging from the ceiling blew our minds. Kids were speechless. Perfect for a rainy afternoon and more educational than we expected.",
+    proTip: "Combines perfectly with a Maalaea boat tour departure. The tide pools outside are free and just as fascinating for kids. Parking is easy at Maalaea Harbor.",
+  },
+  {
+    id: 45, name: "Leilani's on the Beach", category: "Food", neighborhood: "Ka'anapali",
+    tags: ["food", "dinner", "lunch", "drinks", "adults", "kids"],
+    distance: "0.4 mi", drive: "2 min", price: "$$", kidFriendly: true, rating: 4.5,
+    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Beachfront restaurant with ocean dining",
+    blurb: "Right on Ka'anapali Beach at Whalers Village — the best beachfront casual dining near the Sheraton. Great fish, cold drinks, and sand between your toes.",
+    address: "Ka'anapali, Maui",
+    reviewSource: "Yelp", reviewCount: 3280, verifiedRating: 4.5,
+    reviewQuote: "Literally feet from the sand. The fish tacos and mai tais while watching whales breach offshore. This is what a Maui lunch should be.",
+    proTip: "Downstairs Leilani's is casual (walk-in). Upstairs Hula Grill is more upscale. Happy hour 3-5pm is the best deal for beachfront dining on the strip.",
+  },
+];
+
+// ── Verified Traveler Routes ────────────────────────────────────────────────
+type TravelerRoute = {
+  id: string;
+  title: string;
+  subtitle: string;
+  emoji: string;
+  dayTheme: string;
+  photo: string;
+  accentColor: string;
+  steps: { time: string; placeId: number; note: string }[];
+};
+
+const TRAVELER_ROUTES: TravelerRoute[] = [
+  {
+    id: "road-to-hana",
+    title: "Perfect Road to Hana",
+    subtitle: "Verified by 2,800+ travelers",
+    emoji: "🚗",
+    dayTheme: "Day 3 · Sun Jun 7",
+    photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=240&fit=crop&q=80",
+    accentColor: "#16a34a",
+    steps: [
+      { time: "7:00am", placeId: 34, note: "Start here — beat the crowds" },
+      { time: "9:30am", placeId: 24, note: "Jurassic Park viewpoint" },
+      { time: "12:00pm", placeId: 14, note: "Black sand beach — don't swim" },
+      { time: "2:00pm", placeId: 34, note: "Bamboo forest & waterfall" },
+    ],
+  },
+  {
+    id: "upcountry-morning",
+    title: "Upcountry Morning Loop",
+    subtitle: "Verified by 1,400+ travelers",
+    emoji: "🌄",
+    dayTheme: "Best on Day 5",
+    photo: "https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=600&h=240&fit=crop&q=80",
+    accentColor: "#7c3aed",
+    steps: [
+      { time: "7:30am", placeId: 41, note: "World's best coffee with views" },
+      { time: "9:00am", placeId: 20, note: "Lavender scones + panorama" },
+      { time: "10:30am", placeId: 13, note: "Art + Komoda cream puffs" },
+      { time: "12:30pm", placeId: 6, note: "Feed baby goats" },
+    ],
+  },
+  {
+    id: "west-maui-beach",
+    title: "West Maui Beach Crawl",
+    subtitle: "Verified by 3,200+ travelers",
+    emoji: "🏖️",
+    dayTheme: "Any beach day",
+    photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=240&fit=crop&q=80",
+    accentColor: "#0ea5e9",
+    steps: [
+      { time: "8:00am", placeId: 37, note: "Best snorkel of your life" },
+      { time: "10:00am", placeId: 1, note: "Calm water for kids" },
+      { time: "12:30pm", placeId: 45, note: "Feet in the sand dining" },
+      { time: "6:00pm", placeId: 15, note: "Free cliff dive ceremony" },
+    ],
+  },
 ];
 
 const CATEGORIES = [
@@ -434,7 +674,7 @@ const BEST_OF: Collection[] = [
     photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&h=240&fit=crop&q=80",
     accentFrom: "#0ea5e9",
     accentTo: "#0369a1",
-    placeIds: [1, 3, 4, 6, 27, 23],
+    placeIds: [1, 3, 4, 6, 27, 23, 39, 35, 38],
   },
   {
     id: "locals",
@@ -444,7 +684,7 @@ const BEST_OF: Collection[] = [
     photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&h=240&fit=crop&q=80",
     accentFrom: "#16a34a",
     accentTo: "#14532d",
-    placeIds: [17, 26, 25, 28, 30, 12],
+    placeIds: [17, 26, 25, 28, 30, 12, 32, 41],
   },
   {
     id: "gems",
@@ -454,7 +694,7 @@ const BEST_OF: Collection[] = [
     photo: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&h=240&fit=crop&q=80",
     accentFrom: "#7c3aed",
     accentTo: "#4c1d95",
-    placeIds: [18, 20, 24, 16, 27, 13],
+    placeIds: [18, 20, 24, 16, 27, 13, 36, 37, 41],
   },
   {
     id: "splurge",
@@ -464,7 +704,7 @@ const BEST_OF: Collection[] = [
     photo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&h=240&fit=crop&q=80",
     accentFrom: "#b45309",
     accentTo: "#78350f",
-    placeIds: [5, 9, 22, 18, 7],
+    placeIds: [5, 9, 22, 18, 7, 33, 43],
   },
   {
     id: "sunset",
@@ -474,7 +714,7 @@ const BEST_OF: Collection[] = [
     photo: "https://images.unsplash.com/photo-1566895291281-ea63efd4bdab?w=400&h=240&fit=crop&q=80",
     accentFrom: "#dc2626",
     accentTo: "#9a3412",
-    placeIds: [22, 7, 15, 8, 23],
+    placeIds: [22, 7, 15, 8, 23, 40, 45],
   },
   {
     id: "morning",
@@ -484,7 +724,7 @@ const BEST_OF: Collection[] = [
     photo: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=400&h=240&fit=crop&q=80",
     accentFrom: "#f59e0b",
     accentTo: "#b45309",
-    placeIds: [8, 10, 29, 16, 26, 21],
+    placeIds: [8, 10, 29, 16, 26, 21, 33, 41],
   },
 ];
 
@@ -515,10 +755,18 @@ function driveMinutes(drive: string): number {
 }
 
 function getWhatNowIds(hour: number): number[] {
-  if (hour < 9)  return [8, 10, 26, 29];   // early morning: walks + breakfast + SUP
-  if (hour < 13) return [1, 27, 17, 19];   // late morning: beach + activities
-  if (hour < 17) return [5, 21, 6, 20];    // afternoon: spa + beaches + upcountry
-  return [9, 15, 22, 7];                   // evening: dinner + sunset spots
+  if (hour < 9)  return [8, 10, 26, 29, 41, 33];   // early morning: walks + breakfast + SUP
+  if (hour < 13) return [1, 27, 17, 19, 37, 36];   // late morning: beach + activities
+  if (hour < 17) return [5, 21, 6, 20, 40, 32];    // afternoon: spa + beaches + upcountry
+  return [9, 15, 22, 7, 45, 25];                   // evening: dinner + sunset spots
+}
+
+// Smart time-aware section labels
+function getTimeContext(hour: number): { label: string; emoji: string; subtitle: string } {
+  if (hour < 9)  return { label: "Best Right Now", emoji: "🌅", subtitle: "Early morning picks — before the crowds" };
+  if (hour < 13) return { label: "Best Right Now", emoji: "☀️", subtitle: "Morning activity & dining picks" };
+  if (hour < 17) return { label: "Best Right Now", emoji: "🌴", subtitle: "Afternoon — relax, explore, or spa" };
+  return { label: "Best Tonight", emoji: "🌙", subtitle: "Sunset spots & evening dining" };
 }
 
 const AI_QUICK_PROMPTS = [
@@ -572,6 +820,9 @@ export default function ExplorePage() {
   const [activeNeighborhood, setActiveNeighborhood] = useState("All Areas");
   const [activeBestOf, setActiveBestOf] = useState<string | null>(null);
   const [activeSource, setActiveSource] = useState<string | null>(null);
+
+  // Traveler Routes
+  const [expandedRoute, setExpandedRoute] = useState<string | null>(null);
 
   // AI assistant
   const [showAI, setShowAI] = useState(false);
@@ -675,10 +926,8 @@ export default function ExplorePage() {
       return;
     }
 
-    // Push the new item straight into My Day's agenda via shared layout context.
-    // The layout never unmounts during tab navigation so this is always reliable.
-    localStorage.setItem("tripflow-dayIndex", String(dayNum - 1));
-    setPendingItem({
+    // Build the item payload once so we can pass it via multiple channels.
+    const exploreItem = {
       dayIndex: dayNum - 1,
       id: `explore-${Date.now()}`,
       title: place.name,
@@ -690,7 +939,16 @@ export default function ExplorePage() {
       notes: `${place.drive} · ${place.address}`,
       done: false,
       reservation: false,
-    });
+    };
+
+    // Channel 1: window custom event — fires even when My Day is in the
+    // Next.js router cache (frozen components receive window events).
+    window.dispatchEvent(new CustomEvent("tripflow:explore-add", { detail: exploreItem }));
+
+    // Channel 2: shared layout context — fires on fresh mounts where My Day
+    // hasn't been visited yet this session and isn't in the router cache.
+    localStorage.setItem("tripflow-dayIndex", String(dayNum - 1));
+    setPendingItem(exploreItem);
 
     setAddedToast(`Day ${dayNum}: ${place.name}`);
     setTimeout(() => {
@@ -1312,6 +1570,76 @@ export default function ExplorePage() {
           </div>
         )}
 
+        {/* ══════════════════════════════════════
+            SMART TIME: OPEN NOW / BEST RIGHT NOW
+            Feature 1: time-aware contextual picks
+        ══════════════════════════════════════ */}
+        {!isSearching && !activeBestOf && (
+          <div>
+            {(() => {
+              const hour = new Date().getHours();
+              const timeCtx = getTimeContext(hour);
+              const nowIds = getWhatNowIds(hour);
+              const nowPlaces = nowIds.map((id) => PLACES.find((p) => p.id === id)).filter(Boolean) as Place[];
+              return (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{timeCtx.emoji}</span>
+                        <p className="text-sm font-black text-slate-900">{timeCtx.label}</p>
+                        <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">Live</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-0.5 pl-6">{timeCtx.subtitle}</p>
+                    </div>
+                    <span className="text-[11px] text-slate-400 font-medium">{currentTime}</span>
+                  </div>
+                  <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+                    {nowPlaces.slice(0, 5).map((place) => (
+                      <button
+                        key={place.id}
+                        onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
+                        className="flex-none w-44 bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm text-left active:scale-[0.97] transition-transform"
+                      >
+                        <div className="relative h-28 overflow-hidden">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+                          <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">
+                            Open
+                          </div>
+                          <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/50 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                            <span className="text-amber-400">★</span>
+                            <span>{place.verifiedRating.toFixed(1)}</span>
+                          </div>
+                          <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2">
+                            <p className="text-[9px] text-white/60 font-semibold">{place.neighborhood}</p>
+                            <p className="text-xs font-bold text-white leading-tight">{place.name}</p>
+                          </div>
+                        </div>
+                        <div className="px-2.5 py-2.5">
+                          <div className="flex items-center gap-1 mb-1.5">
+                            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">{place.drive}</span>
+                            <span className="text-slate-200">·</span>
+                            <span className="text-[9px] font-semibold text-slate-400">{place.price}</span>
+                            {place.kidFriendly && <span className="text-[9px] font-semibold text-emerald-500">· Kid OK</span>}
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDayPickerPlace(place); }}
+                            className="w-full bg-slate-900 text-white text-[10px] font-bold py-1.5 rounded-xl"
+                          >
+                            + Add to Trip
+                          </button>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        )}
+
         {/* ── Search result count ── */}
         {isSearching && (
           <div className="flex items-center gap-2">
@@ -1528,6 +1856,106 @@ export default function ExplorePage() {
                   );
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════
+            TRAVELER ROUTES — Feature 3
+            Verified day-trip routes from real visitors
+        ══════════════════════════════════════ */}
+        {!isSearching && !activeBestOf && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">Verified Traveler Routes</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Optimized day itineraries from thousands of visitors</p>
+              </div>
+              <div className="flex items-center gap-1 bg-sky-50 border border-sky-100 rounded-full px-2.5 py-1">
+                <span className="text-sky-500 text-[10px]">✓</span>
+                <span className="text-[10px] font-bold text-sky-700">Verified</span>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              {TRAVELER_ROUTES.map((route) => {
+                const isOpen = expandedRoute === route.id;
+                return (
+                  <div key={route.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+                    <button
+                      onClick={() => setExpandedRoute(isOpen ? null : route.id)}
+                      className="w-full text-left"
+                    >
+                      <div className="relative h-32 overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={route.photo} alt={route.title} className="w-full h-full object-cover" />
+                        <div
+                          className="absolute inset-0"
+                          style={{ background: `linear-gradient(160deg, ${route.accentColor}99 0%, ${route.accentColor}cc 100%)` }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute top-3 left-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                          {route.subtitle}
+                        </div>
+                        <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
+                          <p className="text-[10px] font-semibold text-white/70 mb-0.5">{route.dayTheme}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-base font-black text-white">{route.emoji} {route.title}</p>
+                            <span className="text-white/60 text-sm">{isOpen ? "↑" : "↓"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-4 py-3">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Optimal order · verified by travelers</p>
+                        <div className="flex flex-col gap-2">
+                          {route.steps.map((step, idx) => {
+                            const place = PLACES.find((p) => p.id === step.placeId);
+                            if (!place) return null;
+                            return (
+                              <div key={idx} className="flex items-center gap-3">
+                                <div className="flex flex-col items-center flex-none">
+                                  <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-600">
+                                    {idx + 1}
+                                  </div>
+                                  {idx < route.steps.length - 1 && <div className="w-0.5 h-4 bg-slate-100 mt-0.5" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] font-bold text-slate-400 tabular-nums">{step.time}</span>
+                                    <p className="text-sm font-bold text-slate-900 truncate">{place.name}</p>
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 leading-snug">{step.note} · {place.drive}</p>
+                                </div>
+                                <button
+                                  onClick={() => setDayPickerPlace(place)}
+                                  className="flex-none text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-xl hover:bg-slate-900 hover:text-white transition-colors"
+                                >
+                                  + Add
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-slate-50 flex gap-2">
+                          <button
+                            onClick={() => {
+                              route.steps.forEach((step) => {
+                                const place = PLACES.find((p) => p.id === step.placeId);
+                                if (place) setDayPickerPlace(place);
+                              });
+                            }}
+                            className="flex-1 bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl"
+                          >
+                            Add all to trip →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}

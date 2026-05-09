@@ -356,6 +356,7 @@ export default function VaultPage() {
   const [editDateTo, setEditDateTo] = useState(""); // ISO
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedToast, setSavedToast] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -442,6 +443,8 @@ export default function VaultPage() {
     setDetailDoc(updated);
     setIsEditing(false);
     setSaving(false);
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 2500);
   }
 
   async function deleteDoc() {
@@ -557,6 +560,14 @@ export default function VaultPage() {
 
       {/* Hidden file input */}
       <input type="file" accept="image/*,.pdf" ref={fileInputRef} onChange={handleFileUpload} className="hidden" />
+
+      {/* ── Save success toast ── */}
+      <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 ${savedToast ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"}`}>
+        <div className="flex items-center gap-2 bg-slate-900 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg">
+          <span className="text-emerald-400">✓</span>
+          <span>Reservation saved</span>
+        </div>
+      </div>
 
       {/* ════════════════════════════════════════
           ADD SHEET

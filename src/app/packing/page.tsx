@@ -136,6 +136,7 @@ function allItemIds(): Set<string> {
 export default function PackingPage() {
   const router = useRouter();
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [shareToast, setShareToast] = useState<string | null>(null);
 
   // Load from localStorage
   useEffect(() => {
@@ -165,6 +166,35 @@ export default function PackingPage() {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
   }
 
+  async function shareList() {
+    const pct = Math.round(progress * 100);
+    const lines: string[] = [
+      `🧳 Maui Family Trip — Packing List (Jun 5–11)`,
+      `Progress: ${packedCount}/${totalItems} packed (${pct}%)`,
+      ``,
+    ];
+    CATEGORIES.forEach((cat) => {
+      const catPacked = cat.items.filter((i) => checked.has(i.id)).length;
+      lines.push(`${cat.emoji} ${cat.title} (${catPacked}/${cat.items.length})`);
+      cat.items.forEach((item) => {
+        const tick = checked.has(item.id) ? "✓" : "○";
+        const urgent = item.urgent ? " ⚠️" : "";
+        lines.push(`  ${tick} ${item.label}${urgent}`);
+      });
+      lines.push(``);
+    });
+    const text = lines.join("\n");
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "Maui Family Trip — Packing List", text });
+      } else {
+        await navigator.clipboard.writeText(text);
+        setShareToast("Copied to clipboard!");
+        setTimeout(() => setShareToast(null), 2000);
+      }
+    } catch { /* user cancelled or clipboard unavailable */ }
+  }
+
   function toggleCategory(cat: PackCategory) {
     const allIds = cat.items.map((i) => i.id);
     const allChecked = allIds.every((id) => checked.has(id));
@@ -182,6 +212,14 @@ export default function PackingPage() {
 
   return (
     <div className="flex flex-col bg-slate-50 min-h-screen">
+
+      {/* Share toast */}
+      {shareToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+          <span>📋</span>
+          <span>{shareToast}</span>
+        </div>
+      )}
 
       {/* ── Hero ── */}
       <div className="relative h-44 w-full overflow-hidden flex-none">
@@ -201,6 +239,14 @@ export default function PackingPage() {
           ‹
         </button>
 
+        {/* Share button */}
+        <button
+          onClick={shareList}
+          className="absolute top-4 right-4 flex items-center gap-1.5 bg-black/30 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full"
+        >
+          <span>↗</span> Share
+        </button>
+
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
           <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">Maui Family Trip · Jun 5–11</p>
           <h1 className="text-2xl font-black text-white leading-tight">Pack Smart</h1>
@@ -208,28 +254,61 @@ export default function PackingPage() {
         </div>
       </div>
 
-      {/* ── Progress bar ── */}
-      <div className="bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-4 flex-none">
-        <div className="flex-1">
-          <div className="flex justify-between mb-1.5">
-            <span className="text-xs font-semibold text-slate-700">{packedCount} of {totalItems} packed</span>
-            {packedCount > 0 && (
-              <button onClick={resetAll} className="text-[10px] text-slate-400 font-medium hover:text-rose-500 transition-colors">
-                Reset all
-              </button>
-            )}
+      {/* ── Progress summary card ── */}
+      {(() => {
+        const r = 28; const circ = 2 * Math.PI * r;
+        const catsDone = CATEGORIES.filter((c) => c.items.every((i) => checked.has(i.id))).length;
+        const pct = Math.round(progress * 100);
+        // Days until trip (hardcoded Jun 5 2026)
+        const tripStart = new Date("2026-06-05T00:00:00");
+        const today = new Date(); today.setHours(0,0,0,0);
+        const daysLeft = Math.max(0, Math.ceil((tripStart.getTime() - today.getTime()) / 86_400_000));
+        return (
+          <div className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center gap-4 flex-none">
+            {/* Circular progress ring */}
+            <div className="relative flex-none w-[68px] h-[68px]">
+              <svg width="68" height="68" viewBox="0 0 68 68" style={{ transform: "rotate(-90deg)" }}>
+                <circle cx="34" cy="34" r={r} fill="none" stroke="#f1f5f9" strokeWidth="7" />
+                <circle cx="34" cy="34" r={r} fill="none"
+                  stroke={pct === 100 ? "#10b981" : "#0ea5e9"} strokeWidth="7"
+                  strokeLinecap="round"
+                  strokeDasharray={circ}
+                  strokeDashoffset={circ * (1 - progress)}
+                  style={{ transition: "stroke-dashoffset 0.6s ease" }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-base font-black text-slate-900 leading-none">{pct}%</span>
+              </div>
+            </div>
+            {/* Stats */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-black text-slate-900 leading-tight">
+                {pct === 100 ? "All packed! 🎉" : `${packedCount} of ${totalItems} packed`}
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                {catsDone}/{CATEGORIES.length} categories done
+              </p>
+              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? "bg-emerald-500" : "bg-sky-500"}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+            {/* Days pill */}
+            <div className="flex-none flex flex-col items-center bg-amber-50 border border-amber-100 rounded-xl px-2.5 py-2 min-w-[48px]">
+              <span className="text-base font-black text-amber-600 leading-none tabular-nums">{daysLeft}</span>
+              <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wide leading-none mt-0.5">days</span>
+              {packedCount > 0 && (
+                <button onClick={resetAll} className="text-[8px] text-slate-300 hover:text-rose-400 transition-colors mt-1.5 leading-none">
+                  reset
+                </button>
+              )}
+            </div>
           </div>
-          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-              style={{ width: `${progress * 100}%` }}
-            />
-          </div>
-        </div>
-        {packedCount === totalItems && packedCount > 0 && (
-          <span className="text-xl">🎉</span>
-        )}
-      </div>
+        );
+      })()}
 
       {/* ── Don't Forget Banner ── */}
       {(() => {

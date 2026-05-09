@@ -42,10 +42,11 @@ const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 const INVITE_CODE = "MAUI26";
 
 const QUICK_ACTIONS = [
-  { key: "plan",    label: "Today's plan",   emoji: "📋", bg: "bg-sky-50",     border: "border-sky-200",     text: "text-sky-700"     },
-  { key: "weather", label: "Weather",        emoji: "🌤️", bg: "bg-indigo-50",  border: "border-indigo-200",  text: "text-indigo-700"  },
-  { key: "dinner",  label: "Dinner details", emoji: "🐟", bg: "bg-amber-50",   border: "border-amber-200",   text: "text-amber-700"   },
-  { key: "meetup",  label: "Meeting up",     emoji: "📍", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
+  { key: "plan",    label: "Trip plan",      emoji: "📋", bg: "bg-sky-50",     border: "border-sky-200",     text: "text-sky-700"     },
+  { key: "weather", label: "Maui weather",   emoji: "🌺", bg: "bg-indigo-50",  border: "border-indigo-200",  text: "text-indigo-700"  },
+  { key: "flight",  label: "Flight info",    emoji: "✈️", bg: "bg-amber-50",   border: "border-amber-200",   text: "text-amber-700"   },
+  { key: "meetup",  label: "Meet at resort", emoji: "🏨", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
+  { key: "luau",    label: "Luau night",     emoji: "🌟", bg: "bg-violet-50",  border: "border-violet-200",  text: "text-violet-700"  },
 ];
 
 const AVATAR_OPTIONS = ["🧔", "👩", "👦", "👧", "👵", "👴", "🧑", "👨", "👩‍🦱", "👨‍🦳", "🧒", "👶"];
@@ -379,9 +380,20 @@ export default function ChatPage() {
         sender_avatar: avatar,
         sender_user_id: user?.id ?? null,
         card_type: "weather",
-        card_title: "82°F · Partly cloudy",
-        card_sub: "Ka'anapali today — great beach weather ⛅",
-        card_emoji: "🌤️",
+        card_title: "Jun 5–11 Forecast · Maui",
+        card_sub: "78–84°F, mix of sun + showers — perfect beach weather 🌺",
+        card_emoji: "🌺",
+      });
+    } else if (key === "flight") {
+      await supabase.from("messages").insert({
+        trip_id: TRIP_ID,
+        sender_name: senderName,
+        sender_avatar: avatar,
+        sender_user_id: user?.id ?? null,
+        card_type: "reservation",
+        card_title: "Flights confirmed ✈️",
+        card_sub: "AA271 departs LAX 8:05am → SEA, then AS845 SEA → OGG 12:45pm",
+        card_emoji: "✈️",
       });
     } else if (key === "meetup") {
       await supabase.from("messages").insert({
@@ -390,9 +402,20 @@ export default function ChatPage() {
         sender_avatar: avatar,
         sender_user_id: user?.id ?? null,
         card_type: "location",
-        card_title: "Meet at the pool bar",
-        card_sub: "Sheraton Ka'anapali · Level 2",
-        card_emoji: "📍",
+        card_title: "Meet at the Sheraton",
+        card_sub: "Sheraton Maui Resort · Ka'anapali Beach · Check-in Jun 5 from 3pm",
+        card_emoji: "🏨",
+      });
+    } else if (key === "luau") {
+      await supabase.from("messages").insert({
+        trip_id: TRIP_ID,
+        sender_name: senderName,
+        sender_avatar: avatar,
+        sender_user_id: user?.id ?? null,
+        card_type: "reservation",
+        card_title: "Old Lahaina Luau · Jun 9",
+        card_sub: "5:45 PM · 4 tickets · Lei greeting · Front of house seating 🌺",
+        card_emoji: "🌟",
       });
     }
   }
@@ -1118,9 +1141,9 @@ export default function ChatPage() {
       </div>
 
       {/* ── Quick actions + input ─────────────────────────────────────────── */}
-      <div className="flex-none bg-white border-t border-slate-100 px-4 pt-2">
+      <div className="flex-none bg-white border-t border-slate-100 px-4 pt-2.5">
         <div
-          className="flex gap-2 overflow-x-auto pb-2"
+          className="flex gap-2 overflow-x-auto pb-2.5"
           style={
             { scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties
           }
@@ -1129,10 +1152,11 @@ export default function ChatPage() {
             <button
               key={a.key}
               onClick={() => handleQuickAction(a.key)}
-              className={`flex-none flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-full whitespace-nowrap border transition-colors active:opacity-70 ${a.bg} ${a.border} ${a.text}`}
+              className={`flex-none flex flex-col items-center gap-0.5 text-center px-3 py-2 rounded-2xl border transition-all active:scale-95 ${a.bg} ${a.border} ${a.text}`}
+              style={{ minWidth: "64px" }}
             >
-              <span className="text-sm">{a.emoji}</span>
-              {a.label}
+              <span className="text-xl leading-none">{a.emoji}</span>
+              <span className="text-[10px] font-bold leading-tight whitespace-nowrap mt-0.5">{a.label}</span>
             </button>
           ))}
         </div>
