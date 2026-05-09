@@ -42,6 +42,7 @@ const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 const INVITE_CODE = "MAUI26";
 
 const QUICK_ACTIONS = [
+  { key: "poll",    label: "Group poll",     emoji: "🗳️", bg: "bg-rose-50",    border: "border-rose-200",    text: "text-rose-700"    },
   { key: "plan",    label: "Trip plan",      emoji: "📋", bg: "bg-sky-50",     border: "border-sky-200",     text: "text-sky-700"     },
   { key: "weather", label: "Maui weather",   emoji: "🌺", bg: "bg-indigo-50",  border: "border-indigo-200",  text: "text-indigo-700"  },
   { key: "flight",  label: "Flight info",    emoji: "✈️", bg: "bg-amber-50",   border: "border-amber-200",   text: "text-amber-700"   },
@@ -351,7 +352,18 @@ export default function ChatPage() {
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
     const avatar = myTraveler?.avatar ?? "🧔";
 
-    if (key === "plan") {
+    if (key === "poll") {
+      await supabase.from("messages").insert({
+        trip_id: TRIP_ID,
+        sender_name: senderName,
+        sender_avatar: avatar,
+        sender_user_id: user?.id ?? null,
+        card_type: "poll",
+        card_title: "Where should we eat on our last night?",
+        card_sub: "Mama's Fish House|Merriman's|Monkeypod Kitchen",
+        card_emoji: "🗳️",
+      });
+    } else if (key === "plan") {
       await supabase.from("messages").insert({
         trip_id: TRIP_ID,
         sender_name: senderName,
@@ -1099,10 +1111,10 @@ export default function ChatPage() {
                 )}
                 {msg.text && (
                   <div
-                    className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                    className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                       isMe
-                        ? "bg-sky-600 text-white rounded-tr-sm"
-                        : "bg-white border border-slate-100 text-slate-800 shadow-sm rounded-tl-sm"
+                        ? "bg-gradient-to-br from-sky-500 to-sky-700 text-white rounded-tr-sm"
+                        : "bg-white border border-slate-100 text-slate-800 rounded-tl-sm"
                     }`}
                   >
                     {msg.text}
@@ -1114,19 +1126,49 @@ export default function ChatPage() {
                     <img src={msg.image_url} alt="" className="w-full h-36 object-cover" />
                   </div>
                 )}
-                {msg.card_type && (
-                  <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 shadow-sm flex items-center gap-2.5 w-56">
-                    <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center text-lg flex-none">
+                {msg.card_type && msg.card_type !== "poll" && (
+                  <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 shadow-sm flex items-center gap-2.5 w-60">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-none ${
+                      msg.card_type === "weather" ? "bg-indigo-50" :
+                      msg.card_type === "reservation" ? "bg-amber-50" :
+                      msg.card_type === "location" ? "bg-emerald-50" : "bg-sky-50"
+                    }`}>
                       {msg.card_emoji}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-800 truncate">
+                      <p className="text-xs font-bold text-slate-800 leading-tight">
                         {msg.card_title}
                       </p>
-                      <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                      <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
                         {msg.card_sub}
                       </p>
                     </div>
+                  </div>
+                )}
+                {msg.card_type === "poll" && (
+                  <div className="bg-white border border-rose-200 rounded-2xl px-3.5 py-3 shadow-sm w-64">
+                    <div className="flex items-center gap-1.5 mb-2.5">
+                      <span className="text-base">{msg.card_emoji}</span>
+                      <p className="text-xs font-black text-slate-800 leading-tight flex-1">{msg.card_title}</p>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      {(msg.card_sub ?? "").split("|").map((opt, i) => {
+                        const widths = ["72%", "45%", "28%"];
+                        const votes = [3, 2, 1];
+                        return (
+                          <div key={i} className="relative">
+                            <div className="h-8 rounded-xl bg-rose-50 overflow-hidden flex items-center">
+                              <div className="h-full bg-rose-100 rounded-xl transition-all" style={{ width: widths[i] }} />
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-between px-2.5">
+                              <p className="text-[11px] font-semibold text-slate-700 z-10">{opt.trim()}</p>
+                              <p className="text-[10px] font-bold text-rose-500 z-10">{votes[i]}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[9px] text-slate-400 mt-2 text-right">Tap to vote · 6 responses</p>
                   </div>
                 )}
                 <p className="text-[10px] text-slate-400 px-1">

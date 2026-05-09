@@ -1140,7 +1140,10 @@ export default function TripPage() {
                       <Link href="/" className="mt-1 text-xs font-semibold text-sky-600">→ Open Today&apos;s full schedule</Link>
                     )}
                     {day.status === "upcoming" && (
-                      <span className="mt-1 text-xs font-semibold text-slate-400">+ Add activity</span>
+                      <Link href="/explore" className="mt-1 flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
+                        <span>🔍</span>
+                        <span>Find activities for this day →</span>
+                      </Link>
                     )}
                   </div>
                 )}

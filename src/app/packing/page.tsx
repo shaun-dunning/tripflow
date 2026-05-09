@@ -137,6 +137,7 @@ export default function PackingPage() {
   const router = useRouter();
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [shareToast, setShareToast] = useState<string | null>(null);
+  const [showMustHaves, setShowMustHaves] = useState(false);
 
   // Load from localStorage
   useEffect(() => {
@@ -342,9 +343,58 @@ export default function PackingPage() {
         );
       })()}
 
+      {/* ── Quick filter bar ── */}
+      <div className="flex items-center gap-2 px-4 pt-4 pb-0 flex-none">
+        <button
+          onClick={() => setShowMustHaves((v) => !v)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold transition-all border ${
+            showMustHaves
+              ? "bg-amber-500 border-amber-500 text-white shadow-sm"
+              : "bg-white border-slate-200 text-slate-600 hover:border-amber-300"
+          }`}
+        >
+          <span>⚠️</span>
+          <span>Must-haves only</span>
+          {showMustHaves && <span className="ml-0.5">✕</span>}
+        </button>
+        {showMustHaves && (
+          <p className="text-[10px] text-slate-400 font-medium">
+            {CATEGORIES.flatMap((c) => c.items).filter((i) => i.urgent && !checked.has(i.id)).length} remaining
+          </p>
+        )}
+      </div>
+
+      {/* ── Milestone motivator ── */}
+      {(() => {
+        const pct = Math.round(progress * 100);
+        let milestone: { label: string; sub: string; emoji: string; bg: string } | null = null;
+        if (pct >= 100) {
+          milestone = { label: "You're fully packed!", sub: "Time to focus on the fun. Maui awaits.", emoji: "🎉", bg: "bg-emerald-50 border-emerald-200" };
+        } else if (pct >= 75) {
+          milestone = { label: "Almost there!", sub: "Just a few more items — you've got this.", emoji: "🏁", bg: "bg-sky-50 border-sky-200" };
+        } else if (pct >= 50) {
+          milestone = { label: "Halfway packed!", sub: "Great momentum. Keep it up.", emoji: "⚡", bg: "bg-violet-50 border-violet-200" };
+        } else if (pct >= 25) {
+          milestone = { label: "25% done — nice start!", sub: "Don't forget the must-haves above.", emoji: "🌟", bg: "bg-amber-50 border-amber-200" };
+        }
+        if (!milestone || showMustHaves) return null;
+        return (
+          <div className={`mx-4 mt-3 ${milestone.bg} border rounded-2xl px-4 py-3 flex items-center gap-3 flex-none`}>
+            <span className="text-2xl flex-none">{milestone.emoji}</span>
+            <div>
+              <p className="text-sm font-bold text-slate-800">{milestone.label}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">{milestone.sub}</p>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Categories ── */}
       <div className="flex flex-col gap-4 px-4 pt-4 pb-10">
-        {CATEGORIES.map((cat) => {
+        {(showMustHaves
+          ? CATEGORIES.map((c) => ({ ...c, items: c.items.filter((i) => i.urgent) })).filter((c) => c.items.length > 0)
+          : CATEGORIES
+        ).map((cat) => {
           const catChecked = cat.items.filter((i) => checked.has(i.id)).length;
           const catDone = catChecked === cat.items.length;
           return (

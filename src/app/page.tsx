@@ -1643,6 +1643,53 @@ export default function MyDayPage() {
           );
         })()}
 
+        {/* ── Smart Actions Card (15+ days out) ── */}
+        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 14 && (() => {
+          const d = tripInfo.daysUntilTrip;
+          type ActionItem = { emoji: string; title: string; sub: string; urgent?: boolean };
+          const actions: ActionItem[] = [];
+          if (d <= 30) {
+            actions.push({ emoji: "🍽️", title: "Book Mama's Fish House", sub: "Reservations fill 60+ days out — grab a table now", urgent: true });
+            actions.push({ emoji: "🤿", title: "Lock in Molokini snorkel tour", sub: "Best boats sell out weeks ahead in summer", urgent: true });
+          }
+          if (d <= 45) {
+            actions.push({ emoji: "🌿", title: "Order reef-safe sunscreen", sub: "Hawaii law bans oxybenzone — TSA-friendly reef-safe SPF 50" });
+            actions.push({ emoji: "🚗", title: "Reserve your rental car", sub: "Maui inventory shrinks fast in June — book early for best rates" });
+          }
+          actions.push({ emoji: "📱", title: "Download Maui offline maps", sub: "Road to Hana has dead zones — save maps before you leave home" });
+          actions.push({ emoji: "💳", title: "Alert your bank & credit cards", sub: "Avoid declined charges abroad — takes 2 min online" });
+
+          return (
+            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl shadow-md overflow-hidden">
+              <div className="px-4 pt-4 pb-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <p className="text-[10px] font-bold text-violet-200 uppercase tracking-widest mb-0.5">Do it now</p>
+                    <p className="text-sm font-black text-white">Smart Actions</p>
+                  </div>
+                  <div className="bg-white/15 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
+                    {d} days away
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {actions.map((a, i) => (
+                    <div key={i} className="flex items-start gap-3 bg-white/10 rounded-xl px-3 py-2.5">
+                      <span className="text-lg flex-none leading-none mt-0.5">{a.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <p className="text-[12px] font-bold text-white leading-tight">{a.title}</p>
+                          {a.urgent && <span className="text-[9px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">Urgent</span>}
+                        </div>
+                        <p className="text-[10px] text-violet-200 leading-snug">{a.sub}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* ── Pre-trip Smart Readiness Panel ── */}
         {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
           <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">

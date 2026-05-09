@@ -541,6 +541,24 @@ export default function VaultPage() {
   const confirmedCount = docs.filter((d) => d.status === "confirmed").length;
   const pendingCount = docs.filter((d) => d.status === "pending").length;
 
+  // "Coming Up" — docs with parseable future dates, sorted chronologically
+  const MONTHS_IDX: Record<string, number> = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+  function parseSortKey(dateStr: string): number {
+    const m = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
+    if (!m) return Infinity;
+    const month = MONTHS_IDX[m[1]];
+    const day = parseInt(m[2]);
+    return new Date(2026, month, day).getTime();
+  }
+  const now = Date.now();
+  const comingUp = docs
+    .filter((d) => {
+      const t = parseSortKey(d.date);
+      return t !== Infinity && t >= now;
+    })
+    .sort((a, b) => parseSortKey(a.date) - parseSortKey(b.date))
+    .slice(0, 3);
+
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-64 gap-3">
       <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
@@ -1014,6 +1032,52 @@ export default function VaultPage() {
           )}
         </div>
       </div>
+
+      {/* ── Coming Up ── */}
+      {comingUp.length > 0 && !vaultSearch && activeCategory === "All" && (
+        <div className="px-4 pt-4 pb-2">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Coming Up</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            {comingUp.map((doc) => {
+              const isFlights = doc.category === "Flights";
+              const brand = isFlights ? getAirlineBrand(doc.provider ?? "") : null;
+              const sortKey = parseSortKey(doc.date);
+              const daysAway = Math.ceil((sortKey - now) / 86_400_000);
+              const daysLabel = daysAway === 0 ? "Today" : daysAway === 1 ? "Tomorrow" : `${daysAway} days`;
+              const isUrgent = daysAway <= 2;
+              return (
+                <button
+                  key={doc.id}
+                  onClick={() => openDetail(doc)}
+                  className="flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-4 py-3 shadow-sm active:scale-[0.98] transition-transform text-left"
+                >
+                  {isFlights && brand ? (
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-xs font-black bg-gradient-to-br ${brand.bg} flex-none`}>
+                      {brand.code}
+                    </div>
+                  ) : (
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl flex-none">
+                      {doc.emoji}
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-900 truncate leading-tight">{doc.name}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">{doc.date}</p>
+                  </div>
+                  <div className={`flex-none flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black ${
+                    isUrgent ? "bg-rose-100 text-rose-700" : "bg-sky-50 text-sky-700"
+                  }`}>
+                    {isUrgent ? "⚡" : "📅"} {daysLabel}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── Quick Access strip ── */}
       {docs.length > 0 && (() => {

@@ -769,6 +769,81 @@ function getTimeContext(hour: number): { label: string; emoji: string; subtitle:
   return { label: "Best Tonight", emoji: "🌙", subtitle: "Sunset spots & evening dining" };
 }
 
+const NEIGHBORHOOD_GUIDE = [
+  {
+    name: "Ka'anapali",
+    emoji: "🏖️",
+    vibe: "Beach Strip",
+    bestFor: "Beaches · Sunsets · Resort life",
+    timeToVisit: "All day",
+    photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&h=200&fit=crop&q=80",
+    accent: "from-sky-600 to-blue-800",
+  },
+  {
+    name: "Wailea",
+    emoji: "✨",
+    vibe: "Luxury South",
+    bestFor: "Spa · Fine dining · Coastal walks",
+    timeToVisit: "Mornings & evenings",
+    photo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=300&h=200&fit=crop&q=80",
+    accent: "from-amber-600 to-orange-800",
+  },
+  {
+    name: "Lahaina",
+    emoji: "🌺",
+    vibe: "Historic Town",
+    bestFor: "History · Waterfront · Art galleries",
+    timeToVisit: "Early morning",
+    photo: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=300&h=200&fit=crop&q=80",
+    accent: "from-rose-600 to-pink-900",
+  },
+  {
+    name: "Kihei",
+    emoji: "🌊",
+    vibe: "Local Vibe",
+    bestFor: "Casual eats · Surf · Happy hour",
+    timeToVisit: "3–6 PM",
+    photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=300&h=200&fit=crop&q=80",
+    accent: "from-teal-600 to-cyan-900",
+  },
+  {
+    name: "North Shore",
+    emoji: "🌿",
+    vibe: "Wild & Funky",
+    bestFor: "Paia · Fish tacos · Windsurfing",
+    timeToVisit: "Morning",
+    photo: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=300&h=200&fit=crop&q=80",
+    accent: "from-emerald-600 to-green-900",
+  },
+  {
+    name: "Upcountry",
+    emoji: "🌄",
+    vibe: "Cool & Scenic",
+    bestFor: "Farms · Lavender · Best coffee",
+    timeToVisit: "Early morning",
+    photo: "https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=300&h=200&fit=crop&q=80",
+    accent: "from-violet-600 to-purple-900",
+  },
+  {
+    name: "Hana",
+    emoji: "🗺️",
+    vibe: "Remote & Raw",
+    bestFor: "Waterfalls · Black sand · Solitude",
+    timeToVisit: "Full day trip",
+    photo: "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300&h=200&fit=crop&q=80",
+    accent: "from-slate-600 to-slate-900",
+  },
+  {
+    name: "Kapalua",
+    emoji: "🦋",
+    vibe: "Secluded North",
+    bestFor: "Sea turtles · Ziplines · Golf",
+    timeToVisit: "Morning",
+    photo: "https://images.unsplash.com/photo-1566895291281-ea63efd4bdab?w=300&h=200&fit=crop&q=80",
+    accent: "from-indigo-600 to-blue-900",
+  },
+];
+
 const AI_QUICK_PROMPTS = [
   "Best snorkeling spot for kids?",
   "What to do on a rainy day?",
@@ -823,6 +898,9 @@ export default function ExplorePage() {
 
   // Traveler Routes
   const [expandedRoute, setExpandedRoute] = useState<string | null>(null);
+
+  // Sort
+  const [sortBy, setSortBy] = useState<"top-reviewed" | "highest-rated" | "closest">("top-reviewed");
 
   // AI assistant
   const [showAI, setShowAI] = useState(false);
@@ -1034,6 +1112,12 @@ export default function ExplorePage() {
     .slice(0, 3);
 
   const activeFilterCount = (kidsOnly ? 1 : 0) + (maxDrive < 30 ? 1 : 0) + (activeScenario !== null ? 1 : 0) + (activeNeighborhood !== "All Areas" ? 1 : 0) + (activeBestOf ? 1 : 0) + (activeSource ? 1 : 0);
+
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (sortBy === "highest-rated") return b.verifiedRating - a.verifiedRating || b.reviewCount - a.reviewCount;
+    if (sortBy === "closest") return driveMinutes(a.drive) - driveMinutes(b.drive);
+    return b.reviewCount - a.reviewCount;
+  });
 
   // Top picks per review source (used for "Verified by" sections)
   const topBySource = (source: string) =>
@@ -1524,6 +1608,68 @@ export default function ExplorePage() {
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════
+            NEIGHBORHOOD EXPLORER
+        ══════════════════════════════════════ */}
+        {!searchQuery && !activeBestOf && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">Explore by Area</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Each neighborhood has its own personality</p>
+              </div>
+              {activeNeighborhood !== "All Areas" && (
+                <button onClick={() => setActiveNeighborhood("All Areas")} className="text-[11px] font-semibold text-rose-500">Clear ✕</button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {NEIGHBORHOOD_GUIDE.map((hood) => {
+                const count = PLACES.filter((p) => p.neighborhood === hood.name).length;
+                const isActive = activeNeighborhood === hood.name;
+                return (
+                  <button
+                    key={hood.name}
+                    onClick={() => setActiveNeighborhood(isActive ? "All Areas" : hood.name)}
+                    className={`relative rounded-2xl overflow-hidden text-left transition-all active:scale-[0.97] ${isActive ? "ring-2 ring-slate-900 ring-offset-1" : ""}`}
+                    style={{ aspectRatio: "1.7/1" }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={hood.photo} alt={hood.name} className="absolute inset-0 w-full h-full object-cover" />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${hood.accent} opacity-70`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    {isActive && (
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
+                        <span className="text-slate-900 text-[10px] font-black">✓</span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
+                      <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest">{hood.vibe}</p>
+                      <p className="text-xs font-black text-white leading-tight">{hood.emoji} {hood.name}</p>
+                      {count > 0 && (
+                        <p className="text-[9px] text-white/60 mt-0.5">{count} place{count !== 1 ? "s" : ""}</p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {activeNeighborhood !== "All Areas" && (() => {
+              const hood = NEIGHBORHOOD_GUIDE.find((h) => h.name === activeNeighborhood);
+              if (!hood) return null;
+              return (
+                <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                  <span className="text-2xl">{hood.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-slate-900">{hood.name}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{hood.bestFor}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Best time: {hood.timeToVisit}</p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -2026,6 +2172,30 @@ export default function ExplorePage() {
             )}
           </div>
 
+          {/* Sort bar */}
+          {filtered.length > 1 && (
+            <div className="flex items-center gap-1.5 mb-3 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex-none">Sort:</span>
+              {[
+                { key: "top-reviewed" as const, label: "Most Reviewed" },
+                { key: "highest-rated" as const, label: "Highest Rated" },
+                { key: "closest" as const, label: "Closest" },
+              ].map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setSortBy(opt.key)}
+                  className={`flex-none text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all whitespace-nowrap ${
+                    sortBy === opt.key
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-500 border-slate-200"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-slate-400">
               <span className="text-3xl">🔭</span>
@@ -2039,7 +2209,7 @@ export default function ExplorePage() {
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {filtered.map((place) => {
+              {sortedFiltered.map((place) => {
                 const isExpanded = expandedId === place.id;
                 return (
                   <div key={place.id} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
