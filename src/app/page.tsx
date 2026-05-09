@@ -642,75 +642,61 @@ export default function MyDayPage() {
             });
           });
 
-        setAgendas((prev) => {
-          const updated = [...prev];
+        // Build fresh agendas: start with mock data as fallback,
+        // replace each day with Supabase items where they exist.
+        // Using a direct value (not functional form) to guarantee React
+        // sees the new reference and re-renders.
+        const toMins = (t: string) => {
+          const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (!match) return 0;
+          let h = parseInt(match[1]);
+          const m = parseInt(match[2]);
+          const pm = match[3].toUpperCase() === "PM";
+          if (pm && h !== 12) h += 12;
+          if (!pm && h === 12) h = 0;
+          return h * 60 + m;
+        };
 
-          // Layer 1: replace mock days that have real agenda_items from Supabase.
-          // Preserve any items added via the Explore bridge (id starts with "explore-").
-          if (tripDaysResult.data) {
-            tripDaysResult.data.forEach((td) => {
-              const supabaseItems = byDay[td.id];
-              const idx = td.day_number - 1;
-              if (idx < 0 || idx >= updated.length) return;
+        const fresh: Item[][] = DAYS.map((d) => [...d.agenda]);
 
-              // Items already in state that came from the Explore bridge
-              const bridgedItems = updated[idx].filter((a) => a.id.startsWith("explore-"));
-
-              if (supabaseItems?.length) {
-                // Replace with real Supabase items, dropping any bridge duplicates by title
-                const supabaseTitles = new Set(supabaseItems.map((a) => a.title));
-                const surviving = bridgedItems.filter((b) => !supabaseTitles.has(b.title));
-                updated[idx] = [
-                  ...supabaseItems.map((ai) => ({
-                    id: ai.id,
-                    time: ai.time,
-                    title: ai.title,
-                    emoji: ai.emoji,
-                    done: ai.done,
-                    notes: ai.subtitle ?? "",
-                    reservation: ai.is_reservation,
-                    fromSupabase: true,
-                  })),
-                  ...surviving,
-                ];
-              } else if (bridgedItems.length) {
-                // No Supabase items yet but we have a bridge item — show only that,
-                // not the stale mock data
-                updated[idx] = bridgedItems;
-              }
-            });
+        // Layer 1 — Supabase agenda_items replace mock data day-by-day
+        (tripDaysResult.data ?? []).forEach((td) => {
+          const idx = td.day_number - 1;
+          if (idx < 0 || idx >= fresh.length) return;
+          const items = byDay[td.id];
+          if (items?.length) {
+            fresh[idx] = items.map((ai) => ({
+              id: ai.id,
+              time: ai.time,
+              title: ai.title,
+              emoji: ai.emoji,
+              done: ai.done,
+              notes: ai.subtitle ?? "",
+              reservation: ai.is_reservation,
+              fromSupabase: true,
+            }));
           }
-
-          // Layer 2: merge doc-sourced items, skipping duplicates by title
-          const toMins = (t: string) => {
-            const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
-            if (!match) return 0;
-            let h = parseInt(match[1]);
-            const m = parseInt(match[2]);
-            const pm = match[3].toUpperCase() === "PM";
-            if (pm && h !== 12) h += 12;
-            if (!pm && h === 12) h = 0;
-            return h * 60 + m;
-          };
-          docItems.forEach(({ dayIndex, item }) => {
-            if (dayIndex < 0 || dayIndex >= updated.length) return;
-            const existing = updated[dayIndex];
-            const titleLC = item.title.toLowerCase();
-            const dupe = existing.some(
-              (e) =>
-                e.title.toLowerCase().includes(titleLC) ||
-                titleLC.includes(e.title.toLowerCase()),
-            );
-            if (dupe) return;
-            updated[dayIndex] = [...existing, item].sort((a, b) => {
-              if (!a.time) return 1;
-              if (!b.time) return -1;
-              return toMins(a.time) - toMins(b.time);
-            });
-          });
-
-          return updated;
         });
+
+        // Layer 2 — doc-sourced reservations overlaid on top
+        docItems.forEach(({ dayIndex, item }) => {
+          if (dayIndex < 0 || dayIndex >= fresh.length) return;
+          const existing = fresh[dayIndex];
+          const titleLC = item.title.toLowerCase();
+          const dupe = existing.some(
+            (e) =>
+              e.title.toLowerCase().includes(titleLC) ||
+              titleLC.includes(e.title.toLowerCase()),
+          );
+          if (dupe) return;
+          fresh[dayIndex] = [...existing, item].sort((a, b) => {
+            if (!a.time) return 1;
+            if (!b.time) return -1;
+            return toMins(a.time) - toMins(b.time);
+          });
+        });
+
+        setAgendas(fresh);
       }
     }
     fetchData();
