@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, type WishlistEntry } from "@/lib/wishlist";
 import { useExploreContext } from "@/lib/exploreContext";
+import { SortableAgendaSections, type Section as DndSection } from "@/components/SortableAgendaSection";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -446,6 +447,11 @@ export default function MyDayPage() {
 
   // Vibe check
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+
+  // AI day-planner
+  const [aiPlannerOpen, setAiPlannerOpen] = useState(false);
+  const [aiPlannerLoading, setAiPlannerLoading] = useState(false);
+  const [aiPlannerReply, setAiPlannerReply] = useState<string | null>(null);
 
   // Edit / add sheet
   const [sheetItem, setSheetItem] = useState<Item | null>(null);
@@ -1034,6 +1040,112 @@ export default function MyDayPage() {
     : null;
   const allDoneToday = isToday && items.length > 0 && items.every((i) => i.done);
 
+  // ── AI day-planner ───────────────────────────────────────────────────────
+  async function planMyDay() {
+    setAiPlannerOpen(true);
+    setAiPlannerLoading(true);
+    setAiPlannerReply(null);
+
+    const agendaPayload = items.map((it) => ({
+      time: it.time,
+      title: it.title,
+      emoji: it.emoji,
+      notes: it.notes,
+      reservation: it.reservation,
+    }));
+
+    const prompt = `Here's our Day ${day.dayNum} agenda (${day.date} · ${currentTheme}):\n` +
+      agendaPayload.map((it) => `• ${it.emoji} ${it.time}: ${it.title}${it.notes ? ` — ${it.notes}` : ""}`).join("\n") +
+      "\n\nIdentify free time gaps and suggest 2–3 activities that fit naturally into our schedule. Be specific to Maui and our family context.";
+
+    try {
+      const res = await fetch("/api/assistant", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: prompt,
+          history: [{ role: "user", content: prompt }],
+          agendaItems: agendaPayload,
+          dayNum: day.dayNum,
+        }),
+      });
+      const data = await res.json() as { reply: string };
+      setAiPlannerReply(data.reply);
+    } catch {
+      setAiPlannerReply("Sorry, couldn't reach the AI assistant. Try again in a moment.");
+    } finally {
+      setAiPlannerLoading(false);
+    }
+  }
+
+  // ── Drag-to-reorder handler ───────────────────────────────────────────────
+  const handleReorder = useCallback(async (newSections: DndSection[]) => {
+    // Merge reordered sections back into the full agenda for this day, then
+    // reassign times: within-section reorders keep the section's existing times
+    // sorted by position; cross-section moves adopt the target section's default time.
+    const existingSections = sections; // capture current before update
+    const sectionKeys = existingSections.map((s) => s.key);
+
+    // Build a map of old item times so we can detect cross-section moves
+    const oldSectionByItemId: Record<string, string> = {};
+    for (const s of existingSections) {
+      for (const it of s.items) oldSectionByItemId[it.id] = s.key;
+    }
+
+    // The newSections coming in may have a different key order or fewer sections
+    // (if items were moved between sections). Rebuild the full ordered list.
+    const mergedItems: Item[] = [];
+    const sectionDefaultTimes: Record<string, string> = {};
+    for (const s of newSections) sectionDefaultTimes[s.key] = s.defaultTime;
+
+    for (const newSec of newSections) {
+      // Collect existing times for items that stayed in the same section
+      const oldSec = existingSections.find((s) => s.key === newSec.key);
+      const oldTimes = oldSec ? [...oldSec.items.map((i) => i.time)] : [];
+      // Sort them to redistribute in the same relative order
+      const sortedOldTimes = [...oldTimes].sort((a, b) => timeToMinutes(a) - timeToMinutes(b));
+
+      newSec.items.forEach((item, posIdx) => {
+        const movedCross = oldSectionByItemId[item.id] !== newSec.key;
+        let newTime: string;
+        if (movedCross) {
+          // Item crossed a section boundary — assign the target section's default time
+          newTime = sectionDefaultTimes[newSec.key] ?? item.time;
+        } else {
+          // Same section — keep relative time order
+          newTime = sortedOldTimes[posIdx] ?? item.time;
+        }
+        mergedItems.push({ ...item, time: newTime });
+      });
+    }
+
+    // Optimistic UI update
+    setAgendas((prev) =>
+      prev.map((agenda, i) => (i === dayIndex ? mergedItems : agenda))
+    );
+
+    // Persist to Supabase: update sort_order and time for every item in the day
+    const tripDayId = dayIdMap[day.dayNum];
+    if (!tripDayId) return;
+
+    const updates = mergedItems
+      .filter((it) => it.fromSupabase)
+      .map((it, idx) => ({
+        id: it.id,
+        sort_order: (idx + 1) * 10,
+        time: it.time,
+      }));
+
+    // Fire all updates in parallel (no await — optimistic)
+    updates.forEach(({ id, sort_order, time }) => {
+      supabase
+        .from("agenda_items")
+        .update({ sort_order, time })
+        .eq("id", id)
+        .then(() => {}); // intentionally fire-and-forget
+    });
+  }, [sections, dayIndex, dayIdMap, day.dayNum]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div className="flex flex-col">
 
@@ -1267,6 +1379,81 @@ export default function MyDayPage() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── AI Day-Planner Bottom Sheet ── */}
+      {aiPlannerOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex flex-col justify-end max-w-md mx-auto"
+          onClick={() => { if (!aiPlannerLoading) setAiPlannerOpen(false); }}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+          <div
+            className="relative bg-white rounded-t-3xl shadow-2xl max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 flex-none">
+              <div className="w-10 h-1 bg-slate-200 rounded-full" />
+            </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-slate-100 flex-none">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-lg flex-none">
+                  🤖
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">AI Day Planner</h3>
+                  <p className="text-[10px] text-slate-400">Day {day.dayNum} · {currentTheme}</p>
+                </div>
+              </div>
+              {!aiPlannerLoading && (
+                <button
+                  onClick={() => setAiPlannerOpen(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            {/* Body */}
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4"
+              style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+              {aiPlannerLoading ? (
+                <div className="flex flex-col items-center justify-center gap-4 py-8">
+                  <div className="w-10 h-10 border-2 border-slate-200 border-t-violet-500 rounded-full animate-spin" />
+                  <p className="text-sm text-slate-400 text-center">Analyzing your Day {day.dayNum} schedule<br />and finding the perfect gaps…</p>
+                </div>
+              ) : aiPlannerReply ? (
+                <div className="flex flex-col gap-4">
+                  <div className="bg-violet-50 border border-violet-100 rounded-2xl px-4 py-4">
+                    <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{aiPlannerReply}</p>
+                  </div>
+                  <div className="flex gap-2.5">
+                    <button
+                      onClick={() => router.push("/explore")}
+                      className="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-sm"
+                    >
+                      Browse Activities →
+                    </button>
+                    <button
+                      onClick={planMyDay}
+                      className="px-4 border border-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl text-sm"
+                    >
+                      Refresh
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setAiPlannerOpen(false)}
+                    className="text-sm text-slate-400 font-semibold text-center pb-2"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -1701,169 +1888,39 @@ export default function MyDayPage() {
           </div>
         )}
 
-        {/* ── Time Sections ── */}
-        {!loading && sections.map((section) => {
-          const doneCount = section.items.filter((i) => i.done).length;
-          const sectionProgress = section.items.length > 0 ? doneCount / section.items.length : 0;
-          const allDone = doneCount === section.items.length && section.items.length > 0;
-          return (
-            <div key={section.key}>
-              <div className="flex items-center gap-2.5 mb-3">
-                <span className="text-base">{section.emoji}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-800">{section.label}</span>
-                      <span className="text-[11px] text-slate-400">{section.range}</span>
-                    </div>
-                    <span className={`text-[10px] font-bold ${allDone ? "text-emerald-600" : "text-slate-400"}`}>
-                      {allDone ? "✓ Done" : `${doneCount}/${section.items.length}`}
-                    </span>
-                  </div>
-                  {isToday && section.items.length > 0 && (
-                    <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${allDone ? "bg-emerald-500" : section.key === "morning" ? "bg-amber-400" : section.key === "afternoon" ? "bg-sky-400" : "bg-indigo-400"}`}
-                        style={{ width: `${sectionProgress * 100}%` }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+        {/* ── Time Sections (drag-to-reorder) ── */}
+        {!loading && (
+          <SortableAgendaSections
+            sections={sections as DndSection[]}
+            isToday={isToday}
+            isPast={isPast}
+            isEditable={isEditable}
+            wishlist={wishlist}
+            onReorder={handleReorder}
+            onEdit={openEdit}
+            onToggle={toggle}
+            onAddClick={openAdd}
+            onSuggestionClick={() => router.push("/explore")}
+          />
+        )}
 
-              <div className="flex flex-col">
-                {section.items.map((item, idx) => {
-                  const next = section.items[idx + 1];
-                  const gap = next ? timeToMinutes(next.time) - timeToMinutes(item.time) : null;
-                  return (
-                    <div key={item.id} className="flex flex-col">
-                      {/* ── Item card — split zones ── */}
-                      <div
-                        className={`flex items-stretch bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${
-                          item.done ? "opacity-50 border-slate-100" : "border-slate-100 hover:border-slate-200 hover:shadow-md"
-                        } ${item.reservation ? "ring-1 ring-slate-900" : ""}`}
-                      >
-                        {/* Left + Center: tap to edit (today + upcoming) */}
-                        <button
-                          onClick={() => isEditable ? openEdit(item) : undefined}
-                          disabled={!isEditable}
-                          className={`flex-1 min-w-0 flex items-stretch gap-3 text-left ${isEditable ? "cursor-pointer" : "cursor-default"}`}
-                        >
-                          <div className="flex flex-col items-center justify-start pt-3 pl-3 w-14 flex-none">
-                            <span className="text-xl">{item.emoji}</span>
-                            <span className="text-[10px] text-slate-400 mt-1 text-center leading-tight font-medium">{item.time}</span>
-                          </div>
-                          <div className="flex-1 min-w-0 py-3 pr-2">
-                            <p className={`font-semibold text-sm ${item.done ? "line-through text-slate-400" : "text-slate-900"}`}>
-                              {item.title}
-                            </p>
-                            {item.notes && <p className="text-xs text-slate-400 mt-0.5 leading-snug">{item.notes}</p>}
-                            {item.reservation && !item.done && (
-                              <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
-                                🗓 Reserved
-                              </span>
-                            )}
-                          </div>
-                        </button>
 
-                        {/* Right: photo (decorative) or done-toggle button */}
-                        {item.photo ? (
-                          <button
-                            onClick={() => toggle(item.id)}
-                            disabled={!isToday}
-                            className={`relative w-20 h-[72px] flex-none overflow-hidden ${isToday ? "cursor-pointer" : "cursor-default"}`}
-                            title={isToday ? (item.done ? "Mark undone" : "Mark done") : undefined}
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                              src={item.photo}
-                              alt={item.photoAlt ?? item.title}
-                              className={`w-full h-full object-cover transition-all ${item.done || isPast ? "grayscale" : ""}`}
-                            />
-                            {/* Done overlay on photo */}
-                            {isToday && (
-                              <div className={`absolute inset-0 flex items-center justify-center transition-opacity ${item.done ? "opacity-100 bg-black/40" : "opacity-0 hover:opacity-100 bg-black/20"}`}>
-                                <div className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center ${item.done ? "bg-white" : "bg-transparent"}`}>
-                                  {item.done && <span className="text-slate-900 text-xs font-bold">✓</span>}
-                                </div>
-                              </div>
-                            )}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => toggle(item.id)}
-                            disabled={!isToday}
-                            className={`flex items-center pr-4 pl-2 ${isToday ? "cursor-pointer" : "cursor-default"}`}
-                          >
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-none transition-colors ${
-                              item.done ? "bg-slate-900 border-slate-900" : "border-slate-300"
-                            }`}>
-                              {item.done && <span className="text-white text-[10px] leading-none">✓</span>}
-                            </div>
-                          </button>
-                        )}
-                      </div>
-
-                      {gap !== null && (
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-2 px-4 py-1.5">
-                            <div className="flex flex-col items-center gap-0.5">
-                              <div className="w-0.5 h-2 rounded-full bg-slate-300" />
-                              <div className="w-0.5 h-2 rounded-full bg-slate-200" />
-                              <div className="w-0.5 h-2 rounded-full bg-slate-100" />
-                            </div>
-                            <span className="text-xs font-medium text-slate-400">
-                              {formatGap(gap)} until {next?.title.split("–")[0].trim()}
-                            </span>
-                          </div>
-                          {(() => {
-                            const suggestion = getGapSuggestion(item.time, gap, wishlist);
-                            if (!suggestion) return null;
-                            return (
-                              <button
-                                onClick={() => router.push("/explore")}
-                                className={`mx-4 mb-1.5 flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-left transition-colors ${
-                                  suggestion.fromWishlist
-                                    ? "bg-amber-50 border border-amber-100 hover:bg-amber-100"
-                                    : "bg-sky-50 border border-sky-100 hover:bg-sky-100"
-                                }`}
-                              >
-                                <span className="text-lg flex-none">{suggestion.emoji}</span>
-                                <div className="flex-1 min-w-0">
-                                  {suggestion.fromWishlist && (
-                                    <p className="text-[9px] font-bold text-amber-600 uppercase tracking-widest mb-0.5">From your saved list</p>
-                                  )}
-                                  <p className={`text-[11px] font-bold leading-tight ${suggestion.fromWishlist ? "text-amber-900" : "text-sky-800"}`}>
-                                    {suggestion.fromWishlist ? suggestion.name : `Perfect gap for ${suggestion.name}`}
-                                  </p>
-                                  <p className={`text-[10px] mt-0.5 ${suggestion.fromWishlist ? "text-amber-600" : "text-sky-500"}`}>{suggestion.note}</p>
-                                </div>
-                                <span className={`text-sm flex-none ${suggestion.fromWishlist ? "text-amber-300" : "text-sky-300"}`}>→</span>
-                              </button>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* ── Add activity to this section ── */}
-              {isEditable && (
-                <button
-                  onClick={() => openAdd(section.defaultTime)}
-                  className="mt-2 w-full flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-600 py-2 px-2 rounded-xl hover:bg-slate-50 transition-all group"
-                >
-                  <div className="w-5 h-5 rounded-full border-[1.5px] border-slate-300 group-hover:border-slate-500 flex items-center justify-center text-xs leading-none font-bold transition-colors">
-                    +
-                  </div>
-                  Add to {section.label.toLowerCase()}
-                </button>
-              )}
+        {/* ── AI Plan My Day CTA ── */}
+        {!loading && items.length > 0 && isEditable && (
+          <button
+            onClick={planMyDay}
+            className="w-full flex items-center gap-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl px-4 py-3.5 shadow-sm active:scale-[0.98] transition-all"
+          >
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-lg flex-none">
+              🤖
             </div>
-          );
-        })}
+            <div className="flex-1 min-w-0 text-left">
+              <p className="font-bold text-sm">Plan my day with AI</p>
+              <p className="text-xs text-white/70 mt-0.5">Find free gaps · get Maui-specific suggestions</p>
+            </div>
+            <span className="text-white/60 text-lg flex-none">→</span>
+          </button>
+        )}
 
         {/* ── Add to today / Explore CTA ── */}
         {isEditable && (
