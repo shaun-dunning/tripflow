@@ -1391,7 +1391,7 @@ export default function MyDayPage() {
                     <p className="text-[10px] text-white/70 mt-0.5 leading-none">{displayCond}</p>
                     {viewWeather && (
                       <p className="text-[9px] text-white/50 mt-0.5 leading-none">
-                        H:{viewWeather.high}° L:{viewWeather.low}°
+                        {viewWeather.precipChance > 0 ? `🌧 ${viewWeather.precipChance}% · ` : ""}H:{viewWeather.high}° L:{viewWeather.low}°
                       </p>
                     )}
                   </div>
@@ -1401,85 +1401,6 @@ export default function MyDayPage() {
           );
         })()}
       </div>
-
-      {/* ── Weather detail strip ── */}
-      {(() => {
-        const dayISO = getDayISO(day.dayNum);
-        const forecastEntry = weather?.forecast?.find((f) => f.date === dayISO) ?? null;
-        const viewWeather = forecastEntry ?? (isToday && weather ? {
-          high: weather.high, low: weather.low,
-          emoji: weather.emoji, condition: weather.condition,
-          precipChance: 0, uvIndex: 0, note: undefined,
-        } : null);
-        if (!viewWeather) return null;
-
-        const uvColor = viewWeather.uvIndex >= 11 ? "text-purple-600"
-          : viewWeather.uvIndex >= 8 ? "text-red-500"
-          : viewWeather.uvIndex >= 6 ? "text-orange-500"
-          : "text-amber-500";
-
-        return (
-          <div className="flex items-center gap-0 border-b border-slate-100 bg-white">
-            {/* Temp + condition */}
-            <div className="flex-1 flex items-center gap-2.5 px-4 py-2.5">
-              <span className="text-xl">{viewWeather.emoji}</span>
-              <div>
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-sm font-black text-slate-900">
-                    {isToday && weather ? `${weather.temp}°` : `${viewWeather.high}°`}
-                  </span>
-                  <span className="text-xs text-slate-400">H:{viewWeather.high}° L:{viewWeather.low}°</span>
-                </div>
-                <p className="text-[10px] text-slate-500 leading-none">{viewWeather.condition}</p>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px h-8 bg-slate-100" />
-
-            {/* Stats */}
-            <div className="flex items-center gap-3 px-4 py-2.5">
-              {/* Precip */}
-              <div className="flex flex-col items-center gap-0.5">
-                <span className="text-base">🌧️</span>
-                <p className="text-[10px] font-bold text-slate-600">{viewWeather.precipChance}%</p>
-              </div>
-              {/* UV */}
-              {viewWeather.uvIndex > 0 && (
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-base">☀️</span>
-                  <p className={`text-[10px] font-bold ${uvColor}`}>UV {viewWeather.uvIndex}</p>
-                </div>
-              )}
-              {/* Humidity (today only with live data) */}
-              {isToday && weather?.humidity && (
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-base">💧</span>
-                  <p className="text-[10px] font-bold text-slate-600">{weather.humidity}%</p>
-                </div>
-              )}
-            </div>
-
-            {/* Source badge */}
-            <div className="pr-3 flex flex-col items-end gap-1">
-              {weather?.source === "live" && isToday ? (
-                <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">
-                  Live
-                </span>
-              ) : (
-                <span className="text-[9px] font-semibold text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded-full">
-                  Typical
-                </span>
-              )}
-              {viewWeather.note && (
-                <span className="text-[9px] text-amber-600 font-semibold text-right leading-tight max-w-[64px]">
-                  {viewWeather.note}
-                </span>
-              )}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── Jump to Today — below hero, never overlaps title ── */}
       {dayIndex !== todayDayIndex && (
@@ -1568,278 +1489,46 @@ export default function MyDayPage() {
           );
         })()}
 
-        {/* ── Trip Health Score ── */}
-        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (() => {
-          const packingPct = packingProgress.total > 0
-            ? Math.round((packingProgress.packed / packingProgress.total) * 100)
-            : 0;
-          const docPct = docReadiness && docReadiness.total > 0
-            ? Math.round((docReadiness.confirmed / docReadiness.total) * 100)
-            : 0;
-          const healthScore = Math.round(packingPct * 0.5 + docPct * 0.5);
-          const color = healthScore >= 80 ? "#10b981" : healthScore >= 50 ? "#f59e0b" : "#ef4444";
-          const trackColor = healthScore >= 80 ? "#d1fae5" : healthScore >= 50 ? "#fef3c7" : "#fee2e2";
-          const label = healthScore >= 80 ? "Trip Ready" : healthScore >= 50 ? "Almost Ready" : "Needs Attention";
-          const r = 40;
-          const circ = 2 * Math.PI * r;
-          const dash = (healthScore / 100) * circ;
-          return (
-            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-4 pt-4 pb-4">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Pre-Trip Health</p>
-                <div className="flex items-center gap-5">
-                  {/* SVG arc progress */}
-                  <div className="relative flex-none w-24 h-24">
-                    <svg width="96" height="96" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r={r} fill="none" stroke={trackColor} strokeWidth="9" />
-                      <circle
-                        cx="50" cy="50" r={r} fill="none"
-                        stroke={color} strokeWidth="9"
-                        strokeDasharray={`${dash} ${circ}`}
-                        strokeLinecap="round"
-                        transform="rotate(-90 50 50)"
-                        style={{ transition: "stroke-dasharray 0.6s ease" }}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-slate-900 leading-none">{healthScore}</span>
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-0.5">score</span>
-                    </div>
-                  </div>
-                  {/* Details */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black mb-0.5" style={{ color }}>{label}</p>
-                    <p className="text-[11px] text-slate-400 mb-3 leading-snug">
-                      {healthScore >= 80
-                        ? "You're all set for Maui! 🌺"
-                        : healthScore >= 50
-                        ? "A few more items and you're good to go"
-                        : "Complete your checklist to be trip-ready"}
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-[10px] font-semibold text-slate-500">🧳 Packing</span>
-                          <span className="text-[10px] font-bold text-slate-700">{packingPct}%</span>
-                        </div>
-                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-sky-500 rounded-full transition-all" style={{ width: `${packingPct}%` }} />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-[10px] font-semibold text-slate-500">📋 Docs</span>
-                          <span className="text-[10px] font-bold text-slate-700">{docPct}%</span>
-                        </div>
-                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${docPct}%` }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ── Smart Actions Card (15+ days out) ── */}
-        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 14 && (() => {
-          const d = tripInfo.daysUntilTrip;
-          type ActionItem = { emoji: string; title: string; sub: string; urgent?: boolean };
-          const actions: ActionItem[] = [];
-          if (d <= 30) {
-            actions.push({ emoji: "🍽️", title: "Book Mama's Fish House", sub: "Reservations fill 60+ days out — grab a table now", urgent: true });
-            actions.push({ emoji: "🤿", title: "Lock in Molokini snorkel tour", sub: "Best boats sell out weeks ahead in summer", urgent: true });
-          }
-          if (d <= 45) {
-            actions.push({ emoji: "🌿", title: "Order reef-safe sunscreen", sub: "Hawaii law bans oxybenzone — TSA-friendly reef-safe SPF 50" });
-            actions.push({ emoji: "🚗", title: "Reserve your rental car", sub: "Maui inventory shrinks fast in June — book early for best rates" });
-          }
-          actions.push({ emoji: "📱", title: "Download Maui offline maps", sub: "Road to Hana has dead zones — save maps before you leave home" });
-          actions.push({ emoji: "💳", title: "Alert your bank & credit cards", sub: "Avoid declined charges abroad — takes 2 min online" });
-
-          return (
-            <div className="bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl shadow-md overflow-hidden">
-              <div className="px-4 pt-4 pb-3">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-[10px] font-bold text-violet-200 uppercase tracking-widest mb-0.5">Do it now</p>
-                    <p className="text-sm font-black text-white">Smart Actions</p>
-                  </div>
-                  <div className="bg-white/15 text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
-                    {d} days away
-                  </div>
-                </div>
-                <div className="flex flex-col gap-2">
-                  {actions.map((a, i) => (
-                    <div key={i} className="flex items-start gap-3 bg-white/10 rounded-xl px-3 py-2.5">
-                      <span className="text-lg flex-none leading-none mt-0.5">{a.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <p className="text-[12px] font-bold text-white leading-tight">{a.title}</p>
-                          {a.urgent && <span className="text-[9px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">Urgent</span>}
-                        </div>
-                        <p className="text-[10px] text-violet-200 leading-snug">{a.sub}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-
-        {/* ── Pre-trip Smart Readiness Panel ── */}
+        {/* ── Pre-trip Readiness ── */}
         {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-            {/* Header */}
-            <div className="px-4 pt-4 pb-3 border-b border-slate-50">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Before You Go</p>
-                  <p className="text-sm font-black text-slate-900">Trip Readiness</p>
-                </div>
-                <div className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${
-                  (packingProgress.packed / packingProgress.total) > 0.8 && (docReadiness?.confirmed === docReadiness?.total)
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-amber-100 text-amber-700"
-                }`}>
-                  {tripInfo.daysUntilTrip} days left
-                </div>
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm px-4 py-3.5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trip Readiness</p>
+              <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                (packingProgress.packed / packingProgress.total) > 0.8 && docReadiness?.confirmed === docReadiness?.total
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-amber-100 text-amber-700"
+              }`}>
+                {tripInfo.daysUntilTrip}d to go
               </div>
             </div>
-
-            {/* Readiness items */}
-            <div className="px-4 py-3 flex flex-col gap-3">
-
-              {/* Packing */}
-              <button onClick={() => router.push("/packing")} className="flex items-center gap-3 w-full text-left group">
-                <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center flex-none text-lg">🧳</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-bold text-slate-700">Packing list</p>
-                    <p className="text-[10px] font-semibold text-slate-500">
-                      {packingProgress.packed}/{packingProgress.total}
-                    </p>
-                  </div>
-                  <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${
-                        packingProgress.packed === packingProgress.total ? "bg-emerald-500" : "bg-sky-500"
-                      }`}
-                      style={{ width: `${Math.round((packingProgress.packed / packingProgress.total) * 100)}%` }}
-                    />
-                  </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button onClick={() => router.push("/packing")} className="flex flex-col gap-2 bg-sky-50 rounded-xl p-3 text-left active:scale-[0.98] transition-transform">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg">🧳</span>
+                  <span className="text-[10px] font-bold text-slate-500">{packingProgress.packed}/{packingProgress.total}</span>
                 </div>
-                <span className="text-slate-300 group-hover:text-slate-500 text-sm flex-none">›</span>
+                <div className="h-1.5 bg-sky-100 rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${packingProgress.packed === packingProgress.total ? "bg-emerald-500" : "bg-sky-500"}`}
+                    style={{ width: `${Math.round((packingProgress.packed / packingProgress.total) * 100)}%` }} />
+                </div>
+                <p className="text-[11px] font-bold text-slate-700">Packing List ›</p>
               </button>
-
-              {/* Docs */}
-              {docReadiness && (
-                <button onClick={() => router.push("/vault")} className="flex items-center gap-3 w-full text-left group">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-50 flex items-center justify-center flex-none text-lg">📋</div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs font-bold text-slate-700">Docs & reservations</p>
-                      <p className="text-[10px] font-semibold text-slate-500">
-                        {docReadiness.confirmed}/{docReadiness.total} confirmed
-                      </p>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          docReadiness.confirmed === docReadiness.total ? "bg-emerald-500" : "bg-amber-500"
-                        }`}
-                        style={{ width: `${Math.round((docReadiness.confirmed / docReadiness.total) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                  <span className="text-slate-300 group-hover:text-slate-500 text-sm flex-none">›</span>
-                </button>
-              )}
-
-              {/* Smart reminders based on days away */}
-              <div className="bg-slate-50 rounded-xl px-3 py-2.5 flex flex-col gap-2">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Smart reminders</p>
-                {tripInfo.daysUntilTrip <= 3 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-base flex-none">🚨</span>
-                    <p className="text-[11px] text-slate-700 leading-snug">Check in online for AA271 — opens 24 hrs before departure</p>
-                  </div>
-                )}
-                {tripInfo.daysUntilTrip <= 7 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-base flex-none">🗺️</span>
-                    <p className="text-[11px] text-slate-700 leading-snug">Download offline maps for Road to Hana — cell service drops along the route</p>
-                  </div>
-                )}
-                {tripInfo.daysUntilTrip <= 14 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-base flex-none">💳</span>
-                    <p className="text-[11px] text-slate-700 leading-snug">Alert your bank and credit cards about Hawaii travel</p>
-                  </div>
-                )}
-                <div className="flex items-start gap-2">
-                  <span className="text-base flex-none">🌡️</span>
-                  <p className="text-[11px] text-slate-700 leading-snug">Forecast for Jun 5–11: 78–84°F, mix of sun and showers — typical for Maui</p>
+              <button onClick={() => router.push("/vault")} className="flex flex-col gap-2 bg-emerald-50 rounded-xl p-3 text-left active:scale-[0.98] transition-transform">
+                <div className="flex items-center justify-between">
+                  <span className="text-lg">📋</span>
+                  {docReadiness && (
+                    <span className="text-[10px] font-bold text-slate-500">{docReadiness.confirmed}/{docReadiness.total}</span>
+                  )}
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Trip Timeline (pre-trip only) — Feature 3: quick-glance day overview ── */}
-        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
-            <div className="px-4 pt-3.5 pb-3 border-b border-slate-50 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Your Itinerary</p>
-                <p className="text-sm font-black text-slate-900">7-Day Overview</p>
-              </div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Jun 5–11</span>
-            </div>
-            <div className="flex gap-2 px-4 py-3 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {DAYS.map((d, idx) => {
-                const reservedDay = d.agenda.some((a) => a.reservation);
-                const themeEmojis: Record<string, string> = {
-                  "Travel Day": "✈️", "Beach + Snorkel": "🤿", "Road to Hana": "🚗",
-                  "Beach + Spa": "💆", "Free Day": "🌺", "Haleakalā Sunrise": "🌋", "Fly Home": "✈️",
-                };
-                const emoji = themeEmojis[d.theme] ?? "📍";
-                const isSelected = idx === dayIndex;
-                return (
-                  <button
-                    key={d.dayNum}
-                    onClick={() => setDayIndex(idx)}
-                    className={`flex-none flex flex-col items-center gap-1 px-3 py-2.5 rounded-2xl border transition-all ${
-                      isSelected
-                        ? "bg-slate-900 border-slate-900 shadow-sm"
-                        : "bg-slate-50 border-slate-100 hover:border-slate-300"
-                    }`}
-                  >
-                    <span className="text-base leading-none">{emoji}</span>
-                    <p className={`text-[10px] font-black leading-none mt-0.5 ${isSelected ? "text-white" : "text-slate-700"}`}>
-                      Day {d.dayNum}
-                    </p>
-                    <p className={`text-[9px] leading-none ${isSelected ? "text-white/70" : "text-slate-400"}`}>
-                      {d.date.split("·")[1]?.trim() ?? d.date}
-                    </p>
-                    {reservedDay && (
-                      <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isSelected ? "bg-emerald-400" : "bg-emerald-500"}`} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <div className="px-4 pb-3">
-              <p className="text-[10px] text-slate-400 leading-snug">
-                <span className="inline-flex items-center gap-1 mr-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                  Reservation confirmed
-                </span>
-                Tap a day to preview its agenda
-              </p>
+                <div className="h-1.5 bg-emerald-100 rounded-full overflow-hidden">
+                  {docReadiness && (
+                    <div className={`h-full rounded-full transition-all ${docReadiness.confirmed === docReadiness.total ? "bg-emerald-500" : "bg-amber-500"}`}
+                      style={{ width: `${Math.round((docReadiness.confirmed / docReadiness.total) * 100)}%` }} />
+                  )}
+                </div>
+                <p className="text-[11px] font-bold text-slate-700">Docs & Reservations ›</p>
+              </button>
             </div>
           </div>
         )}
@@ -1967,46 +1656,6 @@ export default function MyDayPage() {
           </div>
         )}
 
-        {/* ── Upcoming tip banner ── */}
-        {day.status === "upcoming" && (
-          <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 flex gap-3 items-start shadow-sm">
-            <span className="text-lg">📌</span>
-            <div>
-              <p className="text-xs font-bold text-slate-700 mb-0.5">Trip Note</p>
-              <p className="text-sm text-slate-600">{day.note}</p>
-            </div>
-          </div>
-        )}
-
-        {/* ── Vibe Check (today only) ── */}
-        {isToday && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Vibe Check</p>
-              {selectedMood && (
-                <span className="text-[10px] font-semibold text-slate-500">{selectedMood} selected</span>
-              )}
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-              {MOODS.map((m) => {
-                const isSelected = selectedMood === m.label;
-                return (
-                  <button
-                    key={m.label}
-                    onClick={() => setSelectedMood(isSelected ? null : m.label)}
-                    className={`flex-none flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full whitespace-nowrap transition-all ${
-                      isSelected
-                        ? "bg-slate-900 text-white shadow-md scale-105"
-                        : `${m.color} opacity-80`
-                    }`}
-                  >
-                    {m.emoji} {m.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* ── Skeleton loaders (initial page load) ── */}
         {loading && (
@@ -2242,8 +1891,38 @@ export default function MyDayPage() {
           </button>
         )}
 
-        {/* ── Trip Note (today + past) ── */}
-        {(isToday || isPast) && (
+        {/* ── Vibe Check (today only) ── */}
+        {isToday && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Vibe Check</p>
+              {selectedMood && (
+                <span className="text-[10px] font-semibold text-slate-500">{selectedMood} selected</span>
+              )}
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+              {MOODS.map((m) => {
+                const isSelected = selectedMood === m.label;
+                return (
+                  <button
+                    key={m.label}
+                    onClick={() => setSelectedMood(isSelected ? null : m.label)}
+                    className={`flex-none flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full whitespace-nowrap transition-all ${
+                      isSelected
+                        ? "bg-slate-900 text-white shadow-md scale-105"
+                        : `${m.color} opacity-80`
+                    }`}
+                  >
+                    {m.emoji} {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ── Trip Note (all days) ── */}
+        {day.note && (
           <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 flex gap-3 items-start shadow-sm">
             <span className="text-lg">📌</span>
             <div>
