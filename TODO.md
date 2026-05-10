@@ -1,8 +1,8 @@
 # TripFlow – Agent Task List
                                                                                                                         
   ## Critical
-  - [ ] Finish merging and push prior changes. Double check that items pushed are removed from this TODO list.
-  - [ ] Clean up Group Tab. Right now, there is a ton of latency when I send a message before it shows up in the chat. Like hours not minutes. Also, the icons above "Message the Group" text box don't do anything when I click on them. Each should have a logial use case and action - e.g. Group Poll should enable user to create a custom poll that gets posted to the group chat.                                                          
+  - [x] Finish merging and push prior changes. Double check that items pushed are removed from this TODO list.
+  - [x] Clean up Group Tab. Right now, there is a ton of latency when I send a message before it shows up in the chat. Like hours not minutes. Also, the icons above "Message the Group" text box don't do anything when I click on them. Each should have a logial use case and action - e.g. Group Poll should enable user to create a custom poll that gets posted to the group chat.                                                          
                                                                                                                       
   ## High Priority                                                                                                      
 - [ ] Clean up  My Day page. It's become overloaded. We have too much stuck at the top of the page before getting to the itinerary. Figure out if there's a better design, layout, UX. Clean up redundant info like weather appearing twice. Create a visually compelling UX like you'd expect on a high end consumer app. Optimize and polish the experience so it looks world class.
@@ -35,4 +35,3 @@
 - [ ] Configure Capacitor for iOS — bundle ID, display name, splash screen, safe area insets
 - [ ] Test full app in iOS Simulator
 - [ ] Submit to App Store (requires $99/yr Apple Developer account)
-

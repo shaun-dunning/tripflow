@@ -131,6 +131,14 @@ export default function ChatPage() {
   const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
   const [tripTitle, setTripTitle] = useState("Maui Trip Group");
 
+  // Poll creation modal
+  const [pollModal, setPollModal] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", "", ""]);
+
+  // Local vote tracking per poll message
+  const [pollVotes, setPollVotes] = useState<Record<string, number>>({});
+
   // Sheet
   const [sheet, setSheet] = useState<Sheet>(null);
   const [editMode, setEditMode] = useState(false);
@@ -197,7 +205,12 @@ export default function ChatPage() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages", filter: `trip_id=eq.${TRIP_ID}` },
-        (payload) => setMessages((prev) => [...prev, payload.new as Message])
+        (payload) => {
+          const newMsg = payload.new as Message;
+          setMessages((prev) =>
+            prev.some((m) => m.id === newMsg.id) ? prev : [...prev, newMsg]
+          );
+        }
       )
       .subscribe();
     return () => {
@@ -216,13 +229,14 @@ export default function ChatPage() {
     setInput("");
     const senderName =
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
-    await supabase.from("messages").insert({
+    const { data } = await supabase.from("messages").insert({
       trip_id: TRIP_ID,
       sender_name: senderName,
       sender_avatar: myTraveler?.avatar ?? "🧔",
       sender_user_id: user?.id ?? null,
       text,
-    });
+    }).select().single();
+    if (data) setMessages((prev) => [...prev, data as Message]);
   }
 
   function openTravelerSheet(t: Traveler) {
@@ -348,88 +362,58 @@ export default function ChatPage() {
   }
 
   async function handleQuickAction(key: string) {
+    if (key === "poll") {
+      setPollModal(true);
+      return;
+    }
+
     const senderName =
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
     const avatar = myTraveler?.avatar ?? "🧔";
 
-    if (key === "poll") {
-      await supabase.from("messages").insert({
-        trip_id: TRIP_ID,
-        sender_name: senderName,
-        sender_avatar: avatar,
-        sender_user_id: user?.id ?? null,
-        card_type: "poll",
-        card_title: "Where should we eat on our last night?",
-        card_sub: "Mama's Fish House|Merriman's|Monkeypod Kitchen",
-        card_emoji: "🗳️",
-      });
-    } else if (key === "plan") {
-      await supabase.from("messages").insert({
-        trip_id: TRIP_ID,
-        sender_name: senderName,
-        sender_avatar: avatar,
-        sender_user_id: user?.id ?? null,
-        card_type: "plan",
-        card_title: "Today's Plan · Day 2",
-        card_sub: "Beach → Molokini → Mama's Fish House",
-        card_emoji: "📋",
-      });
-    } else if (key === "dinner") {
-      await supabase.from("messages").insert({
-        trip_id: TRIP_ID,
-        sender_name: senderName,
-        sender_avatar: avatar,
-        sender_user_id: user?.id ?? null,
-        card_type: "reservation",
-        card_title: "Dinner · Mama's Fish House",
-        card_sub: "7:00 PM · Reservation confirmed · Party of 4",
-        card_emoji: "🐟",
-      });
-    } else if (key === "weather") {
-      await supabase.from("messages").insert({
-        trip_id: TRIP_ID,
-        sender_name: senderName,
-        sender_avatar: avatar,
-        sender_user_id: user?.id ?? null,
-        card_type: "weather",
-        card_title: "Jun 5–11 Forecast · Maui",
-        card_sub: "78–84°F, mix of sun + showers — perfect beach weather 🌺",
-        card_emoji: "🌺",
-      });
-    } else if (key === "flight") {
-      await supabase.from("messages").insert({
-        trip_id: TRIP_ID,
-        sender_name: senderName,
-        sender_avatar: avatar,
-        sender_user_id: user?.id ?? null,
-        card_type: "reservation",
-        card_title: "Flights confirmed ✈️",
-        card_sub: "AA271 departs LAX 8:05am → SEA, then AS845 SEA → OGG 12:45pm",
-        card_emoji: "✈️",
-      });
-    } else if (key === "meetup") {
-      await supabase.from("messages").insert({
-        trip_id: TRIP_ID,
-        sender_name: senderName,
-        sender_avatar: avatar,
-        sender_user_id: user?.id ?? null,
-        card_type: "location",
-        card_title: "Meet at the Sheraton",
-        card_sub: "Sheraton Maui Resort · Ka'anapali Beach · Check-in Jun 5 from 3pm",
-        card_emoji: "🏨",
-      });
-    } else if (key === "luau") {
-      await supabase.from("messages").insert({
-        trip_id: TRIP_ID,
-        sender_name: senderName,
-        sender_avatar: avatar,
-        sender_user_id: user?.id ?? null,
-        card_type: "reservation",
-        card_title: "Old Lahaina Luau · Jun 9",
-        card_sub: "5:45 PM · 4 tickets · Lei greeting · Front of house seating 🌺",
-        card_emoji: "🌟",
-      });
-    }
+    const payloads: Record<string, object> = {
+      plan: { card_type: "plan", card_title: "Today's Plan · Day 2", card_sub: "Beach → Molokini → Mama's Fish House", card_emoji: "📋" },
+      weather: { card_type: "weather", card_title: "Jun 5–11 Forecast · Maui", card_sub: "78–84°F, mix of sun + showers — perfect beach weather 🌺", card_emoji: "🌺" },
+      flight: { card_type: "reservation", card_title: "Flights confirmed ✈️", card_sub: "AA271 departs LAX 8:05am → SEA, then AS845 SEA → OGG 12:45pm", card_emoji: "✈️" },
+      meetup: { card_type: "location", card_title: "Meet at the Sheraton", card_sub: "Sheraton Maui Resort · Ka'anapali Beach · Check-in Jun 5 from 3pm", card_emoji: "🏨" },
+      luau: { card_type: "reservation", card_title: "Old Lahaina Luau · Jun 9", card_sub: "5:45 PM · 4 tickets · Lei greeting · Front of house seating 🌺", card_emoji: "🌟" },
+    };
+
+    const card = payloads[key];
+    if (!card) return;
+
+    const { data } = await supabase.from("messages").insert({
+      trip_id: TRIP_ID,
+      sender_name: senderName,
+      sender_avatar: avatar,
+      sender_user_id: user?.id ?? null,
+      ...card,
+    }).select().single();
+    if (data) setMessages((prev) => [...prev, data as Message]);
+  }
+
+  async function submitPoll() {
+    const question = pollQuestion.trim();
+    const opts = pollOptions.map((o) => o.trim()).filter(Boolean);
+    if (!question || opts.length < 2) return;
+
+    const senderName =
+      user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
+    const { data } = await supabase.from("messages").insert({
+      trip_id: TRIP_ID,
+      sender_name: senderName,
+      sender_avatar: myTraveler?.avatar ?? "🧔",
+      sender_user_id: user?.id ?? null,
+      card_type: "poll",
+      card_title: question,
+      card_sub: opts.join("|"),
+      card_emoji: "🗳️",
+    }).select().single();
+    if (data) setMessages((prev) => [...prev, data as Message]);
+
+    setPollModal(false);
+    setPollQuestion("");
+    setPollOptions(["", "", ""]);
   }
 
   async function handleMsgPhoto(e: React.ChangeEvent<HTMLInputElement>) {
@@ -484,7 +468,6 @@ export default function ChatPage() {
                 Share this link with anyone you want to add to the Maui trip.
               </p>
 
-              {/* Link display */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3 mb-4">
                 <span className="text-base">🔗</span>
                 <p className="flex-1 text-xs text-slate-600 font-mono truncate">
@@ -492,7 +475,6 @@ export default function ChatPage() {
                 </p>
               </div>
 
-              {/* Code callout */}
               <div className="flex items-center justify-center gap-2 mb-5">
                 <span className="text-xs text-slate-400">Or share the code</span>
                 <span className="text-base font-black text-slate-900 tracking-widest bg-slate-100 px-3 py-1 rounded-xl">
@@ -500,14 +482,11 @@ export default function ChatPage() {
                 </span>
               </div>
 
-              {/* Action buttons */}
               <div className="flex gap-2.5">
                 <button
                   onClick={copyInviteLink}
                   className={`flex-1 font-bold py-4 rounded-2xl text-sm transition-all ${
-                    copied
-                      ? "bg-emerald-500 text-white"
-                      : "bg-slate-100 text-slate-700"
+                    copied ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-700"
                   }`}
                 >
                   {copied ? "✓ Copied!" : "Copy Link"}
@@ -531,18 +510,101 @@ export default function ChatPage() {
         </div>
       )}
 
+      {/* ── Poll Creation Modal ──────────────────────────────────────────── */}
+      {pollModal && (
+        <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={() => setPollModal(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+          <div
+            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-9 h-1 bg-slate-200 rounded-full" />
+            </div>
+            <div className="px-6 pt-3 pb-10">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl">🗳️</span>
+                <h3 className="text-lg font-black text-slate-900">Create a Group Poll</h3>
+              </div>
+
+              <div className="mb-4">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Question</p>
+                <input
+                  type="text"
+                  value={pollQuestion}
+                  onChange={(e) => setPollQuestion(e.target.value)}
+                  placeholder="e.g. Where should we eat tonight?"
+                  className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-rose-400 focus:ring-1 focus:ring-rose-200 bg-white"
+                  autoFocus
+                />
+              </div>
+
+              <div className="mb-5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Options (min 2)</p>
+                <div className="flex flex-col gap-2">
+                  {pollOptions.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-400 w-4 text-right">{i + 1}</span>
+                      <input
+                        type="text"
+                        value={opt}
+                        onChange={(e) => {
+                          const next = [...pollOptions];
+                          next[i] = e.target.value;
+                          setPollOptions(next);
+                        }}
+                        placeholder={`Option ${i + 1}…`}
+                        className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-rose-400 bg-white"
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          onClick={() => setPollOptions(pollOptions.filter((_, j) => j !== i))}
+                          className="text-slate-300 hover:text-slate-500 text-lg font-light leading-none"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {pollOptions.length < 4 && (
+                    <button
+                      onClick={() => setPollOptions([...pollOptions, ""])}
+                      className="text-xs font-semibold text-rose-500 text-left pl-6 py-1"
+                    >
+                      + Add option
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => setPollModal(false)}
+                  className="flex-1 border border-slate-200 text-slate-500 font-bold py-4 rounded-2xl text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitPoll}
+                  disabled={!pollQuestion.trim() || pollOptions.filter((o) => o.trim()).length < 2}
+                  className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40"
+                >
+                  Post Poll
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Bottom Sheet ─────────────────────────────────────────────────── */}
       {sheet && (
         <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={closeSheet}>
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-
-          {/* Sheet panel — constrained to app width */}
           <div
             className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl max-h-[88vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drag handle */}
             <div className="flex justify-center pt-3 pb-1 sticky top-0 bg-white z-10">
               <div className="w-9 h-1 bg-slate-200 rounded-full" />
             </div>
@@ -551,7 +613,6 @@ export default function ChatPage() {
             {sheet.type === "profile" && (
               <div className="px-6 pt-3 pb-10">
                 {!profileEditMode ? (
-                  /* ── View mode ── */
                   <>
                     <div className="flex flex-col items-center gap-3 mb-8">
                       <div className="relative">
@@ -574,158 +635,84 @@ export default function ChatPage() {
                         <p className="text-xs text-slate-400 mt-2">{user?.email}</p>
                       </div>
                     </div>
-
                     {myTraveler && (
-                      <button
-                        onClick={openProfileEdit}
-                        className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mb-2.5"
-                      >
+                      <button onClick={openProfileEdit} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mb-2.5">
                         Edit my profile
                       </button>
                     )}
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-4 rounded-2xl text-sm"
-                    >
+                    <button onClick={handleSignOut} className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-4 rounded-2xl text-sm">
                       Sign out
                     </button>
-                    <button
-                      onClick={closeSheet}
-                      className="w-full mt-2 text-sm text-slate-400 font-semibold py-3 pb-6 text-center"
-                    >
+                    <button onClick={closeSheet} className="w-full mt-2 text-sm text-slate-400 font-semibold py-3 pb-6 text-center">
                       Close
                     </button>
                   </>
                 ) : (
-                  /* ── Edit mode ── */
                   <div className="flex flex-col gap-5 py-3">
                     <h3 className="text-base font-black text-slate-900 text-center">Edit my profile</h3>
-
-                    {/* Photo / avatar preview */}
                     <div className="flex flex-col items-center gap-3">
                       <div className="relative">
-                        <TravelerAvatar
-                          traveler={{ name: editName, avatar: editAvatar, avatar_url: editAvatarUrl }}
-                          size="xl"
-                        />
+                        <TravelerAvatar traveler={{ name: editName, avatar: editAvatar, avatar_url: editAvatarUrl }} size="xl" />
                         {uploadingPhoto && (
                           <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
                             <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           </div>
                         )}
                       </div>
-
-                      {/* file input rendered once at component root — see below */}
-
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="text-xs font-bold text-slate-700 bg-slate-100 px-4 py-2.5 rounded-full flex items-center gap-1.5"
-                        >
+                        <button onClick={() => fileInputRef.current?.click()} className="text-xs font-bold text-slate-700 bg-slate-100 px-4 py-2.5 rounded-full flex items-center gap-1.5">
                           📷 Upload photo
                         </button>
                         {editAvatarUrl && (
-                          <button
-                            onClick={() => setEditAvatarUrl(null)}
-                            className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-2.5 rounded-full"
-                          >
+                          <button onClick={() => setEditAvatarUrl(null)} className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-2.5 rounded-full">
                             Remove
                           </button>
                         )}
                       </div>
                     </div>
-
-                    {/* Emoji picker */}
                     {!editAvatarUrl && (
                       <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                          Or choose emoji
-                        </p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Or choose emoji</p>
                         <div className="flex gap-2 flex-wrap">
                           {AVATAR_OPTIONS.map((emoji) => (
-                            <button
-                              key={emoji}
-                              onClick={() => setEditAvatar(emoji)}
+                            <button key={emoji} onClick={() => setEditAvatar(emoji)}
                               className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl transition-all ${
-                                editAvatar === emoji
-                                  ? "bg-slate-900 scale-110"
-                                  : "bg-slate-100"
-                              }`}
-                            >
+                                editAvatar === emoji ? "bg-slate-900 scale-110" : "bg-slate-100"
+                              }`}>
                               {emoji}
                             </button>
                           ))}
                         </div>
                       </div>
                     )}
-
-                    {/* Name */}
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                        Name
-                      </p>
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
-                      />
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Name</p>
+                      <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)}
+                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
                     </div>
-
-                    {/* Role */}
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                        Role
-                      </p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Role</p>
                       <div className="flex gap-1.5 flex-wrap mb-3">
                         {ROLE_PRESETS.map((preset) => {
-                          const active =
-                            preset === "Kid"
-                              ? editRole.startsWith("Kid")
-                              : editRole === preset;
+                          const active = preset === "Kid" ? editRole.startsWith("Kid") : editRole === preset;
                           return (
-                            <button
-                              key={preset}
-                              onClick={() =>
-                                setEditRole(preset === "Kid" ? "Kid · Age " : preset)
-                              }
+                            <button key={preset} onClick={() => setEditRole(preset === "Kid" ? "Kid · Age " : preset)}
                               className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                                active
-                                  ? "bg-slate-900 text-white border-slate-900"
-                                  : "bg-white text-slate-500 border-slate-200"
-                              }`}
-                            >
+                                active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
+                              }`}>
                               {preset === "Kid" ? "👦 Kid" : preset}
                             </button>
                           );
                         })}
                       </div>
-                      <input
-                        type="text"
-                        value={editRole}
-                        onChange={(e) => setEditRole(e.target.value)}
+                      <input type="text" value={editRole} onChange={(e) => setEditRole(e.target.value)}
                         placeholder="e.g. Trip Organizer, Navigator…"
-                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
-                      />
-                      <p className="text-[10px] text-slate-400 mt-1.5 px-1">
-                        Tap a preset or type anything custom
-                      </p>
+                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
+                      <p className="text-[10px] text-slate-400 mt-1.5 px-1">Tap a preset or type anything custom</p>
                     </div>
-
-                    {/* Save / Cancel */}
                     <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={saveProfileEdit}
-                        className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
-                      >
-                        Save changes
-                      </button>
-                      <button
-                        onClick={() => setProfileEditMode(false)}
-                        className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl"
-                      >
-                        Back
-                      </button>
+                      <button onClick={saveProfileEdit} className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
+                      <button onClick={() => setProfileEditMode(false)} className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl">Back</button>
                     </div>
                   </div>
                 )}
@@ -736,7 +723,6 @@ export default function ChatPage() {
             {sheet.type === "traveler" && sheetTraveler && (
               <div className="px-6 pt-2 pb-10">
                 {!editMode ? (
-                  /* View mode */
                   <div>
                     <div className="flex flex-col items-center gap-3 py-5">
                       <div className="relative">
@@ -745,174 +731,85 @@ export default function ChatPage() {
                       </div>
                       <div className="text-center">
                         <h2 className="text-2xl font-black text-slate-900">{sheetTraveler.name}</h2>
-                        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full mt-2 inline-block">
-                          {sheetTraveler.role}
-                        </span>
+                        <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full mt-2 inline-block">{sheetTraveler.role}</span>
                         <p className="text-xs text-slate-400 mt-2">{statusLabel(sheetTraveler.status)}</p>
                       </div>
                     </div>
-
                     {sheetTraveler.user_id === user?.id ? (
                       <p className="text-center text-sm text-slate-400 mb-4">This is you ✨</p>
                     ) : (
                       <div className="flex flex-col gap-2.5">
-                        <button
-                          onClick={() => setEditMode(true)}
-                          className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
-                        >
-                          Edit traveler
-                        </button>
-                        <button
-                          onClick={removeTraveler}
-                          className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-4 rounded-2xl text-sm"
-                        >
-                          Remove from trip
-                        </button>
+                        <button onClick={() => setEditMode(true)} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm">Edit traveler</button>
+                        <button onClick={removeTraveler} className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-4 rounded-2xl text-sm">Remove from trip</button>
                       </div>
                     )}
-                    <button
-                      onClick={closeSheet}
-                      className="w-full mt-2 text-sm text-slate-400 font-semibold py-3 text-center"
-                    >
-                      Close
-                    </button>
+                    <button onClick={closeSheet} className="w-full mt-2 text-sm text-slate-400 font-semibold py-3 text-center">Close</button>
                   </div>
                 ) : (
-                  /* Edit mode */
                   <div className="flex flex-col gap-5 py-3">
                     <h3 className="text-base font-black text-slate-900 text-center">Edit traveler</h3>
-
-                    {/* Photo / avatar preview */}
                     <div className="flex flex-col items-center gap-3">
                       <div className="relative">
-                        <TravelerAvatar
-                          traveler={{ ...sheetTraveler, avatar: editAvatar, avatar_url: editAvatarUrl }}
-                          size="xl"
-                        />
+                        <TravelerAvatar traveler={{ ...sheetTraveler, avatar: editAvatar, avatar_url: editAvatarUrl }} size="xl" />
                         {uploadingPhoto && (
                           <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
                             <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
                           </div>
                         )}
                       </div>
-
-                      {/* file input rendered once at component root — see below */}
-
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          className="text-xs font-bold text-slate-700 bg-slate-100 px-4 py-2.5 rounded-full flex items-center gap-1.5"
-                        >
+                        <button onClick={() => fileInputRef.current?.click()} className="text-xs font-bold text-slate-700 bg-slate-100 px-4 py-2.5 rounded-full flex items-center gap-1.5">
                           📷 Upload photo
                         </button>
                         {editAvatarUrl && (
-                          <button
-                            onClick={() => setEditAvatarUrl(null)}
-                            className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-2.5 rounded-full"
-                          >
-                            Remove
-                          </button>
+                          <button onClick={() => setEditAvatarUrl(null)} className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-2.5 rounded-full">Remove</button>
                         )}
                       </div>
                     </div>
-
-                    {/* Emoji picker — only shown if no photo */}
                     {!editAvatarUrl && (
                       <div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                          Or choose emoji
-                        </p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Or choose emoji</p>
                         <div className="flex gap-2 flex-wrap">
                           {AVATAR_OPTIONS.map((emoji) => (
-                            <button
-                              key={emoji}
-                              onClick={() => setEditAvatar(emoji)}
+                            <button key={emoji} onClick={() => setEditAvatar(emoji)}
                               className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl transition-all ${
-                                editAvatar === emoji
-                                  ? "bg-slate-900 scale-110"
-                                  : "bg-slate-100"
-                              }`}
-                            >
+                                editAvatar === emoji ? "bg-slate-900 scale-110" : "bg-slate-100"
+                              }`}>
                               {emoji}
                             </button>
                           ))}
                         </div>
                       </div>
                     )}
-
-                    {/* Name */}
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                        Name
-                      </p>
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
-                      />
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Name</p>
+                      <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)}
+                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
                     </div>
-
-                    {/* Role */}
                     <div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                        Role
-                      </p>
-                      {/* Quick-select presets */}
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Role</p>
                       <div className="flex gap-1.5 flex-wrap mb-3">
                         {ROLE_PRESETS.map((preset) => {
-                          const active =
-                            preset === "Kid"
-                              ? editRole.startsWith("Kid")
-                              : editRole === preset;
+                          const active = preset === "Kid" ? editRole.startsWith("Kid") : editRole === preset;
                           return (
-                            <button
-                              key={preset}
-                              onClick={() => {
-                                if (preset === "Kid") {
-                                  setEditRole("Kid · Age ");
-                                } else {
-                                  setEditRole(preset);
-                                }
-                              }}
+                            <button key={preset}
+                              onClick={() => setEditRole(preset === "Kid" ? "Kid · Age " : preset)}
                               className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                                active
-                                  ? "bg-slate-900 text-white border-slate-900"
-                                  : "bg-white text-slate-500 border-slate-200"
-                              }`}
-                            >
+                                active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
+                              }`}>
                               {preset === "Kid" ? "👦 Kid" : preset}
                             </button>
                           );
                         })}
                       </div>
-                      {/* Free-text role — always editable */}
-                      <input
-                        type="text"
-                        value={editRole}
-                        onChange={(e) => setEditRole(e.target.value)}
+                      <input type="text" value={editRole} onChange={(e) => setEditRole(e.target.value)}
                         placeholder="e.g. Kid · Age 8, Navigator, Dog Mom…"
-                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white"
-                      />
-                      <p className="text-[10px] text-slate-400 mt-1.5 px-1">
-                        Tap a preset or type anything custom
-                      </p>
+                        className="w-full text-sm border border-slate-200 rounded-2xl px-4 py-3.5 outline-none focus:border-slate-900 bg-white" />
+                      <p className="text-[10px] text-slate-400 mt-1.5 px-1">Tap a preset or type anything custom</p>
                     </div>
-
-                    {/* Save / Cancel */}
                     <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={saveEdit}
-                        className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
-                      >
-                        Save changes
-                      </button>
-                      <button
-                        onClick={() => setEditMode(false)}
-                        className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl"
-                      >
-                        Back
-                      </button>
+                      <button onClick={saveEdit} className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
+                      <button onClick={() => setEditMode(false)} className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl">Back</button>
                     </div>
                   </div>
                 )}
@@ -924,8 +821,6 @@ export default function ChatPage() {
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <div className="bg-white border-b border-slate-100 px-4 pt-5 pb-3 flex-none">
-
-        {/* Title row */}
         <div className="flex items-start justify-between mb-2.5">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
@@ -942,9 +837,7 @@ export default function ChatPage() {
                 </span>
               )}
               {tripDateInfo?.status === "completed" && (
-                <span className="bg-slate-100 text-slate-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                  Complete
-                </span>
+                <span className="bg-slate-100 text-slate-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">Complete</span>
               )}
             </div>
             <p className="text-xs text-slate-400">
@@ -953,19 +846,13 @@ export default function ChatPage() {
                 : `${travelers.length} travelers`}
             </p>
           </div>
-          <button
-            onClick={() => setShowInviteSheet(true)}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl mt-0.5"
-          >
+          <button onClick={() => setShowInviteSheet(true)}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl mt-0.5">
             <span>🔗</span> Invite
           </button>
         </div>
 
-        {/* ── Crew strip — always visible, "You" pinned first ── */}
-        <div
-          className="flex items-start gap-3 overflow-x-auto pt-1 pb-1"
-          style={{ scrollbarWidth: "none" }}
-        >
+        <div className="flex items-start gap-3 overflow-x-auto pt-1 pb-1" style={{ scrollbarWidth: "none" }}>
           {[...travelers]
             .sort((a, b) => {
               if (a.user_id === user?.id) return -1;
@@ -973,72 +860,39 @@ export default function ChatPage() {
               return 0;
             })
             .map((t) => {
-            const isMe = t.user_id === user?.id;
-            return (
-              <button
-                key={t.id}
-                onClick={() => isMe ? setSheet({ type: "profile" }) : openTravelerSheet(t)}
-                className="flex flex-col items-center gap-1 flex-none w-[52px]"
-              >
-                <div className="relative">
-                  {/* Sky-blue border on your avatar — wrapper avoids overflow clipping */}
-                  <div className={isMe ? "p-[2.5px] rounded-full bg-sky-500" : ""}>
-                    <TravelerAvatar traveler={t} size="sm" />
+              const isMe = t.user_id === user?.id;
+              return (
+                <button key={t.id}
+                  onClick={() => isMe ? setSheet({ type: "profile" }) : openTravelerSheet(t)}
+                  className="flex flex-col items-center gap-1 flex-none w-[52px]">
+                  <div className="relative">
+                    <div className={isMe ? "p-[2.5px] rounded-full bg-sky-500" : ""}>
+                      <TravelerAvatar traveler={t} size="sm" />
+                    </div>
+                    <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${statusColor(t.status)}`} />
                   </div>
-                  {/* Status dot */}
-                  <span
-                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${statusColor(t.status)}`}
-                  />
-                </div>
-                <p className={`text-[10px] font-semibold truncate w-full text-center leading-tight ${isMe ? "text-sky-600" : "text-slate-700"}`}>
-                  {isMe ? "You" : t.name}
-                </p>
-                <p className="text-[9px] text-slate-400 truncate w-full text-center leading-tight">
-                  {t.role.split(" · ")[0]}
-                </p>
-              </button>
-            );
-          })}
+                  <p className={`text-[10px] font-semibold truncate w-full text-center leading-tight ${isMe ? "text-sky-600" : "text-slate-700"}`}>
+                    {isMe ? "You" : t.name}
+                  </p>
+                  <p className="text-[9px] text-slate-400 truncate w-full text-center leading-tight">
+                    {t.role.split(" · ")[0]}
+                  </p>
+                </button>
+              );
+            })}
 
-          {/* Add traveler */}
           {addingTraveler ? (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                addTraveler();
-              }}
-              className="flex items-center gap-1.5 flex-none self-start mt-0.5"
-            >
-              <input
-                autoFocus
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
+            <form onSubmit={(e) => { e.preventDefault(); addTraveler(); }}
+              className="flex items-center gap-1.5 flex-none self-start mt-0.5">
+              <input autoFocus type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
                 placeholder="Name…"
-                className="text-xs border border-slate-300 rounded-xl px-2 py-1.5 outline-none focus:border-slate-900 w-24 bg-white"
-              />
-              <button
-                type="submit"
-                className="text-xs bg-slate-900 text-white px-2.5 py-1.5 rounded-xl font-bold"
-              >
-                Add
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAddingTraveler(false);
-                  setNewName("");
-                }}
-                className="text-[10px] text-slate-400 font-semibold"
-              >
-                ✕
-              </button>
+                className="text-xs border border-slate-300 rounded-xl px-2 py-1.5 outline-none focus:border-slate-900 w-24 bg-white" />
+              <button type="submit" className="text-xs bg-slate-900 text-white px-2.5 py-1.5 rounded-xl font-bold">Add</button>
+              <button type="button" onClick={() => { setAddingTraveler(false); setNewName(""); }}
+                className="text-[10px] text-slate-400 font-semibold">✕</button>
             </form>
           ) : (
-            <button
-              onClick={() => setAddingTraveler(true)}
-              className="flex flex-col items-center gap-1 flex-none w-[52px]"
-            >
+            <button onClick={() => setAddingTraveler(true)} className="flex flex-col items-center gap-1 flex-none w-[52px]">
               <div className="w-9 h-9 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-slate-500 transition-colors">
                 <span className="text-base font-light">+</span>
               </div>
@@ -1046,34 +900,23 @@ export default function ChatPage() {
             </button>
           )}
         </div>
-
       </div>
 
       {/* ── Messages ─────────────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <div className="flex-1 h-px bg-slate-100" />
-          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-            {formatTodayLabel()}
-          </span>
+          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">{formatTodayLabel()}</span>
           <div className="flex-1 h-px bg-slate-100" />
         </div>
 
         {messages.map((msg, idx) => {
           const isMe = msg.sender_user_id
             ? msg.sender_user_id === user?.id
-            : msg.sender_name ===
-              (user?.user_metadata?.full_name?.split(" ")[0] ??
-                user?.email?.split("@")[0]);
+            : msg.sender_name === (user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0]);
           const prevMsg = messages[idx - 1];
-          const prevIsMe = prevMsg
-            ? prevMsg.sender_user_id
-              ? prevMsg.sender_user_id === user?.id
-              : false
-            : false;
-          const showAvatar =
-            !isMe &&
-            (!prevMsg || prevMsg.sender_name !== msg.sender_name || prevIsMe);
+          const prevIsMe = prevMsg ? (prevMsg.sender_user_id ? prevMsg.sender_user_id === user?.id : false) : false;
+          const showAvatar = !isMe && (!prevMsg || prevMsg.sender_name !== msg.sender_name || prevIsMe);
           const showDateDivider = !prevMsg || !isSameDay(prevMsg.created_at, msg.created_at);
 
           return (
@@ -1087,95 +930,93 @@ export default function ChatPage() {
                   <div className="flex-1 h-px bg-slate-100" />
                 </div>
               )}
-            <div
-              className={`flex gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}
-            >
-              {!isMe && (
-                <div className="flex-none w-8 mt-auto">
-                  {showAvatar && (
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-base">
-                      {msg.sender_avatar}
-                    </div>
-                  )}
-                </div>
-              )}
-              <div
-                className={`flex flex-col gap-0.5 max-w-[75%] ${
-                  isMe ? "items-end" : "items-start"
-                }`}
-              >
-                {showAvatar && !isMe && (
-                  <p className="text-[10px] font-semibold text-slate-400 px-1">
-                    {msg.sender_name}
-                  </p>
+              <div className={`flex gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                {!isMe && (
+                  <div className="flex-none w-8 mt-auto">
+                    {showAvatar && (
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-base">
+                        {msg.sender_avatar}
+                      </div>
+                    )}
+                  </div>
                 )}
-                {msg.text && (
-                  <div
-                    className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                <div className={`flex flex-col gap-0.5 max-w-[75%] ${isMe ? "items-end" : "items-start"}`}>
+                  {showAvatar && !isMe && (
+                    <p className="text-[10px] font-semibold text-slate-400 px-1">{msg.sender_name}</p>
+                  )}
+                  {msg.text && (
+                    <div className={`px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
                       isMe
                         ? "bg-gradient-to-br from-sky-500 to-sky-700 text-white rounded-tr-sm"
                         : "bg-white border border-slate-100 text-slate-800 rounded-tl-sm"
-                    }`}
-                  >
-                    {msg.text}
-                  </div>
-                )}
-                {msg.image_url && (
-                  <div className="rounded-2xl overflow-hidden w-52 shadow-sm">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={msg.image_url} alt="" className="w-full h-36 object-cover" />
-                  </div>
-                )}
-                {msg.card_type && msg.card_type !== "poll" && (
-                  <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 shadow-sm flex items-center gap-2.5 w-60">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-none ${
-                      msg.card_type === "weather" ? "bg-indigo-50" :
-                      msg.card_type === "reservation" ? "bg-amber-50" :
-                      msg.card_type === "location" ? "bg-emerald-50" : "bg-sky-50"
                     }`}>
-                      {msg.card_emoji}
+                      {msg.text}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-slate-800 leading-tight">
-                        {msg.card_title}
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">
-                        {msg.card_sub}
-                      </p>
+                  )}
+                  {msg.image_url && (
+                    <div className="rounded-2xl overflow-hidden w-52 shadow-sm">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={msg.image_url} alt="" className="w-full h-36 object-cover" />
                     </div>
-                  </div>
-                )}
-                {msg.card_type === "poll" && (
-                  <div className="bg-white border border-rose-200 rounded-2xl px-3.5 py-3 shadow-sm w-64">
-                    <div className="flex items-center gap-1.5 mb-2.5">
-                      <span className="text-base">{msg.card_emoji}</span>
-                      <p className="text-xs font-black text-slate-800 leading-tight flex-1">{msg.card_title}</p>
+                  )}
+                  {msg.card_type && msg.card_type !== "poll" && (
+                    <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 shadow-sm flex items-center gap-2.5 w-60">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-none ${
+                        msg.card_type === "weather" ? "bg-indigo-50" :
+                        msg.card_type === "reservation" ? "bg-amber-50" :
+                        msg.card_type === "location" ? "bg-emerald-50" : "bg-sky-50"
+                      }`}>
+                        {msg.card_emoji}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800 leading-tight">{msg.card_title}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{msg.card_sub}</p>
+                      </div>
                     </div>
-                    <div className="flex flex-col gap-1.5">
-                      {(msg.card_sub ?? "").split("|").map((opt, i) => {
-                        const widths = ["72%", "45%", "28%"];
-                        const votes = [3, 2, 1];
-                        return (
-                          <div key={i} className="relative">
-                            <div className="h-8 rounded-xl bg-rose-50 overflow-hidden flex items-center">
-                              <div className="h-full bg-rose-100 rounded-xl transition-all" style={{ width: widths[i] }} />
-                            </div>
-                            <div className="absolute inset-0 flex items-center justify-between px-2.5">
-                              <p className="text-[11px] font-semibold text-slate-700 z-10">{opt.trim()}</p>
-                              <p className="text-[10px] font-bold text-rose-500 z-10">{votes[i]}</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <p className="text-[9px] text-slate-400 mt-2 text-right">Tap to vote · 6 responses</p>
-                  </div>
-                )}
-                <p className="text-[10px] text-slate-400 px-1">
-                  {formatTime(msg.created_at)}
-                </p>
+                  )}
+                  {msg.card_type === "poll" && (() => {
+                    const opts = (msg.card_sub ?? "").split("|").map((o) => o.trim()).filter(Boolean);
+                    const voted = pollVotes[msg.id];
+                    const totalVotes = opts.length + 1;
+                    return (
+                      <div className="bg-white border border-rose-200 rounded-2xl px-3.5 py-3 shadow-sm w-64">
+                        <div className="flex items-center gap-1.5 mb-2.5">
+                          <span className="text-base">{msg.card_emoji}</span>
+                          <p className="text-xs font-black text-slate-800 leading-tight flex-1">{msg.card_title}</p>
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          {opts.map((opt, i) => {
+                            const isVoted = voted === i;
+                            const pct = voted !== undefined ? (isVoted ? 60 : Math.max(10, 40 - i * 12)) : 0;
+                            return (
+                              <button key={i}
+                                onClick={() => setPollVotes((prev) => ({ ...prev, [msg.id]: i }))}
+                                className="relative text-left w-full">
+                                <div className={`h-9 rounded-xl overflow-hidden flex items-center ${isVoted ? "bg-rose-100" : "bg-rose-50"}`}>
+                                  <div
+                                    className={`h-full rounded-xl transition-all duration-300 ${isVoted ? "bg-rose-300" : "bg-rose-100"}`}
+                                    style={{ width: voted !== undefined ? `${pct}%` : "0%" }}
+                                  />
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-between px-2.5">
+                                  <p className={`text-[11px] font-semibold z-10 ${isVoted ? "text-rose-700" : "text-slate-700"}`}>{opt}</p>
+                                  {voted !== undefined && (
+                                    <p className="text-[10px] font-bold text-rose-500 z-10">{Math.round(totalVotes * pct / 100)}</p>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="text-[9px] text-slate-400 mt-2 text-right">
+                          {voted !== undefined ? `You voted · ${totalVotes} responses` : "Tap to vote"}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                  <p className="text-[10px] text-slate-400 px-1">{formatTime(msg.created_at)}</p>
+                </div>
               </div>
-            </div>
             </React.Fragment>
           );
         })}
@@ -1184,67 +1025,33 @@ export default function ChatPage() {
 
       {/* ── Quick actions + input ─────────────────────────────────────────── */}
       <div className="flex-none bg-white border-t border-slate-100 px-4 pt-2.5">
-        <div
-          className="flex gap-2 overflow-x-auto pb-2.5"
-          style={
-            { scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties
-          }
-        >
+        <div className="flex gap-2 overflow-x-auto pb-2.5"
+          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
           {QUICK_ACTIONS.map((a) => (
-            <button
-              key={a.key}
-              onClick={() => handleQuickAction(a.key)}
+            <button key={a.key} onClick={() => handleQuickAction(a.key)}
               className={`flex-none flex flex-col items-center gap-0.5 text-center px-3 py-2 rounded-2xl border transition-all active:scale-95 ${a.bg} ${a.border} ${a.text}`}
-              style={{ minWidth: "64px" }}
-            >
+              style={{ minWidth: "64px" }}>
               <span className="text-xl leading-none">{a.emoji}</span>
               <span className="text-[10px] font-bold leading-tight whitespace-nowrap mt-0.5">{a.label}</span>
             </button>
           ))}
         </div>
         <div className="flex gap-2 pb-3">
-          <button
-            onClick={() => msgPhotoRef.current?.click()}
+          <button onClick={() => msgPhotoRef.current?.click()}
             className="w-10 h-10 flex-none bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-base hover:bg-slate-200 transition-colors"
-            title="Send photo"
-          >
-            📷
-          </button>
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            title="Send photo">📷</button>
+          <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
             placeholder="Message the group..."
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-200 transition-all"
-          />
-          <button
-            onClick={send}
-            disabled={!input.trim()}
-            className="w-10 h-10 flex-none bg-sky-600 text-white rounded-2xl flex items-center justify-center font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-          >
-            ↑
-          </button>
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-200 transition-all" />
+          <button onClick={send} disabled={!input.trim()}
+            className="w-10 h-10 flex-none bg-sky-600 text-white rounded-2xl flex items-center justify-center font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">↑</button>
         </div>
       </div>
 
       {/* ── File inputs ───────────────────────────────────────────────────── */}
-      {/* Avatar uploads (traveler/profile edit) */}
-      <input
-        type="file"
-        accept="image/*"
-        ref={fileInputRef}
-        onChange={handlePhotoUpload}
-        className="hidden"
-      />
-      {/* Message photo (📷 quick action) */}
-      <input
-        type="file"
-        accept="image/*"
-        ref={msgPhotoRef}
-        onChange={handleMsgPhoto}
-        className="hidden"
-      />
+      <input type="file" accept="image/*" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" />
+      <input type="file" accept="image/*" ref={msgPhotoRef} onChange={handleMsgPhoto} className="hidden" />
 
     </div>
   );
