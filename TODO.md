@@ -6,8 +6,8 @@
                                                                                                                       
   ## High Priority                                                                                                      
 - [x] Clean up  My Day page. It's become overloaded. We have too much stuck at the top of the page before getting to the itinerary. Figure out if there's a better design, layout, UX. Clean up redundant info like weather appearing twice. Create a visually compelling UX like you'd expect on a high end consumer app. Optimize and polish the experience so it looks world class.
-- [ ] Drag-to-reorder + drag-between-sections in My Day (using @dnd-kit/sortable)
-- [ ] AI day-planner that respects existing items — make /api/assistant aware of current day's items and free time gaps, propose activities that slot in    
+- [x] Drag-to-reorder + drag-between-sections in My Day (using @dnd-kit/sortable)
+- [x] AI day-planner that respects existing items — make /api/assistant aware of current day's items and free time gaps, propose activities that slot in    
 - [ ] Map view for the day — toggle on My Day shows pins color-coded by section with optimal route, Apple/Google Maps deep-link on tap
 - [ ] Smart trip recap / memory book — auto-generated day cards after each day passes, swipeable "Trip Memories" reel at trip end
                                                                                                                         
