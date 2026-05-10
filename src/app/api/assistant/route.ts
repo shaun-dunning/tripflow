@@ -38,9 +38,86 @@ Keep responses concise and friendly. When suggesting things to do, be specific t
 
 type HistoryMessage = { role: string; content: string };
 
+type AgendaItemInput = {
+  time: string;
+  title: string;
+  emoji: string;
+  notes?: string;
+  reservation?: boolean;
+};
+
+function buildAgendaContext(agendaItems: AgendaItemInput[], dayNum: number): string {
+  if (!agendaItems || agendaItems.length === 0) return "";
+
+  const sorted = [...agendaItems].sort((a, b) => {
+    const toMins = (t: string) => {
+      const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!match) return -1;
+      let h = parseInt(match[1]);
+      const m = parseInt(match[2]);
+      const pm = match[3].toUpperCase() === "PM";
+      if (pm && h !== 12) h += 12;
+      if (!pm && h === 12) h = 0;
+      return h * 60 + m;
+    };
+    return toMins(a.time) - toMins(b.time);
+  });
+
+  const lines = sorted.map((it) => {
+    const parts = [`${it.emoji} ${it.time}: ${it.title}`];
+    if (it.notes) parts.push(`(${it.notes})`);
+    if (it.reservation) parts.push("[Reserved]");
+    return parts.join(" ");
+  });
+
+  // Detect free gaps between consecutive items
+  const gaps: string[] = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const toMins = (t: string) => {
+      const match = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+      if (!match) return -1;
+      let h = parseInt(match[1]);
+      const m = parseInt(match[2]);
+      const pm = match[3].toUpperCase() === "PM";
+      if (pm && h !== 12) h += 12;
+      if (!pm && h === 12) h = 0;
+      return h * 60 + m;
+    };
+    const endMins = toMins(sorted[i].time);
+    const startMins = toMins(sorted[i + 1].time);
+    if (endMins >= 0 && startMins > endMins) {
+      const gapMins = startMins - endMins;
+      if (gapMins >= 90) {
+        const fmtEnd = sorted[i].time;
+        const fmtStart = sorted[i + 1].time;
+        const hrs = Math.floor(gapMins / 60);
+        const mins = gapMins % 60;
+        const dur = hrs > 0 ? `${hrs}h${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`;
+        gaps.push(`  • ${dur} free gap between ${fmtEnd} and ${fmtStart}`);
+      }
+    }
+  }
+
+  let context = `\n\nCURRENT DAY ${dayNum} AGENDA:\n${lines.join("\n")}`;
+  if (gaps.length > 0) {
+    context += `\n\nFREE TIME GAPS:\n${gaps.join("\n")}`;
+  } else {
+    context += "\n\n(No significant free gaps detected — schedule is fairly full.)";
+  }
+  return context;
+}
+
 export async function POST(req: NextRequest) {
-  const { message, history } = await req.json();
+  const { message, history, agendaItems, dayNum } = await req.json();
   const priorMessages = (history as HistoryMessage[]).slice(0, -1);
+
+  // Build context-aware system prompt when agenda items are provided
+  const agendaContext = agendaItems
+    ? buildAgendaContext(agendaItems as AgendaItemInput[], (dayNum as number) ?? 1)
+    : "";
+  const effectiveSystemPrompt = agendaContext
+    ? SYSTEM_PROMPT + agendaContext
+    : SYSTEM_PROMPT;
 
   // ── Gemini ────────────────────────────────────────────────────────────────
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -69,8 +146,6 @@ export async function POST(req: NextRequest) {
         ...flashModels.filter((n) => n.startsWith("gemini-2.0-flash")),
         ...flashModels,
       ];
-      const model = preferred[0];
-
       if (preferred.length === 0) {
         geminiError = `No flash model found. Available: ${flashModels.join(", ") || "none"}`;
         throw new Error(geminiError);
@@ -90,7 +165,7 @@ export async function POST(req: NextRequest) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+            system_instruction: { parts: [{ text: effectiveSystemPrompt }] },
             contents,
             generationConfig: { maxOutputTokens: 600 },
           }),
@@ -143,7 +218,7 @@ export async function POST(req: NextRequest) {
       const response = await client.messages.create({
         model: "claude-haiku-4-5-20251001",
         max_tokens: 600,
-        system: SYSTEM_PROMPT,
+        system: effectiveSystemPrompt,
         messages,
       });
 
