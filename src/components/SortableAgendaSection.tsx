@@ -89,7 +89,7 @@ const MAUI_PLACES: { keywords: string[]; driveMin: number; lat: number; lng: num
   { keywords: ["airport", "ogg", "kahului"], driveMin: 25, lat: 20.8986, lng: -156.4305 },
 ];
 
-function getMapsInfo(title: string): { driveMin: number; mapsUrl: string } | null {
+export function getMapsInfo(title: string): { driveMin: number; mapsUrl: string; lat: number; lng: number } | null {
   const lower = title.toLowerCase();
   const match = MAUI_PLACES.find((p) => p.keywords.some((k) => lower.includes(k)));
   if (!match) return null;
@@ -100,8 +100,10 @@ function getMapsInfo(title: string): { driveMin: number; mapsUrl: string } | nul
   const mapsUrl = isApple
     ? `maps://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d`
     : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=driving`;
-  return { driveMin, mapsUrl };
+  return { driveMin, mapsUrl, lat, lng };
 }
+
+export { SHERATON };
 
 // ── Drag handle icon ──────────────────────────────────────────────────────────
 function DragHandle({ listeners, attributes }: { listeners?: object; attributes?: object }) {

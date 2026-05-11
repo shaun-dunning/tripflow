@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 // ---------------------------------------------------------------------------
 // Persistence
@@ -39,17 +40,37 @@ const ALL_CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 // Must-haves filter shows only these categories
 const MUST_HAVE_CATS: Category[] = ["Documents", "Pharmacy"];
 
-const CREW = ["Shaun", "Sarah", "Liam", "Emma"] as const;
-type Assignee = (typeof CREW)[number] | "Anyone";
+const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
-// Dot colours per crew member
-const ASSIGNEE_COLORS: Record<string, string> = {
-  Shaun:  "bg-sky-500",
-  Sarah:  "bg-rose-400",
-  Liam:   "bg-emerald-500",
-  Emma:   "bg-violet-500",
-  Anyone: "bg-slate-300",
+type Traveler = {
+  id: string;
+  name: string;
+  avatar: string;
+  avatar_url?: string | null;
+  role: string;
+  status: string;
+  is_me?: boolean;
+  user_id?: string | null;
 };
+
+type Assignee = string;
+
+// Color palette — assigned by traveler index
+const CREW_COLOR_PALETTE = [
+  "bg-sky-500",
+  "bg-rose-400",
+  "bg-emerald-500",
+  "bg-violet-500",
+  "bg-amber-500",
+  "bg-indigo-400",
+  "bg-teal-500",
+];
+
+function getAssigneeColor(name: string, crewNames: string[]): string {
+  if (name === "Anyone") return "bg-slate-300";
+  const idx = crewNames.indexOf(name);
+  return idx >= 0 ? CREW_COLOR_PALETTE[idx % CREW_COLOR_PALETTE.length] : "bg-slate-400";
+}
 
 type PackItem = {
   id: string;
@@ -144,10 +165,9 @@ const ALL_SUGGESTIONS = computeSuggestions();
 function buildDefaultItems(): PackItem[] {
   const items: Omit<PackItem, "packed" | "is_suggested">[] = [
     // Documents
-    { id: "d1", name: "Passport — Shaun",       category: "Documents",   assignee: "Shaun" },
-    { id: "d2", name: "Passport — Sarah",        category: "Documents",   assignee: "Sarah" },
+    { id: "d1", name: "Passports",               category: "Documents",   assignee: "Anyone" },
     { id: "d3", name: "Travel insurance docs",   category: "Documents",   assignee: "Anyone" },
-    { id: "d4", name: "Hotel confirmation",      category: "Documents",   assignee: "Shaun" },
+    { id: "d4", name: "Hotel confirmation",      category: "Documents",   assignee: "Anyone" },
     // Clothing
     { id: "c1", name: "Swimsuits",               category: "Clothing",    assignee: "Anyone" },
     { id: "c2", name: "Aloha shirts",            category: "Clothing",    assignee: "Anyone" },
@@ -160,19 +180,19 @@ function buildDefaultItems(): PackItem[] {
     { id: "b3", name: "Underwater camera",       category: "Beach Gear",  assignee: "Shaun" },
     { id: "b4", name: "Boogie boards",           category: "Beach Gear",  assignee: "Anyone" },
     // Kids
-    { id: "k1", name: "Kids' sunscreen",         category: "Kids",        assignee: "Sarah" },
+    { id: "k1", name: "Kids' sunscreen",         category: "Kids",        assignee: "Anyone" },
     { id: "k2", name: "Floaties",               category: "Kids",        assignee: "Anyone" },
     { id: "k3", name: "Beach toys",             category: "Kids",        assignee: "Anyone" },
-    { id: "k4", name: "Motion sickness meds",   category: "Kids",        assignee: "Sarah" },
+    { id: "k4", name: "Motion sickness meds",   category: "Kids",        assignee: "Anyone" },
     // Pharmacy
     { id: "p1", name: "Reef-safe sunscreen",     category: "Pharmacy",    assignee: "Anyone" },
-    { id: "p2", name: "Ibuprofen",               category: "Pharmacy",    assignee: "Sarah" },
+    { id: "p2", name: "Ibuprofen",               category: "Pharmacy",    assignee: "Anyone" },
     { id: "p3", name: "Band-aids",               category: "Pharmacy",    assignee: "Anyone" },
     { id: "p4", name: "Dramamine",               category: "Pharmacy",    assignee: "Anyone" },
     // Electronics
-    { id: "e1", name: "Phone chargers",          category: "Electronics", assignee: "Shaun" },
-    { id: "e2", name: "Portable battery",        category: "Electronics", assignee: "Shaun" },
-    { id: "e3", name: "Camera",                  category: "Electronics", assignee: "Shaun" },
+    { id: "e1", name: "Phone chargers",          category: "Electronics", assignee: "Anyone" },
+    { id: "e2", name: "Portable battery",        category: "Electronics", assignee: "Anyone" },
+    { id: "e3", name: "Camera",                  category: "Electronics", assignee: "Anyone" },
   ];
 
   return items.map((i) => ({ ...i, packed: false, is_suggested: false }));
@@ -226,6 +246,8 @@ export default function PackingPage() {
   const router = useRouter();
   const [items, setItems] = useState<PackItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [travelers, setTravelers] = useState<Traveler[]>([]);
+  const [scrolled, setScrolled] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<Category>>(new Set());
   const [showMustHaves, setShowMustHaves] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
@@ -244,6 +266,22 @@ export default function PackingPage() {
     const loaded = loadItems();
     setItems(loaded);
     setHydrated(true);
+
+    supabase
+      .from("travelers")
+      .select("*")
+      .eq("trip_id", TRIP_ID)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => {
+        if (data && data.length > 0) setTravelers(data as Traveler[]);
+      });
+  }, []);
+
+  // Scroll-aware sticky header
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 140);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   // Persist on every change (skip initial render)
@@ -260,6 +298,9 @@ export default function PackingPage() {
       setTimeout(() => addNameRef.current?.focus(), 80);
     }
   }, [showAddSheet]);
+
+  // Derived crew list from real travelers
+  const crewNames = travelers.map((t) => t.name);
 
   // ---------------------------------------------------------------------------
   // Stats
@@ -289,7 +330,7 @@ export default function PackingPage() {
   }
 
   function cycleAssignee(id: string) {
-    const all: Assignee[] = ["Anyone", ...CREW];
+    const all: Assignee[] = ["Anyone", ...crewNames];
     setItems((prev) =>
       prev.map((i) => {
         if (i.id !== id) return i;
@@ -398,7 +439,7 @@ export default function PackingPage() {
   }
 
   function renderAssigneePill(assignee: Assignee, itemId: string) {
-    const dot = ASSIGNEE_COLORS[assignee] ?? "bg-slate-300";
+    const dot = getAssigneeColor(assignee, crewNames);
     return (
       <button
         onClick={(e) => { e.stopPropagation(); cycleAssignee(itemId); }}
@@ -431,6 +472,28 @@ export default function PackingPage() {
   // ---------------------------------------------------------------------------
   return (
     <div className="flex flex-col bg-slate-50 min-h-screen">
+
+      {/* ── Sticky header (slides in after hero scrolls away) ── */}
+      <div
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out ${
+          scrolled ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm px-4 flex items-center gap-3" style={{ paddingTop: "env(safe-area-inset-top, 12px)", paddingBottom: "12px" }}>
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-black text-slate-900 leading-tight truncate">Pack Smart</p>
+            <p className="text-[11px] text-slate-400 leading-none mt-0.5">{packedCount} of {totalItems} packed · {pct}%</p>
+          </div>
+          <div className="h-5 w-px bg-slate-100 flex-none" />
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-700 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-full transition-all flex-none"
+          >
+            <span className="text-sm leading-none">←</span>
+            <span>Done</span>
+          </button>
+        </div>
+      </div>
 
       {/* ── Share toast ── */}
       {shareToast && (
@@ -524,8 +587,8 @@ export default function PackingPage() {
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Assign to</p>
                 <div className="flex gap-2 flex-wrap">
-                  {(["Anyone", ...CREW] as Assignee[]).map((a) => {
-                    const dot = ASSIGNEE_COLORS[a];
+                  {(["Anyone", ...crewNames] as Assignee[]).map((a) => {
+                    const dot = getAssigneeColor(a, crewNames);
                     return (
                       <button
                         key={a}
@@ -570,9 +633,10 @@ export default function PackingPage() {
 
         <button
           onClick={() => router.back()}
-          className="absolute top-4 left-4 w-8 h-8 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center text-white text-sm"
+          className="absolute top-4 left-4 flex items-center gap-1.5 bg-black/40 hover:bg-black/55 active:scale-95 backdrop-blur-sm text-white text-sm font-semibold px-3.5 py-2 rounded-full transition-all"
         >
-          ‹
+          <span className="text-base leading-none">←</span>
+          <span>Back</span>
         </button>
 
         <button
@@ -588,7 +652,7 @@ export default function PackingPage() {
           </p>
           <h1 className="text-2xl font-black text-white leading-tight">Pack Smart</h1>
           <p className="text-xs text-white/60 mt-0.5">
-            {totalItems} items across {ALL_CATEGORIES.length} categories · {CREW.length} travelers
+            {totalItems} items across {ALL_CATEGORIES.length} categories · {crewNames.length || "–"} travelers
           </p>
         </div>
       </div>

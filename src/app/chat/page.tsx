@@ -55,11 +55,11 @@ const ROLE_PRESETS = ["Trip Organizer", "Co-traveler", "Kid", "Guest", "Grandpar
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusColor(status: string) {
-  return status === "active" ? "bg-emerald-400" : "bg-amber-400";
+  return status === "active" ? "bg-emerald-400" : "bg-slate-300";
 }
 
 function statusLabel(status: string) {
-  return status === "active" ? "Active" : "Invited";
+  return status === "active" ? "Joined" : "Invite sent";
 }
 
 function formatTime(isoString: string) {
@@ -371,8 +371,12 @@ export default function ChatPage() {
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
     const avatar = myTraveler?.avatar ?? "🧔";
 
+    const planCard = tripDateInfo?.status === "active"
+      ? { card_type: "plan", card_title: `Day ${tripDateInfo.currentDayNumber} Plan · ${tripDateInfo.currentDayNumber === 1 ? "Travel Day" : tripDateInfo.currentDayNumber === 2 ? "Beach + Snorkel" : "Today's Itinerary"}`, card_sub: "Tap to view full itinerary in My Day →", card_emoji: "📋" }
+      : { card_type: "plan", card_title: "Maui Trip Plan", card_sub: "7 days · Jun 5–11 · Ka'anapali, Maui — tap to open My Day →", card_emoji: "📋" };
+
     const payloads: Record<string, object> = {
-      plan: { card_type: "plan", card_title: "Today's Plan · Day 2", card_sub: "Beach → Molokini → Mama's Fish House", card_emoji: "📋" },
+      plan: planCard,
       weather: { card_type: "weather", card_title: "Jun 5–11 Forecast · Maui", card_sub: "78–84°F, mix of sun + showers — perfect beach weather 🌺", card_emoji: "🌺" },
       flight: { card_type: "reservation", card_title: "Flights confirmed ✈️", card_sub: "AA271 departs LAX 8:05am → SEA, then AS845 SEA → OGG 12:45pm", card_emoji: "✈️" },
       meetup: { card_type: "location", card_title: "Meet at the Sheraton", card_sub: "Sheraton Maui Resort · Ka'anapali Beach · Check-in Jun 5 from 3pm", card_emoji: "🏨" },
@@ -421,18 +425,19 @@ export default function ChatPage() {
     if (!file) return;
     const ext = file.name.split(".").pop() ?? "jpg";
     const path = `msg-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
-    if (!error) {
-      const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
+    if (!uploadError) {
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
       const senderName =
         user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
-      await supabase.from("messages").insert({
+      const { data } = await supabase.from("messages").insert({
         trip_id: TRIP_ID,
         sender_name: senderName,
         sender_avatar: myTraveler?.avatar ?? "🧔",
         sender_user_id: user?.id ?? null,
-        image_url: data.publicUrl,
-      });
+        image_url: urlData.publicUrl,
+      }).select().single();
+      if (data) setMessages((prev) => [...prev, data as Message]);
     }
     if (msgPhotoRef.current) msgPhotoRef.current.value = "";
   }
@@ -959,21 +964,31 @@ export default function ChatPage() {
                       <img src={msg.image_url} alt="" className="w-full h-36 object-cover" />
                     </div>
                   )}
-                  {msg.card_type && msg.card_type !== "poll" && (
-                    <div className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 shadow-sm flex items-center gap-2.5 w-60">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-none ${
-                        msg.card_type === "weather" ? "bg-indigo-50" :
-                        msg.card_type === "reservation" ? "bg-amber-50" :
-                        msg.card_type === "location" ? "bg-emerald-50" : "bg-sky-50"
-                      }`}>
-                        {msg.card_emoji}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-slate-800 leading-tight">{msg.card_title}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{msg.card_sub}</p>
-                      </div>
-                    </div>
-                  )}
+                  {msg.card_type && msg.card_type !== "poll" && (() => {
+                    const cardDest =
+                      msg.card_type === "plan" ? "/" :
+                      msg.card_type === "reservation" ? "/vault" :
+                      msg.card_type === "location" ? "/" : null;
+                    const cardBg =
+                      msg.card_type === "weather" ? "bg-indigo-50" :
+                      msg.card_type === "reservation" ? "bg-amber-50" :
+                      msg.card_type === "location" ? "bg-emerald-50" : "bg-sky-50";
+                    return (
+                      <button
+                        onClick={() => cardDest && router.push(cardDest)}
+                        className="bg-white border border-slate-200 rounded-2xl px-3 py-2.5 shadow-sm flex items-center gap-2.5 w-60 text-left active:scale-[0.98] transition-transform"
+                      >
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-none ${cardBg}`}>
+                          {msg.card_emoji}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-bold text-slate-800 leading-tight">{msg.card_title}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 leading-snug">{msg.card_sub}</p>
+                        </div>
+                        {cardDest && <span className="text-slate-300 text-xs flex-none">›</span>}
+                      </button>
+                    );
+                  })()}
                   {msg.card_type === "poll" && (() => {
                     const opts = (msg.card_sub ?? "").split("|").map((o) => o.trim()).filter(Boolean);
                     const voted = pollVotes[msg.id];

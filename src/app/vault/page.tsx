@@ -22,7 +22,7 @@ type NewDoc = Omit<Doc, "id" | "file_url">;
 
 const CATEGORIES = ["All", "Flights", "Hotel", "Car", "Activities", "Dining"];
 const CATEGORY_EMOJIS: Record<string, string> = {
-  Flights: "✈️", Hotel: "🏨", Car: "🚙", Activities: "🎯", Dining: "🍽️",
+  Flights: "✈️", Hotel: "🏨", Car: "🚙", Activities: "🎟️", Dining: "🍽️",
 };
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -341,6 +341,14 @@ function AddFields({ form, set }: { form: AddForm; set: (f: AddForm) => void }) 
   );
 }
 
+// ── Date sort helpers (module-level so they're available before derived state) ──
+const MONTHS_IDX: Record<string, number> = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+function parseSortKey(dateStr: string): number {
+  const m = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
+  if (!m) return Infinity;
+  return new Date(2026, MONTHS_IDX[m[1]], parseInt(m[2])).getTime();
+}
+
 // ── Main component ─────────────────────────────────────────────────────────
 export default function VaultPage() {
   const router = useRouter();
@@ -536,7 +544,9 @@ export default function VaultPage() {
     );
   });
   const grouped = CATEGORIES.slice(1).reduce<Record<string, Doc[]>>((acc, cat) => {
-    const items = filtered.filter((d) => d.category === cat);
+    const items = filtered
+      .filter((d) => d.category === cat)
+      .sort((a, b) => parseSortKey(a.date) - parseSortKey(b.date));
     if (items.length > 0) acc[cat] = items;
     return acc;
   }, {});
@@ -544,14 +554,6 @@ export default function VaultPage() {
   const pendingCount = docs.filter((d) => d.status === "pending").length;
 
   // "Coming Up" — docs with parseable future dates, sorted chronologically
-  const MONTHS_IDX: Record<string, number> = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
-  function parseSortKey(dateStr: string): number {
-    const m = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
-    if (!m) return Infinity;
-    const month = MONTHS_IDX[m[1]];
-    const day = parseInt(m[2]);
-    return new Date(2026, month, day).getTime();
-  }
   const now = Date.now();
   const comingUp = docs
     .filter((d) => {
@@ -1231,9 +1233,8 @@ export default function VaultPage() {
                 return (
                   <button key={doc.id} onClick={() => openDetail(doc)}
                     className="w-full text-left bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 flex active:scale-[0.98] transition-transform">
-                    <div className={`w-14 flex-none bg-gradient-to-b ${accentBg} flex flex-col items-center justify-center gap-1`}>
-                      <span className="text-xl">{doc.emoji}</span>
-                      <p className="text-[9px] font-bold text-white/70 uppercase tracking-wider px-1 text-center leading-tight">{doc.category}</p>
+                    <div className={`w-14 flex-none bg-gradient-to-b ${accentBg} flex items-center justify-center`}>
+                      <span className="text-2xl">{doc.emoji}</span>
                     </div>
                     <div className="flex-1 min-w-0 px-4 py-3.5">
                       <div className="flex items-start justify-between gap-2">

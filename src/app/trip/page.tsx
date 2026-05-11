@@ -439,6 +439,20 @@ export default function TripPage() {
     setEditingTrip(null);
   }
 
+  function archiveTripById(t: UpcomingTrip) {
+    setArchivedTrips((prev) => [{
+      id: t.id,
+      title: t.title,
+      destination: t.destination,
+      dateRange: buildSubtitle(t.startDate, t.nights, t.travelersCount),
+      emoji: t.emoji,
+      photo: t.photo,
+      photoAlt: t.photoAlt,
+      highlight: "",
+    }, ...prev]);
+    setUpcomingTrips((prev) => prev.filter((trip) => trip.id !== t.id));
+  }
+
   function addNewTrip() {
     if (!newTitle.trim()) return;
     const photos = getPhotosForDestination(newDestination);
@@ -1239,15 +1253,24 @@ export default function TripPage() {
           TRIP LIFECYCLE SECTIONS
       ══════════════════════════════════════ */}
       {(() => {
-        // Sort planning trips by date ascending
+        // Sort planning trips by date ascending, split past vs future
+        const todayMs = new Date().setHours(0, 0, 0, 0);
         const sorted = [...upcomingTrips].sort((a, b) => {
           if (!a.startDate && !b.startDate) return 0;
           if (!a.startDate) return 1;
           if (!b.startDate) return -1;
           return a.startDate.localeCompare(b.startDate);
         });
-        const upNextTrip = sorted[0] ?? null;
-        const planningTrips = sorted.slice(1);
+        const isTripPast = (t: UpcomingTrip) => {
+          if (!t.startDate) return false;
+          const end = new Date(t.startDate + "T00:00:00");
+          end.setDate(end.getDate() + (t.nights || 0));
+          return end.getTime() < todayMs;
+        };
+        const pastTrips = sorted.filter(isTripPast);
+        const futureTrips = sorted.filter((t) => !isTripPast(t));
+        const upNextTrip = futureTrips[0] ?? null;
+        const planningTrips = futureTrips.slice(1);
 
         return (
           <>
@@ -1273,6 +1296,23 @@ export default function TripPage() {
               </div>
               <span className="text-slate-300 text-sm flex-none ml-1">›</span>
             </button>
+
+            {/* ── Recently completed (past upcoming trips) ─────────── */}
+            {pastTrips.map((t) => (
+              <div key={t.id} className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 flex items-center gap-3">
+                <span className="text-2xl flex-none">{t.emoji}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-black text-emerald-800 leading-tight truncate">{t.title}</p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">Trip complete · {buildSubtitle(t.startDate, t.nights, t.travelersCount)}</p>
+                </div>
+                <button
+                  onClick={() => archiveTripById(t)}
+                  className="flex-none text-[11px] font-bold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 active:scale-95 transition-all px-3 py-1.5 rounded-full"
+                >
+                  Archive ›
+                </button>
+              </div>
+            ))}
 
             {/* ── Up Next ───────────────────────────────────────────── */}
             {upNextTrip && (

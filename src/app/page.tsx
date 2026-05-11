@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, type WishlistEntry } from "@/lib/wishlist";
 import { useExploreContext } from "@/lib/exploreContext";
-import { SortableAgendaSections, type Section as DndSection } from "@/components/SortableAgendaSection";
+import { SortableAgendaSections, type Section as DndSection, getMapsInfo, SHERATON } from "@/components/SortableAgendaSection";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -448,6 +448,9 @@ export default function MyDayPage() {
   // Vibe check
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
+  // Day route sheet
+  const [showRouteSheet, setShowRouteSheet] = useState(false);
+
   // AI day-planner
   const [aiPlannerOpen, setAiPlannerOpen] = useState(false);
   const [aiPlannerLoading, setAiPlannerLoading] = useState(false);
@@ -813,6 +816,13 @@ export default function MyDayPage() {
 
   // Derived: theme for the current day (Supabase label overrides mock)
   const currentTheme = dayLabels[day.dayNum] ?? day.theme;
+
+  // Derived: ordered stops for the day route sheet
+  const dayRouteStops = items
+    .filter((i) => i.time && i.time !== "TBD")
+    .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time))
+    .map((i) => { const info = getMapsInfo(i.title); return info ? { ...i, ...info } : null; })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
 
   // ── Save day theme ────────────────────────────────────────────────────────
   async function saveTheme() {
@@ -1459,6 +1469,121 @@ export default function MyDayPage() {
         </div>
       )}
 
+      {/* ── Day Route Sheet ── */}
+      {showRouteSheet && (() => {
+        const isApple = typeof navigator !== "undefined" && /iphone|ipad|mac/i.test(navigator.userAgent);
+        const googleWaypoints = dayRouteStops.slice(0, -1).map((s) => `${s.lat},${s.lng}`).join("|");
+        const last = dayRouteStops[dayRouteStops.length - 1];
+        const googleRouteUrl = dayRouteStops.length > 0
+          ? `https://www.google.com/maps/dir/?api=1&origin=${SHERATON.lat},${SHERATON.lng}&destination=${last.lat},${last.lng}${googleWaypoints ? `&waypoints=${googleWaypoints}` : ""}&travelmode=driving`
+          : "";
+        const appleRouteUrl = dayRouteStops.length > 0
+          ? `maps://maps.apple.com/?saddr=${SHERATON.lat},${SHERATON.lng}&daddr=${last.lat},${last.lng}&dirflg=d`
+          : "";
+
+        return (
+          <div
+            className="fixed inset-0 z-[70] flex flex-col justify-end max-w-md mx-auto"
+            onClick={() => setShowRouteSheet(false)}
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <div
+              className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col"
+              style={{ maxHeight: "75vh" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1 flex-none">
+                <div className="w-10 h-1 bg-slate-200 rounded-full" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-slate-100 flex-none">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Day {day.dayNum} Route</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{currentTheme} · {dayRouteStops.length} stops</p>
+                </div>
+                <button
+                  onClick={() => setShowRouteSheet(false)}
+                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold"
+                >✕</button>
+              </div>
+
+              {/* Stops list */}
+              <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4">
+                {/* Origin */}
+                <div className="flex items-start gap-3 mb-1">
+                  <div className="flex flex-col items-center flex-none pt-0.5">
+                    <div className="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center text-white text-xs">🏨</div>
+                    <div className="w-0.5 h-4 bg-slate-200 mt-1" />
+                  </div>
+                  <div className="pt-1">
+                    <p className="text-xs font-bold text-slate-700">Sheraton Maui Resort</p>
+                    <p className="text-[10px] text-slate-400">Your home base · Ka'anapali</p>
+                  </div>
+                </div>
+
+                {dayRouteStops.map((stop, idx) => {
+                  const isLast = idx === dayRouteStops.length - 1;
+                  return (
+                    <div key={stop.id}>
+                      {/* Drive segment */}
+                      <div className="flex items-center gap-3 mb-1 ml-3">
+                        <div className="flex flex-col items-center flex-none">
+                          <div className="w-0.5 h-3 bg-slate-200" />
+                        </div>
+                        <a
+                          href={stop.mapsUrl}
+                          className="flex items-center gap-1.5 text-[10px] text-sky-600 font-semibold bg-sky-50 rounded-full px-2.5 py-1 border border-sky-100 hover:border-sky-300 transition-colors"
+                        >
+                          <span>🗺</span>
+                          <span>{stop.driveMin === 0 ? "On-site" : `${stop.driveMin} min drive`}</span>
+                          <span className="text-sky-400">↗</span>
+                        </a>
+                      </div>
+
+                      {/* Stop */}
+                      <div className="flex items-start gap-3 mb-1">
+                        <div className="flex flex-col items-center flex-none pt-0.5">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-sm ${isLast ? "bg-emerald-500" : "bg-indigo-100"}`}>
+                            {isLast ? "🏁" : stop.emoji}
+                          </div>
+                          {!isLast && <div className="w-0.5 h-4 bg-slate-200 mt-1" />}
+                        </div>
+                        <div className="pt-1 flex-1 min-w-0">
+                          <p className="text-xs font-bold text-slate-800 leading-tight">{stop.title}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{stop.time}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Open in Maps CTAs */}
+              <div className="px-5 pb-8 pt-3 border-t border-slate-100 flex flex-col gap-2 flex-none">
+                <a
+                  href={googleRouteUrl}
+                  className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm active:scale-[0.98] transition-all"
+                >
+                  <span>🗺</span>
+                  <span>Open Full Route in Google Maps</span>
+                </a>
+                {isApple && (
+                  <a
+                    href={appleRouteUrl}
+                    className="w-full flex items-center justify-center gap-2 border border-slate-200 text-slate-700 font-bold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-all"
+                  >
+                    <span>🍎</span>
+                    <span>Open in Apple Maps</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* ── Hero (with embedded navigation) ── */}
       <div className="relative h-56 w-full overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1589,16 +1714,27 @@ export default function MyDayPage() {
         })()}
       </div>
 
-      {/* ── Jump to Today — below hero, never overlaps title ── */}
-      {dayIndex !== todayDayIndex && (
-        <div className="flex justify-center pt-2 pb-0 px-4">
-          <button
-            onClick={() => { setDayIndex(todayDayIndex); setEditingTheme(false); }}
-            className="flex items-center gap-1.5 bg-slate-900 text-white text-[11px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-slate-700 transition-colors"
-          >
-            <span className="text-[8px]">⬤</span>
-            <span>Jump to Today</span>
-          </button>
+      {/* ── Day action pills: Route + Jump to Today ── */}
+      {(dayRouteStops.length > 0 || dayIndex !== todayDayIndex) && (
+        <div className="flex items-center justify-center gap-2 pt-2 pb-0 px-4 flex-wrap">
+          {dayRouteStops.length > 0 && (
+            <button
+              onClick={() => setShowRouteSheet(true)}
+              className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 text-[11px] font-bold px-4 py-2 rounded-full shadow-sm hover:border-slate-400 active:scale-95 transition-all"
+            >
+              <span>🗺</span>
+              <span>View Route</span>
+            </button>
+          )}
+          {dayIndex !== todayDayIndex && (
+            <button
+              onClick={() => { setDayIndex(todayDayIndex); setEditingTheme(false); }}
+              className="flex items-center gap-1.5 bg-slate-900 text-white text-[11px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-slate-700 active:scale-95 transition-all"
+            >
+              <span className="text-[8px]">⬤</span>
+              <span>Jump to Today</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -1947,6 +2083,30 @@ export default function MyDayPage() {
             </div>
           </button>
         )}
+
+        {/* ── Trip Memories CTA ── */}
+        <button
+          onClick={() => router.push("/memories")}
+          className="w-full relative overflow-hidden rounded-2xl text-left group active:scale-[0.98] transition-all"
+          style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)" }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=200&fit=crop&q=60"
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover opacity-10"
+          />
+          <div className="relative flex items-center gap-4 px-4 py-4">
+            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-lg flex-none">
+              📸
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm text-white">Trip Memories</p>
+              <p className="text-xs text-white/60 mt-0.5">Your day-by-day story, auto-built as you go</p>
+            </div>
+            <span className="text-white/50 group-hover:text-white/80 transition-colors text-lg">→</span>
+          </div>
+        </button>
 
         {/* ── Vibe Check (today only) ── */}
         {isToday && (
