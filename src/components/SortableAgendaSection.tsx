@@ -65,6 +65,44 @@ function formatGap(mins: number): string {
   return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
 }
 
+// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ──────────
+const SHERATON = { lat: 20.9236, lng: -156.6941 };
+
+const MAUI_PLACES: { keywords: string[]; driveMin: number; lat: number; lng: number }[] = [
+  { keywords: ["molokini"],                  driveMin: 45, lat: 20.6317, lng: -156.4969 },
+  { keywords: ["mama's fish", "mamas fish"], driveMin: 35, lat: 20.9394, lng: -156.3153 },
+  { keywords: ["twin falls", "road to hana", "hana"],
+                                             driveMin: 90, lat: 20.8980, lng: -156.2497 },
+  { keywords: ["wai'anapanapa", "black sand"],driveMin:120, lat: 20.7617, lng: -156.0001 },
+  { keywords: ["haleakala", "haleakalā"],    driveMin: 75, lat: 20.7097, lng: -156.2535 },
+  { keywords: ["paia", "pāia"],              driveMin: 40, lat: 20.9158, lng: -156.3695 },
+  { keywords: ["old lahaina luau", "luau"],  driveMin: 10, lat: 20.8786, lng: -156.6794 },
+  { keywords: ["upcountry", "kula", "surfing goat"], driveMin: 55, lat: 20.7603, lng: -156.3317 },
+  { keywords: ["kapalua"],                   driveMin:  8, lat: 20.9989, lng: -156.6703 },
+  { keywords: ["monkeypod"],                 driveMin:  4, lat: 20.8896, lng: -156.6616 },
+  { keywords: ["maui ocean center"],         driveMin: 20, lat: 20.7931, lng: -156.5017 },
+  { keywords: ["ululani"],                   driveMin:  5, lat: 20.9158, lng: -156.6758 },
+  { keywords: ["andaz", "wailea"],           driveMin: 30, lat: 20.6913, lng: -156.4427 },
+  { keywords: ["down the hatch", "lahaina"], driveMin: 14, lat: 20.8786, lng: -156.6794 },
+  { keywords: ["ka'anapali beach", "kaanapali beach"], driveMin: 2, lat: 20.9244, lng: -156.6927 },
+  { keywords: ["sheraton"],                  driveMin:  0, lat: 20.9236, lng: -156.6941 },
+  { keywords: ["airport", "ogg", "kahului"], driveMin: 25, lat: 20.8986, lng: -156.4305 },
+];
+
+function getMapsInfo(title: string): { driveMin: number; mapsUrl: string } | null {
+  const lower = title.toLowerCase();
+  const match = MAUI_PLACES.find((p) => p.keywords.some((k) => lower.includes(k)));
+  if (!match) return null;
+  const { lat, lng, driveMin } = match;
+  const isApple = typeof navigator !== "undefined" && /iphone|ipad|mac/i.test(navigator.userAgent);
+  const origin = `${SHERATON.lat},${SHERATON.lng}`;
+  const dest = `${lat},${lng}`;
+  const mapsUrl = isApple
+    ? `maps://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d`
+    : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=driving`;
+  return { driveMin, mapsUrl };
+}
+
 // ── Drag handle icon ──────────────────────────────────────────────────────────
 function DragHandle({ listeners, attributes }: { listeners?: object; attributes?: object }) {
   return (
@@ -145,6 +183,22 @@ export function AgendaItemCard({
           {item.notes && (
             <p className="text-xs text-slate-400 mt-0.5 leading-snug">{item.notes}</p>
           )}
+          {(() => {
+            const info = getMapsInfo(item.title);
+            if (!info) return null;
+            const label = info.driveMin === 0 ? "On-site" : `${info.driveMin} min drive`;
+            return (
+              <a
+                href={info.mapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full hover:bg-sky-100 transition-colors"
+              >
+                🗺 {label}
+              </a>
+            );
+          })()}
           {item.reservation && !item.done && (
             <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
               🗓 Reserved
