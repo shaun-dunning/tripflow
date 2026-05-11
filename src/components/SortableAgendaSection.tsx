@@ -45,7 +45,7 @@ export type Section = {
   items: AgendaItem[];
 };
 
-// ── Helper ────────────────────────────────────────────────────────────────────
+// ── Helper ──────────────────────────────────────────────────────────────────
 function timeToMinutes(t: string): number {
   if (!t || t === "TBD" || t === "tbd") return -1;
   const [time, mer] = t.split(" ");
@@ -65,7 +65,18 @@ function formatGap(mins: number): string {
   return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
 }
 
-// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ──────────
+function minutesToTime(totalMins: number): string {
+  const h = Math.floor(totalMins / 60) % 24;
+  const m = totalMins % 60;
+  const ampm = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 || 12;
+  return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
+}
+
+// Buffer (minutes) added to drive time so the user has time to get ready / park
+const DEPART_BUFFER_MINS = 10;
+
+// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ──────────────────
 const SHERATON = { lat: 20.9236, lng: -156.6941 };
 
 const MAUI_PLACES: { keywords: string[]; driveMin: number; lat: number; lng: number }[] = [
@@ -105,7 +116,7 @@ export function getMapsInfo(title: string): { driveMin: number; mapsUrl: string;
 
 export { SHERATON };
 
-// ── Drag handle icon ──────────────────────────────────────────────────────────
+// ── Drag handle icon ───────────────────────────────────────────────────────────────
 function DragHandle({ listeners, attributes }: { listeners?: object; attributes?: object }) {
   return (
     <div
@@ -201,11 +212,26 @@ export function AgendaItemCard({
               </a>
             );
           })()}
-          {item.reservation && !item.done && (
-            <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
-              🗓 Reserved
-            </span>
-          )}
+          {item.reservation && !item.done && (() => {
+            const info = getMapsInfo(item.title);
+            const driveMin = info?.driveMin ?? 0;
+            const itemMins = timeToMinutes(item.time);
+            if (driveMin > 0 && itemMins > 0) {
+              const departMins = itemMins - driveMin - DEPART_BUFFER_MINS;
+              if (departMins > 0) {
+                return (
+                  <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                    🚗 Leave by {minutesToTime(departMins)}
+                  </span>
+                );
+              }
+            }
+            return (
+              <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
+                🗓 Reserved
+              </span>
+            );
+          })()}
         </div>
       </button>
 
@@ -270,7 +296,7 @@ export function AgendaItemCard({
   );
 }
 
-// ── Sortable row wrapper ──────────────────────────────────────────────────────
+// ── Sortable row wrapper ──────────────────────────────────────────────────────────────
 function SortableItem({
   item,
   isToday,
@@ -387,7 +413,7 @@ function SortableItem({
   );
 }
 
-// ── SortableAgendaSections ────────────────────────────────────────────────────
+// ── SortableAgendaSections ──────────────────────────────────────────────────────────────────
 // The main exported component: wraps all sections in a single DndContext so
 // items can also be dragged *between* sections.
 
