@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { haptic } from "@/lib/haptic";
 
 // ---------------------------------------------------------------------------
 // Persistence
@@ -97,7 +98,7 @@ const TRIP_ACTIVITIES = [
   "Humble Market dinner",
   "Upcountry Market",
   "Old Lahaina Luau",
-  "Sunrise at summit",   // Haleakalā
+  "Sunrise at summit",   // Haleakālā
   "Sliding Sands hike",
 ];
 
@@ -122,12 +123,12 @@ function computeSuggestions(): Suggestion[] {
     );
   }
 
-  // Haleakalā / sunrise
+  // Haleakālā / sunrise
   if (/haleakal|sunrise|summit/.test(all)) {
     out.push(
-      { id: "sug-layers",   name: "Warm layers",              category: "Clothing",   reason: "Haleakalā summit (35–45°F)" },
-      { id: "sug-lamp",     name: "Headlamp",                 category: "Misc",       reason: "2:30 AM Haleakalā departure" },
-      { id: "sug-warmers",  name: "Hand warmers",             category: "Misc",       reason: "Haleakalā sunrise" },
+      { id: "sug-layers",   name: "Warm layers",              category: "Clothing",   reason: "Haleakālā summit (35–45°F)" },
+      { id: "sug-lamp",     name: "Headlamp",                 category: "Misc",       reason: "2:30 AM Haleakālā departure" },
+      { id: "sug-warmers",  name: "Hand warmers",             category: "Misc",       reason: "Haleakālā sunrise" },
     );
   }
 
@@ -171,7 +172,7 @@ function buildDefaultItems(): PackItem[] {
     // Clothing
     { id: "c1", name: "Swimsuits",               category: "Clothing",    assignee: "Anyone" },
     { id: "c2", name: "Aloha shirts",            category: "Clothing",    assignee: "Anyone" },
-    { id: "c3", name: "Light layers (Haleakalā)",category: "Clothing",    assignee: "Anyone" },
+    { id: "c3", name: "Light layers (Haleakālā)",category: "Clothing",    assignee: "Anyone" },
     { id: "c4", name: "Sandals",                 category: "Clothing",    assignee: "Anyone" },
     { id: "c5", name: "Reef-safe sunscreen",     category: "Clothing",    assignee: "Anyone" },
     // Beach Gear
@@ -326,6 +327,7 @@ export default function PackingPage() {
   // Mutations
   // ---------------------------------------------------------------------------
   function togglePacked(id: string) {
+    haptic(10);
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, packed: !i.packed } : i));
   }
 
@@ -345,6 +347,7 @@ export default function PackingPage() {
   }
 
   function toggleCategory(cat: Category) {
+    haptic(10);
     const catItems = items.filter((i) => i.category === cat);
     const allPacked = catItems.every((i) => i.packed);
     setItems((prev) =>
@@ -353,6 +356,7 @@ export default function PackingPage() {
   }
 
   function addSuggestedItem(sug: Suggestion) {
+    haptic([10, 30, 10]);
     const newItem: PackItem = {
       id: `sug-added-${Date.now()}-${sug.id}`,
       name: sug.name,
@@ -380,6 +384,7 @@ export default function PackingPage() {
   function submitAddItem() {
     const trimmed = addName.trim();
     if (!trimmed) return;
+    haptic([10, 30, 10]);
     const newItem: PackItem = {
       id: `user-${Date.now()}`,
       name: trimmed,
