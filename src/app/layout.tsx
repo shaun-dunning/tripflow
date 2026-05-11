@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import AuthGuard from "@/components/AuthGuard";
 import { ExploreProvider } from "@/lib/exploreContext";
+import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
@@ -40,6 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 max-w-md mx-auto relative">
+        <ServiceWorkerRegistrar />
         <ExploreProvider>
           <AuthGuard>
             {/*

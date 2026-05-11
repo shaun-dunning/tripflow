@@ -15,8 +15,8 @@
 - [x] Make reservations, activities, and travel plans in Docs in chronological order. Also consider cleaning up the look and feel of the icons on the left side of each category. For example the bullseye for activities isn't totally logical, the placement is not well centered, and the text "Activities" doesn't fit cleanly in the width of the green column.
 - [x] On Group, we have a few issues to clean up. I tried to add a photo to the chat and I selected one to upload but nothing happened. Also, when I tap "Trip Plan" it now adds a two line summary as a message into chat, but I wasn't sure why it picked the day it did to summarize. Also, I expected to be able to tap that plan to be taken to the details in My Day. Same with a reservation that's added to the chat. Finally I can't figure out what Green vs Yellow dots mean under the travlers. usually that's a presence indicator but I don't believe all the green travelers have accepted invites or used the app yet.
 - [x] On Up Next setion of Trips, I have a completed trip showing up from last week. I would have expected this to show that it's been completed or possibly moved into Archived.
-- [ ] Add "depart by" for reservations on My Day. Use estimated drive times to determine departure time for reservations based on the itinerary. I see it for travel but not for dinners and other activities.
-- [ ] Offline-first / PWA caching — service worker + IndexedDB cache so app works on airplane / bad Wi-Fi, syncs when reconnected
+- [x] Add "depart by" for reservations on My Day. Use estimated drive times to determine departure time for reservations based on the itinerary. I see it for travel but not for dinners and other activities.
+- [x] Offline-first / PWA caching — service worker + IndexedDB cache so app works on airplane / bad Wi-Fi, syncs when reconnected
 - [ ] Design system pass — consistent shadow elevation tiers, formalize accent color roles (sky/emerald/amber/indigo)
 - [ ] Add haptic feedback on key actions (navigator.vibrate(10) on toggle/add)
 - [ ] Smooth page transitions between tabs (View Transitions API)
