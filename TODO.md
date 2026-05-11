@@ -17,8 +17,8 @@
 - [x] On Up Next setion of Trips, I have a completed trip showing up from last week. I would have expected this to show that it's been completed or possibly moved into Archived.
 - [x] Add "depart by" for reservations on My Day. Use estimated drive times to determine departure time for reservations based on the itinerary. I see it for travel but not for dinners and other activities.
 - [x] Offline-first / PWA caching — service worker + IndexedDB cache so app works on airplane / bad Wi-Fi, syncs when reconnected
-- [ ] Design system pass — consistent shadow elevation tiers, formalize accent color roles (sky/emerald/amber/indigo)
-- [ ] Add haptic feedback on key actions (navigator.vibrate(10) on toggle/add)
+- [x] Design system pass — consistent shadow elevation tiers, formalize accent color roles (sky/emerald/amber/indigo)
+- [x] Add haptic feedback on key actions (navigator.vibrate(10) on toggle/add)
 - [ ] Smooth page transitions between tabs (View Transitions API)
 - [ ] Better error states  If Supabase fails or is offline, the user sees nothing. A friendly "couldn't load your trip" message with a retry button would go a long way.
 

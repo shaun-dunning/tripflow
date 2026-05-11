@@ -4,6 +4,27 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * ─── TripFlow Design System ─────────────────────────────────────────────
+ *
+ * SHADOW ELEVATION TIERS
+ *   shadow-card    — resting cards on the page background
+ *   shadow-raised  — cards that appear slightly lifted (list items, sections)
+ *   shadow-overlay — bottom sheets, modals, popovers
+ *   shadow-float   — FABs, tooltips, highest floating elements
+ *
+ * ACCENT COLOR ROLES
+ *   sky     (sky-500 / sky-600)         — primary interactive / active states
+ *   emerald (emerald-500 / emerald-600) — confirmed / success states
+ *   amber   (amber-400 / amber-500)     — pending / warning states
+ *   indigo  (indigo-400 / indigo-500)   — secondary / informational states
+ *   slate-900                           — dark primary CTAs (buttons, headers)
+ *
+ * STATUS BADGES
+ *   emerald = confirmed   amber = pending   slate = done/archived
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -46,6 +67,22 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Shadow elevation tiers */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+  --shadow-raised: 0 4px 12px 0 rgb(0 0 0 / 0.08), 0 2px 4px -1px rgb(0 0 0 / 0.05);
+  --shadow-overlay: 0 8px 24px 0 rgb(0 0 0 / 0.12), 0 4px 8px -2px rgb(0 0 0 / 0.07);
+  --shadow-float: 0 16px 40px 0 rgb(0 0 0 / 0.16), 0 8px 16px -4px rgb(0 0 0 / 0.09);
+
+  /* Semantic accent color roles (references Tailwind color palette) */
+  --color-tf-primary: var(--color-sky-500);
+  --color-tf-primary-dark: var(--color-sky-600);
+  --color-tf-success: var(--color-emerald-500);
+  --color-tf-success-dark: var(--color-emerald-600);
+  --color-tf-warning: var(--color-amber-400);
+  --color-tf-warning-dark: var(--color-amber-500);
+  --color-tf-secondary: var(--color-indigo-400);
+  --color-tf-secondary-dark: var(--color-indigo-500);
 }
 
 :root {
