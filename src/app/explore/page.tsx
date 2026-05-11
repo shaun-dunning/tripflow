@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
@@ -855,6 +855,10 @@ type AiMessage = { role: "user" | "assistant"; content: string };
 
 export default function ExplorePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("ai") === "1") setShowAI(true);
+  }, [searchParams]);
   const { setPendingItem } = useExploreContext();
   const [activeFilter, setActiveFilter] = useState("All");
   const [activeScenario, setActiveScenario] = useState<number | null>(null);
@@ -2104,53 +2108,32 @@ export default function ExplorePage() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════
-            AI TRIP ASSISTANT — Prominent ingress
-        ══════════════════════════════════════ */}
-        <div
-          className="rounded-2xl overflow-hidden shadow-lg"
-          style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0c4a6e 100%)" }}
+        {/* ── AI slim banner ── */}
+        <button
+          onClick={() => setShowAI(true)}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-sky-50 hover:from-indigo-100 hover:to-sky-100 transition-colors shadow-sm"
         >
-          {/* Top row */}
-          <div className="px-4 pt-4 pb-3 flex items-start gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-sky-400 to-indigo-500 flex items-center justify-center text-2xl flex-none shadow-lg">
-              🌺
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold text-sky-300 uppercase tracking-widest mb-0.5">Your Personal Guide</p>
-              <h3 className="text-base font-black text-white leading-tight">Maui Trip AI</h3>
-              <p className="text-xs text-white/60 mt-0.5 leading-snug">Knows your itinerary, your crew, and all of Maui</p>
-            </div>
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-base flex-none shadow-sm">
+            ✨
           </div>
-
-          {/* Quick prompts */}
-          <div className="px-4 pb-3 flex gap-2 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-            {AI_QUICK_PROMPTS.map((q) => (
-              <button
-                key={q}
-                onClick={() => { setShowAI(true); sendAiMessage(q); }}
-                className="flex-none text-[11px] font-semibold text-white/80 bg-white/10 border border-white/15 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-white/20 transition-colors"
-              >
-                {q}
-              </button>
-            ))}
+          <div className="flex-1 text-left min-w-0">
+            <p className="text-sm font-bold text-slate-900 leading-tight">Ask Maui Trip AI</p>
+            <p className="text-[11px] text-slate-500 truncate">What should we do this afternoon?</p>
           </div>
+          <span className="text-slate-400 text-sm">→</span>
+        </button>
 
-          {/* CTA */}
-          <button
-            onClick={() => setShowAI(true)}
-            className="w-full flex items-center justify-between px-4 py-3 bg-white/10 border-t border-white/10 hover:bg-white/15 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-sky-500 flex items-center justify-center">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 3v10M3 8h10" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </div>
-              <span className="text-sm font-bold text-white">Ask anything about your trip</span>
-            </div>
-            <span className="text-white/60 text-lg">→</span>
-          </button>
+        {/* Quick prompts row */}
+        <div className="flex gap-2 overflow-x-auto -mx-4 px-4" style={{ scrollbarWidth: "none" }}>
+          {AI_QUICK_PROMPTS.map((q) => (
+            <button
+              key={q}
+              onClick={() => { setShowAI(true); sendAiMessage(q); }}
+              className="flex-none text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-indigo-100 transition-colors"
+            >
+              {q}
+            </button>
+          ))}
         </div>
 
         {/* ── Results ── */}
@@ -2313,6 +2296,19 @@ export default function ExplorePage() {
         </div>
 
       </div>
+
+      {/* ── Floating AI button ── */}
+      {!showAI && (
+        <button
+          onClick={() => setShowAI(true)}
+          className="fixed bottom-24 right-4 z-40 flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full shadow-lg bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 active:scale-95 transition-all"
+          style={{ boxShadow: "0 4px 20px rgba(99,102,241,0.45)" }}
+        >
+          <span className="text-base leading-none">✨</span>
+          <span className="text-sm font-bold text-white">Ask AI</span>
+        </button>
+      )}
+
     </div>
   );
 }

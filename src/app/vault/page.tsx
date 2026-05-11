@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 type Doc = {
@@ -342,6 +343,7 @@ function AddFields({ form, set }: { form: AddForm; set: (f: AddForm) => void }) 
 
 // ── Main component ─────────────────────────────────────────────────────────
 export default function VaultPage() {
+  const router = useRouter();
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1287,6 +1289,17 @@ export default function VaultPage() {
           <span className="text-slate-300 text-lg group-hover:text-slate-500 transition-colors">→</span>
         </button>
       </div>
+
+      {/* ── Floating AI button ── */}
+      <button
+        onClick={() => router.push("/explore?ai=1")}
+        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full shadow-lg bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 active:scale-95 transition-all"
+        style={{ boxShadow: "0 4px 20px rgba(99,102,241,0.45)" }}
+      >
+        <span className="text-base leading-none">✨</span>
+        <span className="text-sm font-bold text-white">Ask AI</span>
+      </button>
+
     </div>
   );
 }
