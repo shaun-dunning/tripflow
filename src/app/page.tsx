@@ -8,8 +8,7 @@ import { loadWishlist, type WishlistEntry } from "@/lib/wishlist";
 import { useExploreContext } from "@/lib/exploreContext";
 import { SortableAgendaSections, type Section as DndSection, getMapsInfo, SHERATON } from "@/components/SortableAgendaSection";
 import { ResilientState } from "@/components/ResilientState";
-
-const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
+import { TRIP_ID } from "@/lib/tripConfig";
 
 function timeToMinutes(t: string): number {
   if (!t || t === "TBD" || t === "tbd") return -1; // TBD items sort to top of Morning
@@ -34,6 +33,8 @@ type Item = {
   photo?: string;
   photoAlt?: string;
   fromSupabase?: boolean;
+  sourceDocId?: string;
+  sourceLabel?: string;
 };
 
 type DayData = {
@@ -620,7 +621,9 @@ export default function MyDayPage() {
                 done: doc.status === "completed",
                 notes: notesParts.join(" · "),
                 reservation: true,
-                fromSupabase: true,
+                fromSupabase: false,
+                sourceDocId: doc.id,
+                sourceLabel: doc.category,
               },
             });
           });
@@ -825,6 +828,11 @@ export default function MyDayPage() {
 
   // ── Sheet open/close ─────────────────────────────────────────────────────
   function openEdit(item: Item) {
+    if (item.sourceDocId) {
+      localStorage.setItem("tripflow-vault-focus-doc", item.sourceDocId);
+      router.push("/vault");
+      return;
+    }
     setSheetDeleteConfirm(false);
     setIsAddingNew(false);
     setSheetItem(item);
@@ -1845,7 +1853,7 @@ export default function MyDayPage() {
           const isUrgent = status === "upcoming" && minsAway !== null && minsAway <= 15;
           const isWarning = status === "upcoming" && minsAway !== null && minsAway <= 60 && minsAway > 15;
 
-          // Status label + countdown copy
+          // Live card label + countdown copy
           let statusLabel: string;
           let countdownPrimary: string;
           let countdownSecondary: string | null = null;
@@ -1953,7 +1961,7 @@ export default function MyDayPage() {
 
         {loadIssue && !loading && (
           <ResilientState
-            title="Showing the saved itinerary"
+            title="Using saved itinerary"
             message="TripFlow couldn't refresh the latest shared trip data, so the page is staying usable with the itinerary already on this device."
             detail={loadIssue}
             actionLabel="Try again"

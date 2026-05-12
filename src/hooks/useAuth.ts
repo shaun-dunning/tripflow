@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { TRIP_ID } from "@/lib/tripConfig";
 import type { User } from "@supabase/supabase-js";
-
-const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
 // When a user signs in, link their auth account to the "is_me" traveler row
 // so RLS policies and real name/avatar work correctly.

@@ -34,6 +34,8 @@ export type AgendaItem = {
   photo?: string;
   photoAlt?: string;
   fromSupabase?: boolean;
+  sourceDocId?: string;
+  sourceLabel?: string;
 };
 
 export type Section = {
@@ -275,7 +277,7 @@ export function AgendaItemCard({
             const travelLabel = info.driveMin === 0
               ? "On-site"
               : `${info.estimated ? "~" : ""}${info.driveMin} min drive`;
-            const departureLabel = info.estimated ? "Est. leave by" : "Leave by";
+            const departureLabel = info.estimated ? "Approx. leave by" : "Leave by";
             const departure = getDepartureInfo(item, info.driveMin);
             return (
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
@@ -307,6 +309,18 @@ export function AgendaItemCard({
             <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
               🗓 Reserved
             </span>
+          )}
+          {item.sourceDocId && (
+            <a
+              href="/vault"
+              onClick={(e) => {
+                e.stopPropagation();
+                localStorage.setItem("tripflow-vault-focus-doc", item.sourceDocId ?? "");
+              }}
+              className="inline-flex items-center gap-1 mt-1.5 ml-1 text-[10px] font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full hover:bg-violet-100 transition-colors"
+            >
+              🗂 Vault
+            </a>
           )}
         </div>
       </button>

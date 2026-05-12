@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
+import { INVITE_CODE, TRIP_ID } from "@/lib/tripConfig";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Message = {
@@ -37,10 +38,6 @@ type Sheet =
   | { type: "profile" }
   | { type: "traveler"; id: string }
   | null;
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
-const INVITE_CODE = "MAUI26";
 
 const QUICK_ACTIONS = [
   { key: "poll",    label: "Group poll",     emoji: "🗳️", bg: "bg-rose-50",    border: "border-rose-200",    text: "text-rose-700"    },

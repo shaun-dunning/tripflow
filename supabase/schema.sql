@@ -11,6 +11,7 @@ create table trips (
   destination text not null,
   start_date  date not null,
   end_date    date not null,
+  invite_code text unique,
   cover_photo text,               -- Unsplash URL
   created_at  timestamptz default now()
 );
@@ -102,6 +103,7 @@ create table messages (
   trip_id     uuid references trips(id) on delete cascade,
   sender_name text not null,
   sender_avatar text not null,
+  sender_user_id uuid references auth.users(id) on delete set null,
   is_me       boolean not null default false,
   text        text,
   image_url   text,
@@ -117,13 +119,14 @@ create table messages (
 -- ============================================================
 
 -- Insert the trip
-insert into trips (id, title, destination, start_date, end_date, cover_photo)
+insert into trips (id, title, destination, start_date, end_date, invite_code, cover_photo)
 values (
   'a1b2c3d4-0000-0000-0000-000000000001',
   'Maui Family Trip',
   'Maui, Hawaii',
   '2026-06-05',
   '2026-06-11',
+  'MAUI26',
   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=400&fit=crop&q=80'
 );
 

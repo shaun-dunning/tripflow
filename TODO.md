@@ -39,6 +39,10 @@
 - [x] Added haptic feedback utility and wired haptics into Packing and My Day toggle/add interactions.
 - [x] Added composed retry/error states across My Day, Trips, Trip overview, Group Chat, Vault, Packing, weather, and assistant failure paths.
 - [x] Added invite onboarding on `/join/[code]` with first-trip orientation cards and avatar selection for new or signed-in travelers.
+- [x] Hardened trip source-of-truth: centralized trip IDs/storage keys, aligned schema fields used by invite/group flows, and kept `/trip` + `/trips` on the same stored trip shape.
+- [x] Tightened reservation-to-agenda sync: Vault-sourced reservations now show as linked agenda items, open back to Vault, and avoid behaving like normal editable agenda rows.
+- [x] Polished shared-join flow: new travelers get added to the group and TripFlow posts a lightweight join message.
+- [x] Completed cross-page microcopy sweep for trip lifecycle labels, local-save copy, and estimated leave-by wording.
 - [x] Simplified Explore hero: shorter headline, removed recommendation chips, raised search, reduced visual clutter.
 - [x] Generalized My Day travel guidance so all reservations with times get leave-by guidance, including future unknown venues with estimated fallback.
 - [x] Fixed Trip tab lifecycle persistence so Up Next and Archived Trips no longer revert to demo/hardcoded data across reloads.

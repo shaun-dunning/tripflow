@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { haptic } from "@/lib/haptic";
 import { ResilientState } from "@/components/ResilientState";
+import { TRIP_ID } from "@/lib/tripConfig";
 
 // ---------------------------------------------------------------------------
 // Persistence uses Supabase when the shared `packing_items` table is available,
@@ -38,8 +39,6 @@ const ALL_CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
 // Must-haves filter shows only these categories
 const MUST_HAVE_CATS: Category[] = ["Documents", "Pharmacy"];
-
-const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
 type Traveler = {
   id: string;
@@ -321,7 +320,7 @@ export default function PackingPage() {
       if (cancelled) return;
       setItems(loadedItems);
       setSharedPacking(shared);
-      if (!shared) setPackingIssue("Shared packing is unavailable, so changes are saved on this device.");
+      if (!shared) setPackingIssue("Shared packing is unavailable, so changes are private on this device.");
       setHydrated(true);
     }).catch((err) => {
       if (cancelled) return;
@@ -771,7 +770,7 @@ export default function PackingPage() {
           </p>
           <h1 className="text-2xl font-black text-white leading-tight">Pack Smart</h1>
           <p className="text-xs text-white/60 mt-0.5">
-            {totalItems} items · {sharedPacking ? "shared with the group" : "saved on this device"}
+            {totalItems} items · {sharedPacking ? "shared with the group" : "private on this device"}
           </p>
         </div>
       </div>

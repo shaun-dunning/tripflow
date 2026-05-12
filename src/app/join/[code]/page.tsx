@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { INVITE_CODE } from "@/lib/tripConfig";
 import type { User } from "@supabase/supabase-js";
 
 type TripInfo = {
@@ -56,6 +57,13 @@ async function joinTrip(tripId: string, user: User, avatar = "🧑") {
     is_me: false,
     user_id: user.id,
   });
+
+  await supabase.from("messages").insert({
+    trip_id: tripId,
+    sender_name: "TripFlow",
+    sender_avatar: "🌺",
+    text: `${name} joined the trip.`,
+  });
 }
 
 export default function JoinPage() {
@@ -84,7 +92,7 @@ export default function JoinPage() {
         .from("trips")
         .select(`id, title, destination, start_date, end_date, cover_photo,
                  travelers(id, name, avatar, avatar_url)`)
-        .eq("invite_code", code.toUpperCase())
+        .eq("invite_code", (code ?? INVITE_CODE).toUpperCase())
         .single();
 
       if (error || !data) {

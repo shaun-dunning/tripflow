@@ -5,8 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
-
-const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
+import { TRIP_ID } from "@/lib/tripConfig";
 
 type Place = {
   id: number;

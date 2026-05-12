@@ -7,61 +7,17 @@ import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 import { useAuth } from "@/hooks/useAuth";
 import { ResilientState } from "@/components/ResilientState";
-
-const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
+import {
+  TRIP_ID,
+  UPCOMING_TRIPS_KEY,
+  getStoredTripSubtitle,
+  readStoredTrips,
+  type StoredTrip,
+} from "@/lib/tripConfig";
 
 type AgendaItem = { emoji: string; title: string; time: string };
 
-type UpcomingTrip = {
-  id: number;
-  title: string;
-  destination: string;
-  startDate: string;
-  nights: number;
-  travelersCount: number;
-  emoji: string;
-  photo: string;
-  photoAlt: string;
-  subtitle?: string;
-};
-
-const INITIAL_TRIPS: UpcomingTrip[] = [
-  {
-    id: 1,
-    title: "Christmas in NYC",
-    destination: "New York City",
-    startDate: "2026-12-20",
-    nights: 5,
-    travelersCount: 4,
-    emoji: "🎄",
-    photo: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=600&h=300&fit=crop&q=80",
-    photoAlt: "New York City skyline at night",
-  },
-  {
-    id: 2,
-    title: "Spring Break · Cabo",
-    destination: "Cabo San Lucas",
-    startDate: "2027-03-15",
-    nights: 7,
-    travelersCount: 4,
-    emoji: "🌊",
-    photo: "https://images.unsplash.com/photo-1510097467424-192d713fd8b2?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Cabo San Lucas beach",
-  },
-  {
-    id: 3,
-    title: "Summer Euro Trip",
-    destination: "Europe",
-    startDate: "2027-07-01",
-    nights: 14,
-    travelersCount: 4,
-    emoji: "✈️",
-    photo: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&h=300&fit=crop&q=80",
-    photoAlt: "European city",
-  },
-];
-
-const UPCOMING_TRIPS_KEY = "tripflow-upcoming-trips";
+type UpcomingTrip = StoredTrip;
 
 // Fallback when Supabase agenda isn't available yet
 const FALLBACK_TODAY: AgendaItem[] = [
@@ -77,59 +33,12 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-function buildSubtitle(startDate: string, nights: number, travelersCount: number): string {
-  const parts: string[] = [];
-  if (startDate) {
-    const d = new Date(startDate + "T12:00:00");
-    parts.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
-  }
-  if (nights > 0) parts.push(`${nights} night${nights !== 1 ? "s" : ""}`);
-  if (travelersCount > 0) parts.push(`${travelersCount} traveler${travelersCount !== 1 ? "s" : ""}`);
-  return parts.join(" · ") || "Still planning";
-}
-
-function getTripSubtitle(trip: UpcomingTrip): string {
-  return trip.subtitle ?? buildSubtitle(trip.startDate, trip.nights, trip.travelersCount);
-}
-
-function normalizeUpcomingTrip(value: unknown): UpcomingTrip | null {
-  if (!value || typeof value !== "object") return null;
-  const trip = value as Partial<UpcomingTrip> & { subtitle?: string };
-  if (typeof trip.title !== "string" || !trip.title.trim()) return null;
-  return {
-    id: typeof trip.id === "number" ? trip.id : Date.now(),
-    title: trip.title,
-    destination: typeof trip.destination === "string" ? trip.destination : "",
-    startDate: typeof trip.startDate === "string" ? trip.startDate : "",
-    nights: typeof trip.nights === "number" ? trip.nights : 0,
-    travelersCount: typeof trip.travelersCount === "number" ? trip.travelersCount : 0,
-    emoji: typeof trip.emoji === "string" ? trip.emoji : "✈️",
-    photo: typeof trip.photo === "string" ? trip.photo : "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600&h=300&fit=crop&q=80",
-    photoAlt: typeof trip.photoAlt === "string" ? trip.photoAlt : "Trip destination",
-    subtitle: typeof trip.subtitle === "string" ? trip.subtitle : undefined,
-  };
-}
-
-function readStoredUpcomingTrips(): UpcomingTrip[] {
-  if (typeof window === "undefined") return INITIAL_TRIPS;
-  try {
-    const saved = localStorage.getItem(UPCOMING_TRIPS_KEY);
-    if (!saved) return INITIAL_TRIPS;
-    const parsed = JSON.parse(saved);
-    if (!Array.isArray(parsed)) return INITIAL_TRIPS;
-    const normalized = parsed.map(normalizeUpcomingTrip).filter((trip): trip is UpcomingTrip => trip !== null);
-    return normalized.length > 0 ? normalized : INITIAL_TRIPS;
-  } catch {
-    return INITIAL_TRIPS;
-  }
-}
-
 export default function TripsPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [greeting] = useState(getGreeting);
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "traveler";
-  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(readStoredUpcomingTrips);
+  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(readStoredTrips);
 
   // ── Live trip data ──────────────────────────────────────────────────────────
   const [tripTitle, setTripTitle] = useState("Maui Family Trip");
@@ -240,7 +149,7 @@ export default function TripsPage() {
   function openEditTrip(trip: UpcomingTrip) {
     setEditingTrip(trip);
     setEditTitle(trip.title);
-    setEditSubtitle(getTripSubtitle(trip));
+    setEditSubtitle(getStoredTripSubtitle(trip));
     setEditEmoji(trip.emoji);
   }
 
@@ -464,7 +373,7 @@ export default function TripsPage() {
 
       {loadIssue && (
         <ResilientState
-          title="Travel radar is using saved trip details"
+          title="Using saved trip details"
           message="Upcoming trips are still available from this device, but the active trip summary could not refresh."
           detail={loadIssue}
           actionLabel="Retry"
@@ -628,7 +537,7 @@ export default function TripsPage() {
                 <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 flex items-end justify-between">
                   <div>
                     <p className="text-sm font-bold text-white leading-tight">{trip.title}</p>
-                    <p className="text-[11px] text-white/70 mt-0.5">{getTripSubtitle(trip)}</p>
+                    <p className="text-[11px] text-white/70 mt-0.5">{getStoredTripSubtitle(trip)}</p>
                   </div>
                   <span className="text-lg">{trip.emoji}</span>
                 </div>

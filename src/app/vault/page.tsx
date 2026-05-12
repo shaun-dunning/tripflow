@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ResilientState } from "@/components/ResilientState";
+import { TRIP_ID } from "@/lib/tripConfig";
 
 type Doc = {
   id: string;
@@ -25,8 +26,6 @@ const CATEGORIES = ["All", "Flights", "Hotel", "Car", "Activities", "Dining"];
 const CATEGORY_EMOJIS: Record<string, string> = {
   Flights: "✈️", Hotel: "🏨", Car: "🚙", Activities: "🎟️", Dining: "🍽️",
 };
-const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
-
 // ── Seeded on first load ───────────────────────────────────────────────────
 const SEED_DOCS: NewDoc[] = [
   { category: "Flights", name: "LAX → SEA", provider: "American Airlines", confirmation: "LSKUAS", date: "Jun 5 · 8:05 AM", status: "confirmed", notes: "AA271 · Departs LAX · Arrives Seattle 10:56am", emoji: "✈️", file_type: "booking" },
@@ -397,9 +396,23 @@ export default function VaultPage() {
           .insert(SEED_DOCS.map((d) => ({ ...d, trip_id: TRIP_ID })))
           .select();
         if (seedError) setError(seedError.message);
-        else if (seeded) setDocs(seeded as Doc[]);
+        else if (seeded) {
+          setDocs(seeded as Doc[]);
+          const focusId = localStorage.getItem("tripflow-vault-focus-doc");
+          if (focusId) {
+            localStorage.removeItem("tripflow-vault-focus-doc");
+            const focused = (seeded as Doc[]).find((doc) => doc.id === focusId);
+            if (focused) setDetailDoc(focused);
+          }
+        }
       } else {
         setDocs(data as Doc[]);
+        const focusId = localStorage.getItem("tripflow-vault-focus-doc");
+        if (focusId) {
+          localStorage.removeItem("tripflow-vault-focus-doc");
+          const focused = (data as Doc[]).find((doc) => doc.id === focusId);
+          if (focused) setDetailDoc(focused);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not reach the trip vault.");
