@@ -424,7 +424,7 @@ export default function ChatPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `msg-${Date.now()}.${ext}`;
+    const path = `msg-${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
     if (!uploadError) {
       const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);

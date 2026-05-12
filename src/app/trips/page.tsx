@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
+import { useAuth } from "@/hooks/useAuth";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -13,17 +14,24 @@ type AgendaItem = { emoji: string; title: string; time: string };
 type UpcomingTrip = {
   id: number;
   title: string;
-  subtitle: string;
+  destination: string;
+  startDate: string;
+  nights: number;
+  travelersCount: number;
   emoji: string;
   photo: string;
   photoAlt: string;
+  subtitle?: string;
 };
 
 const INITIAL_TRIPS: UpcomingTrip[] = [
   {
     id: 1,
     title: "Christmas in NYC",
-    subtitle: "Dec 20, 2026 · 5 nights · 4 travelers",
+    destination: "New York City",
+    startDate: "2026-12-20",
+    nights: 5,
+    travelersCount: 4,
     emoji: "🎄",
     photo: "https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=600&h=300&fit=crop&q=80",
     photoAlt: "New York City skyline at night",
@@ -31,7 +39,10 @@ const INITIAL_TRIPS: UpcomingTrip[] = [
   {
     id: 2,
     title: "Spring Break · Cabo",
-    subtitle: "March 15, 2027 · 7 nights · 4 travelers",
+    destination: "Cabo San Lucas",
+    startDate: "2027-03-15",
+    nights: 7,
+    travelersCount: 4,
     emoji: "🌊",
     photo: "https://images.unsplash.com/photo-1510097467424-192d713fd8b2?w=600&h=300&fit=crop&q=80",
     photoAlt: "Cabo San Lucas beach",
@@ -39,7 +50,10 @@ const INITIAL_TRIPS: UpcomingTrip[] = [
   {
     id: 3,
     title: "Summer Euro Trip",
-    subtitle: "July 2027 · Still planning",
+    destination: "Europe",
+    startDate: "2027-07-01",
+    nights: 14,
+    travelersCount: 4,
     emoji: "✈️",
     photo: "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=600&h=300&fit=crop&q=80",
     photoAlt: "European city",
@@ -62,17 +76,59 @@ function getGreeting(): string {
   return "Good evening";
 }
 
+function buildSubtitle(startDate: string, nights: number, travelersCount: number): string {
+  const parts: string[] = [];
+  if (startDate) {
+    const d = new Date(startDate + "T12:00:00");
+    parts.push(d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }));
+  }
+  if (nights > 0) parts.push(`${nights} night${nights !== 1 ? "s" : ""}`);
+  if (travelersCount > 0) parts.push(`${travelersCount} traveler${travelersCount !== 1 ? "s" : ""}`);
+  return parts.join(" · ") || "Still planning";
+}
+
+function getTripSubtitle(trip: UpcomingTrip): string {
+  return trip.subtitle ?? buildSubtitle(trip.startDate, trip.nights, trip.travelersCount);
+}
+
+function normalizeUpcomingTrip(value: unknown): UpcomingTrip | null {
+  if (!value || typeof value !== "object") return null;
+  const trip = value as Partial<UpcomingTrip> & { subtitle?: string };
+  if (typeof trip.title !== "string" || !trip.title.trim()) return null;
+  return {
+    id: typeof trip.id === "number" ? trip.id : Date.now(),
+    title: trip.title,
+    destination: typeof trip.destination === "string" ? trip.destination : "",
+    startDate: typeof trip.startDate === "string" ? trip.startDate : "",
+    nights: typeof trip.nights === "number" ? trip.nights : 0,
+    travelersCount: typeof trip.travelersCount === "number" ? trip.travelersCount : 0,
+    emoji: typeof trip.emoji === "string" ? trip.emoji : "✈️",
+    photo: typeof trip.photo === "string" ? trip.photo : "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600&h=300&fit=crop&q=80",
+    photoAlt: typeof trip.photoAlt === "string" ? trip.photoAlt : "Trip destination",
+    subtitle: typeof trip.subtitle === "string" ? trip.subtitle : undefined,
+  };
+}
+
+function readStoredUpcomingTrips(): UpcomingTrip[] {
+  if (typeof window === "undefined") return INITIAL_TRIPS;
+  try {
+    const saved = localStorage.getItem(UPCOMING_TRIPS_KEY);
+    if (!saved) return INITIAL_TRIPS;
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return INITIAL_TRIPS;
+    const normalized = parsed.map(normalizeUpcomingTrip).filter((trip): trip is UpcomingTrip => trip !== null);
+    return normalized.length > 0 ? normalized : INITIAL_TRIPS;
+  } catch {
+    return INITIAL_TRIPS;
+  }
+}
+
 export default function TripsPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [greeting] = useState(getGreeting);
-  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => {
-    if (typeof window === "undefined") return INITIAL_TRIPS;
-    try {
-      const saved = localStorage.getItem(UPCOMING_TRIPS_KEY);
-      if (saved) return JSON.parse(saved) as UpcomingTrip[];
-    } catch { /* ignore parse errors */ }
-    return INITIAL_TRIPS;
-  });
+  const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "traveler";
+  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(readStoredUpcomingTrips);
 
   // ── Live trip data ──────────────────────────────────────────────────────────
   const [tripTitle, setTripTitle] = useState("Maui Family Trip");
@@ -175,7 +231,7 @@ export default function TripsPage() {
   function openEditTrip(trip: UpcomingTrip) {
     setEditingTrip(trip);
     setEditTitle(trip.title);
-    setEditSubtitle(trip.subtitle);
+    setEditSubtitle(getTripSubtitle(trip));
     setEditEmoji(trip.emoji);
   }
 
@@ -203,6 +259,10 @@ export default function TripsPage() {
     const newTrip: UpcomingTrip = {
       id: Date.now(),
       title: newTitle.trim(),
+      destination: newDestination,
+      startDate: "",
+      nights: 0,
+      travelersCount: Number.parseInt(newTravelers, 10) || 0,
       subtitle: subtitle || "Still planning",
       emoji: "✈️",
       photo: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600&h=300&fit=crop&q=80",
@@ -389,7 +449,7 @@ export default function TripsPage() {
 
       {/* ── Greeting header ── */}
       <div>
-        <p className="text-2xl font-black text-slate-900">{greeting}, Shaun 👋</p>
+        <p className="text-2xl font-black text-slate-900">{greeting}, {firstName}</p>
         <p className="text-sm text-slate-400 mt-0.5">Here&apos;s what&apos;s on your travel radar.</p>
       </div>
 
@@ -548,7 +608,7 @@ export default function TripsPage() {
                 <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 flex items-end justify-between">
                   <div>
                     <p className="text-sm font-bold text-white leading-tight">{trip.title}</p>
-                    <p className="text-[11px] text-white/70 mt-0.5">{trip.subtitle}</p>
+                    <p className="text-[11px] text-white/70 mt-0.5">{getTripSubtitle(trip)}</p>
                   </div>
                   <span className="text-lg">{trip.emoji}</span>
                 </div>

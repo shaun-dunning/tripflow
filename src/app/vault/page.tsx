@@ -378,6 +378,7 @@ export default function VaultPage() {
   // File upload
   const [uploadingId, setUploadingId] = useState<string | null>(null);
   const [vaultSearch, setVaultSearch] = useState("");
+  const [currentTime] = useState(() => Date.now());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadingDocId = useRef<string | null>(null);
 
@@ -554,11 +555,10 @@ export default function VaultPage() {
   const pendingCount = docs.filter((d) => d.status === "pending").length;
 
   // "Coming Up" — docs with parseable future dates, sorted chronologically
-  const now = Date.now();
   const comingUp = docs
     .filter((d) => {
       const t = parseSortKey(d.date);
-      return t !== Infinity && t >= now;
+      return t !== Infinity && t >= currentTime;
     })
     .sort((a, b) => parseSortKey(a.date) - parseSortKey(b.date))
     .slice(0, 3);
@@ -1049,7 +1049,7 @@ export default function VaultPage() {
               const isFlights = doc.category === "Flights";
               const brand = isFlights ? getAirlineBrand(doc.provider ?? "") : null;
               const sortKey = parseSortKey(doc.date);
-              const daysAway = Math.ceil((sortKey - now) / 86_400_000);
+              const daysAway = Math.ceil((sortKey - currentTime) / 86_400_000);
               const daysLabel = daysAway === 0 ? "Today" : daysAway === 1 ? "Tomorrow" : `${daysAway} days`;
               const isUrgent = daysAway <= 2;
               return (

@@ -65,21 +65,21 @@ function formatGap(mins: number): string {
   return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
 }
 
-function minutesToTime(totalMins: number): string {
-  const h = Math.floor(totalMins / 60) % 24;
-  const m = totalMins % 60;
-  const ampm = h >= 12 ? "PM" : "AM";
-  const hour = h % 12 || 12;
-  return `${hour}:${m.toString().padStart(2, "0")} ${ampm}`;
+function formatClock(totalMins: number): string {
+  const wrapped = ((totalMins % 1440) + 1440) % 1440;
+  const h24 = Math.floor(wrapped / 60);
+  const m = wrapped % 60;
+  const mer = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${mer}`;
 }
 
-// Buffer (minutes) added to drive time so the user has time to get ready / park
-const DEPART_BUFFER_MINS = 10;
-
-// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ──────────────────
+// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ──────────
 const SHERATON = { lat: 20.9236, lng: -156.6941 };
 
-const MAUI_PLACES: { keywords: string[]; driveMin: number; lat: number; lng: number }[] = [
+type MauiPlace = { keywords: string[]; driveMin: number; lat: number; lng: number; estimated?: boolean };
+
+const MAUI_PLACES: MauiPlace[] = [
   { keywords: ["molokini"],                  driveMin: 45, lat: 20.6317, lng: -156.4969 },
   { keywords: ["mama's fish", "mamas fish"], driveMin: 35, lat: 20.9394, lng: -156.3153 },
   { keywords: ["twin falls", "road to hana", "hana"],
@@ -89,20 +89,35 @@ const MAUI_PLACES: { keywords: string[]; driveMin: number; lat: number; lng: num
   { keywords: ["paia", "pāia"],              driveMin: 40, lat: 20.9158, lng: -156.3695 },
   { keywords: ["old lahaina luau", "luau"],  driveMin: 10, lat: 20.8786, lng: -156.6794 },
   { keywords: ["upcountry", "kula", "surfing goat"], driveMin: 55, lat: 20.7603, lng: -156.3317 },
+  { keywords: ["duke's beach", "dukes beach", "duke’s beach", "duke's", "dukes"], driveMin: 4, lat: 20.9322, lng: -156.6919 },
+  { keywords: ["merriman's", "merrimans", "merriman’s"], driveMin: 10, lat: 21.0013, lng: -156.6662 },
   { keywords: ["kapalua"],                   driveMin:  8, lat: 20.9989, lng: -156.6703 },
+  { keywords: ["napili"],                    driveMin:  7, lat: 20.9964, lng: -156.6676, estimated: true },
   { keywords: ["monkeypod"],                 driveMin:  4, lat: 20.8896, lng: -156.6616 },
+  { keywords: ["maalaea", "maʻalaea"],       driveMin: 45, lat: 20.7931, lng: -156.5017, estimated: true },
   { keywords: ["maui ocean center"],         driveMin: 20, lat: 20.7931, lng: -156.5017 },
   { keywords: ["ululani"],                   driveMin:  5, lat: 20.9158, lng: -156.6758 },
   { keywords: ["andaz", "wailea"],           driveMin: 30, lat: 20.6913, lng: -156.4427 },
+  { keywords: ["kihei", "kīhei"],            driveMin: 35, lat: 20.7644, lng: -156.4450, estimated: true },
   { keywords: ["down the hatch", "lahaina"], driveMin: 14, lat: 20.8786, lng: -156.6794 },
   { keywords: ["ka'anapali beach", "kaanapali beach"], driveMin: 2, lat: 20.9244, lng: -156.6927 },
+  { keywords: ["ka'anapali", "kaanapali"],   driveMin:  5, lat: 20.9244, lng: -156.6927, estimated: true },
   { keywords: ["sheraton"],                  driveMin:  0, lat: 20.9236, lng: -156.6941 },
   { keywords: ["airport", "ogg", "kahului"], driveMin: 25, lat: 20.8986, lng: -156.4305 },
 ];
 
+function placeForText(text: string): MauiPlace | null {
+  const lower = text.toLowerCase();
+  return MAUI_PLACES.find((p) => p.keywords.some((k) => lower.includes(k))) ?? null;
+}
+
+function explicitDriveMin(text: string): number | null {
+  const match = text.match(/(\d{1,3})\s*(?:min|minute|minutes)\s*(?:drive|away)?/i);
+  return match ? Number(match[1]) : null;
+}
+
 export function getMapsInfo(title: string): { driveMin: number; mapsUrl: string; lat: number; lng: number } | null {
-  const lower = title.toLowerCase();
-  const match = MAUI_PLACES.find((p) => p.keywords.some((k) => lower.includes(k)));
+  const match = placeForText(title);
   if (!match) return null;
   const { lat, lng, driveMin } = match;
   const isApple = typeof navigator !== "undefined" && /iphone|ipad|mac/i.test(navigator.userAgent);
@@ -116,7 +131,65 @@ export function getMapsInfo(title: string): { driveMin: number; mapsUrl: string;
 
 export { SHERATON };
 
-// ── Drag handle icon ───────────────────────────────────────────────────────────────
+function getTravelInfo(item: AgendaItem): { driveMin: number; mapsUrl: string; estimated: boolean } | null {
+  const text = `${item.title} ${item.notes ?? ""}`;
+  const matched = placeForText(text);
+  const explicit = explicitDriveMin(text);
+  const driveMin = explicit ?? matched?.driveMin;
+
+  if (matched) {
+    const origin = `${SHERATON.lat},${SHERATON.lng}`;
+    const dest = `${matched.lat},${matched.lng}`;
+    const isApple = typeof navigator !== "undefined" && /iphone|ipad|mac/i.test(navigator.userAgent);
+    return {
+      driveMin: driveMin ?? matched.driveMin,
+      mapsUrl: isApple
+        ? `maps://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d`
+        : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=driving`,
+      estimated: matched.estimated === true || explicit !== null,
+    };
+  }
+
+  if (item.reservation) {
+    const isApple = typeof navigator !== "undefined" && /iphone|ipad|mac/i.test(navigator.userAgent);
+    const origin = `${SHERATON.lat},${SHERATON.lng}`;
+    const destination = encodeURIComponent(`${item.title}, Maui`);
+    return {
+      driveMin: explicit ?? 20,
+      mapsUrl: isApple
+        ? `maps://maps.apple.com/?saddr=${origin}&daddr=${destination}&dirflg=d`
+        : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`,
+      estimated: true,
+    };
+  }
+
+  if (explicit !== null) {
+    return {
+      driveMin: explicit,
+      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.title}, Maui`)}`,
+      estimated: true,
+    };
+  }
+
+  return null;
+}
+
+function getDepartureInfo(item: AgendaItem, driveMin: number): { leaveBy: string; bufferMin: number } | null {
+  const eventMins = timeToMinutes(item.time);
+  if (eventMins < 0 || driveMin <= 0) return null;
+
+  const lower = `${item.title} ${item.notes ?? ""}`.toLowerCase();
+  const isFlight = /flight|airport|ogg|lax|sea/.test(lower);
+  const isTour = /tour|snorkel|haleakal|haleakala|reservation|confirmed|pickup/.test(lower);
+  const bufferMin = isFlight ? 90 : isTour ? 20 : item.reservation ? 15 : 10;
+
+  return {
+    leaveBy: formatClock(eventMins - driveMin - bufferMin),
+    bufferMin,
+  };
+}
+
+// ── Drag handle icon ──────────────────────────────────────────────────────────
 function DragHandle({ listeners, attributes }: { listeners?: object; attributes?: object }) {
   return (
     <div
@@ -197,41 +270,44 @@ export function AgendaItemCard({
             <p className="text-xs text-slate-400 mt-0.5 leading-snug">{item.notes}</p>
           )}
           {(() => {
-            const info = getMapsInfo(item.title);
+            const info = getTravelInfo(item);
             if (!info) return null;
-            const label = info.driveMin === 0 ? "On-site" : `${info.driveMin} min drive`;
+            const travelLabel = info.driveMin === 0
+              ? "On-site"
+              : `${info.estimated ? "~" : ""}${info.driveMin} min drive`;
+            const departureLabel = info.estimated ? "Est. leave by" : "Leave by";
+            const departure = getDepartureInfo(item, info.driveMin);
             return (
-              <a
-                href={info.mapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-semibold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full hover:bg-sky-100 transition-colors"
-              >
-                🗺 {label}
-              </a>
-            );
-          })()}
-          {item.reservation && !item.done && (() => {
-            const info = getMapsInfo(item.title);
-            const driveMin = info?.driveMin ?? 0;
-            const itemMins = timeToMinutes(item.time);
-            if (driveMin > 0 && itemMins > 0) {
-              const departMins = itemMins - driveMin - DEPART_BUFFER_MINS;
-              if (departMins > 0) {
-                return (
-                  <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                    🚗 Leave by {minutesToTime(departMins)}
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                <a
+                  href={info.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full hover:bg-sky-100 transition-colors"
+                >
+                  🗺 {travelLabel}
+                </a>
+                {departure && !item.done && (
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      item.reservation
+                        ? "text-amber-700 bg-amber-50"
+                        : "text-slate-600 bg-slate-100"
+                    }`}
+                    title={`${info.estimated ? "Estimated: " : ""}${info.driveMin} min drive plus ${departure.bufferMin} min buffer`}
+                  >
+                    🚗 {departureLabel} {departure.leaveBy}
                   </span>
-                );
-              }
-            }
-            return (
-              <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
-                🗓 Reserved
-              </span>
+                )}
+              </div>
             );
           })()}
+          {item.reservation && !item.done && (
+            <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
+              🗓 Reserved
+            </span>
+          )}
         </div>
       </button>
 

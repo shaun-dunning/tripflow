@@ -1,11 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
 import "./globals.css";
 import AuthGuard from "@/components/AuthGuard";
 import { ExploreProvider } from "@/lib/exploreContext";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
-
-const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 // ── Viewport — controls the browser chrome and safe-area behavior ────────────
 export const viewport: Viewport = {
@@ -39,7 +36,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} h-full antialiased`}>
+    <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 max-w-md mx-auto relative">
         <ServiceWorkerRegistrar />
         <ExploreProvider>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowRight, Lock, Mail, MapPinned, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthPage() {
@@ -43,31 +44,60 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-white">
 
       {/* ── Hero ── */}
-      <div className="relative h-56 w-full overflow-hidden flex-none">
+      <div className="relative min-h-[44dvh] w-full overflow-hidden flex-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=400&fit=crop&q=80"
+          src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&h=720&fit=crop&q=85"
           alt="Maui beach"
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">🌺</span>
-            <span className="text-xl font-black text-white tracking-tight">TripFlow</span>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/28 to-sky-950/10" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/35 to-transparent" />
+        <div className="absolute top-5 left-5 right-5 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="size-9 rounded-2xl bg-white/18 backdrop-blur-md border border-white/25 flex items-center justify-center text-white">
+              <MapPinned className="size-4" />
+            </div>
+            <span className="text-lg font-black text-white tracking-tight">TripFlow</span>
           </div>
-          <p className="text-sm text-white/70">Your family travel command center</p>
+          <div className="rounded-full bg-white/16 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md border border-white/20">
+            Maui ready
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-7">
+          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/16 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md border border-white/20">
+            <Sparkles className="size-3" />
+            Family travel, organized
+          </div>
+          <h1 className="max-w-[18rem] text-4xl font-black leading-[0.95] tracking-tight text-white">
+            Every plan, person, and reservation in flow.
+          </h1>
+          <p className="mt-3 max-w-[19rem] text-sm leading-relaxed text-white/72">
+            A calm command center for the days before, during, and after the trip.
+          </p>
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            {[
+              { icon: ShieldCheck, label: "Docs" },
+              { icon: Users, label: "Group" },
+              { icon: MapPinned, label: "Today" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-2xl border border-white/18 bg-white/13 px-3 py-2.5 text-white backdrop-blur-md">
+                <item.icon className="mb-1.5 size-4" />
+                <p className="text-[11px] font-bold leading-none">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* ── Form card ── */}
-      <div className="flex-1 bg-white px-6 pt-8 pb-10">
+      <div className="flex-1 bg-white px-5 pt-5 pb-8">
 
         {/* Toggle */}
-        <div className="flex bg-slate-100 rounded-2xl p-1 mb-8">
+        <div className="flex bg-slate-100 rounded-2xl p-1 mb-5">
           <button
             onClick={() => { setMode("signin"); setError(null); }}
             className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
@@ -97,9 +127,9 @@ export default function AuthPage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Shaun"
+                placeholder="e.g. Alex"
                 required
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
               />
             </div>
           )}
@@ -114,7 +144,7 @@ export default function AuthPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               required
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
             />
           </div>
 
@@ -129,7 +159,7 @@ export default function AuthPage() {
               placeholder="6+ characters"
               required
               minLength={6}
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
             />
           </div>
 
@@ -152,31 +182,25 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mt-2 disabled:opacity-50 transition-opacity"
+            className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,23,42,0.22)] transition-all active:scale-[0.99] disabled:opacity-50"
           >
             {loading ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}
+            {!loading && <ArrowRight className="size-4" />}
           </button>
 
         </form>
 
-        {/* Apple / Google — coming soon placeholders */}
-        <div className="mt-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-slate-100" />
-            <span className="text-xs text-slate-400 font-medium">or continue with</span>
-            <div className="flex-1 h-px bg-slate-100" />
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+            <Mail className="mb-2 size-4 text-sky-600" />
+            <p className="text-[11px] font-bold text-slate-700">Invite-ready</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-slate-400">Bring the family in with one shared trip.</p>
           </div>
-          <button
-            disabled
-            className="w-full flex items-center justify-center gap-2.5 border-2 border-slate-200 rounded-2xl py-3.5 text-sm font-semibold text-slate-400 cursor-not-allowed"
-          >
-            {/* Apple logo SVG */}
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.7 9.05 7.42c1.29.07 2.17.76 2.94.8.93-.18 1.82-.87 3-.91 1.52.06 2.64.72 3.37 1.88a5.3 5.3 0 0 0-1.98 4.14c.07 2.44 1.55 3.99 2.67 4.95zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            Sign in with Apple
-            <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded-full ml-1">Soon</span>
-          </button>
+          <div className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+            <Lock className="mb-2 size-4 text-emerald-600" />
+            <p className="text-[11px] font-bold text-slate-700">Private by default</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-slate-400">Plans, docs, and chat stay with your group.</p>
+          </div>
         </div>
 
       </div>

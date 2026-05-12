@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
-import { useExploreContext } from "@/lib/exploreContext";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -854,12 +853,7 @@ const AI_QUICK_PROMPTS = [
 type AiMessage = { role: "user" | "assistant"; content: string };
 
 export default function ExplorePage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  useEffect(() => {
-    if (searchParams.get("ai") === "1") setShowAI(true);
-  }, [searchParams]);
-  const { setPendingItem } = useExploreContext();
   const [activeFilter, setActiveFilter] = useState("All");
   const [activeScenario, setActiveScenario] = useState<number | null>(null);
   const [maxDrive, setMaxDrive] = useState(30);
@@ -914,6 +908,12 @@ export default function ExplorePage() {
   const aiBottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (searchParams.get("ai") === "1") {
+      queueMicrotask(() => setShowAI(true));
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     function updateTime() {
       setCurrentTime(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
     }
@@ -954,8 +954,10 @@ export default function ExplorePage() {
     fetchTripDays();
 
     // Load wishlist
-    const saved = loadWishlist();
-    setWishlistIds(new Set(saved.map((e) => e.placeId)));
+    queueMicrotask(() => {
+      const saved = loadWishlist();
+      setWishlistIds(new Set(saved.map((e) => e.placeId)));
+    });
 
     return () => clearInterval(timer);
   }, []);
@@ -1007,21 +1009,6 @@ export default function ExplorePage() {
       setTimeout(() => setAddedToast(null), 4000);
       return;
     }
-
-    // Build the item payload once so we can pass it via multiple channels.
-    const exploreItem = {
-      dayIndex: dayNum - 1,
-      id: `explore-${Date.now()}`,
-      title: place.name,
-      emoji: place.category === "Beach" ? "🏖️"
-           : place.category === "Food"  ? "🍽️"
-           : place.category === "Spa"   ? "💆"
-           : "📍",
-      time: "TBD",
-      notes: `${place.drive} · ${place.address}`,
-      done: false,
-      reservation: false,
-    };
 
     // Write the target day to localStorage so My Day restores it on fresh mount.
     localStorage.setItem("tripflow-dayIndex", String(dayNum - 1));
@@ -1347,10 +1334,29 @@ export default function ExplorePage() {
       {/* ══════════════════════════════════════
           SEARCH HEADER
       ══════════════════════════════════════ */}
-      <div className="px-4 pt-5 pb-3">
+      <div className="relative h-40 overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&h=480&fit=crop&q=85"
+          alt="Maui shoreline"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/78 via-slate-950/18 to-sky-950/5" />
+        <div className="absolute inset-x-0 bottom-0 px-4 pb-8">
+          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/14 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+            {currentTime || "Maui"} · {location}
+          </div>
+          <h1 className="text-3xl font-black leading-none tracking-tight text-white">
+            Explore nearby
+          </h1>
+        </div>
+      </div>
+
+      <div className="px-4 -mt-7 pb-3 relative z-10">
 
         {/* ── Real search input ── */}
-        <div className="flex items-center gap-3 bg-white rounded-2xl border border-slate-200 shadow-[0_4px_20px_rgba(0,0,0,0.09)] px-4 py-3.5">
+        <div className="flex items-center gap-3 bg-white rounded-2xl border border-white shadow-[0_14px_34px_rgba(15,23,42,0.18)] px-4 py-3.5">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="text-slate-400 flex-none">
             <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2"/>
             <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>

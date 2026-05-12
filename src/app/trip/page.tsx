@@ -8,6 +8,7 @@ import { getTripDateInfo, getDayStatus, formatDateRange, type TripDateInfo } fro
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 const INVITE_CODE = "MAUI26";
+const PACKING_TOTAL = 46;
 
 type Traveler = {
   id: string;
@@ -107,6 +108,7 @@ type UpcomingTrip = {
   emoji: string;
   photo: string;
   photoAlt: string;
+  subtitle?: string;
 };
 
 type PhotoOption = { url: string; alt: string };
@@ -231,6 +233,9 @@ const DEFAULT_PHOTOS: PhotoOption[] = [
   { url: "https://images.unsplash.com/photo-1503220317375-aaad61436b1b?w=600&h=300&fit=crop&q=80", alt: "Journey ahead" },
 ];
 
+const UPCOMING_TRIPS_KEY = "tripflow-upcoming-trips";
+const ARCHIVED_TRIPS_KEY = "tripflow-archived-trips";
+
 function getPhotosForDestination(destination: string): PhotoOption[] {
   if (!destination.trim()) return DEFAULT_PHOTOS;
   const lower = destination.toLowerCase();
@@ -249,6 +254,63 @@ function buildSubtitle(startDate: string, nights: number, travelersCount: number
   if (nights > 0) parts.push(`${nights} night${nights !== 1 ? "s" : ""}`);
   if (travelersCount > 0) parts.push(`${travelersCount} traveler${travelersCount !== 1 ? "s" : ""}`);
   return parts.join(" · ") || "Still planning";
+}
+
+function getTripSubtitle(trip: UpcomingTrip): string {
+  return trip.subtitle ?? buildSubtitle(trip.startDate, trip.nights, trip.travelersCount);
+}
+
+function normalizeUpcomingTrip(value: unknown): UpcomingTrip | null {
+  if (!value || typeof value !== "object") return null;
+  const trip = value as Partial<UpcomingTrip> & { subtitle?: string };
+  if (typeof trip.title !== "string" || !trip.title.trim()) return null;
+  const id = typeof trip.id === "number" ? trip.id : Date.now();
+  const destination = typeof trip.destination === "string" ? trip.destination : "";
+  const photos = getPhotosForDestination(destination);
+  const fallbackPhoto = photos[0] ?? DEFAULT_PHOTOS[0];
+
+  return {
+    id,
+    title: trip.title,
+    destination,
+    startDate: typeof trip.startDate === "string" ? trip.startDate : "",
+    nights: typeof trip.nights === "number" ? trip.nights : 0,
+    travelersCount: typeof trip.travelersCount === "number" ? trip.travelersCount : 0,
+    emoji: typeof trip.emoji === "string" ? trip.emoji : "✈️",
+    photo: typeof trip.photo === "string" ? trip.photo : fallbackPhoto.url,
+    photoAlt: typeof trip.photoAlt === "string" ? trip.photoAlt : fallbackPhoto.alt,
+    subtitle: typeof trip.subtitle === "string" ? trip.subtitle : undefined,
+  };
+}
+
+function normalizeArchivedTrip(value: unknown): ArchivedTrip | null {
+  if (!value || typeof value !== "object") return null;
+  const trip = value as Partial<ArchivedTrip>;
+  if (typeof trip.title !== "string" || !trip.title.trim()) return null;
+  return {
+    id: typeof trip.id === "number" ? trip.id : Date.now(),
+    title: trip.title,
+    destination: typeof trip.destination === "string" ? trip.destination : "",
+    dateRange: typeof trip.dateRange === "string" ? trip.dateRange : "Past trip",
+    emoji: typeof trip.emoji === "string" ? trip.emoji : "✈️",
+    photo: typeof trip.photo === "string" ? trip.photo : DEFAULT_PHOTOS[0].url,
+    photoAlt: typeof trip.photoAlt === "string" ? trip.photoAlt : "Archived trip",
+    highlight: typeof trip.highlight === "string" ? trip.highlight : "",
+  };
+}
+
+function readStoredList<T>(key: string, normalize: (value: unknown) => T | null, fallback: T[]): T[] {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return fallback;
+    const normalized = parsed.map(normalize).filter((item): item is T => item !== null);
+    return normalized.length > 0 ? normalized : fallback;
+  } catch {
+    return fallback;
+  }
 }
 
 const INITIAL_UPCOMING: UpcomingTrip[] = [
@@ -328,6 +390,19 @@ function getDaysUntil(startDate: string): number | null {
   return diff > 0 ? diff : null;
 }
 
+function getStoredPackingProgress(): { count: number; pct: number } {
+  if (typeof window === "undefined") return { count: 0, pct: 0 };
+  try {
+    const raw = localStorage.getItem("tripflow-packing-maui26");
+    if (!raw) return { count: 0, pct: 0 };
+    const ids = JSON.parse(raw) as string[];
+    const count = ids.length;
+    return { count, pct: Math.round((count / PACKING_TOTAL) * 100) };
+  } catch {
+    return { count: 0, pct: 0 };
+  }
+}
+
 export default function TripPage() {
   const router = useRouter();
   const [selected, setSelected] = useState<number | null>(null);
@@ -341,18 +416,16 @@ export default function TripPage() {
   const [savedTripToast, setSavedTripToast] = useState<string | null>(null);
 
   // ── Trips lifecycle state ───────────────────────────────────────────────────
-  const [tripPackingPct, setTripPackingPct] = useState(0);
-  const [tripPackingCount, setTripPackingCount] = useState(0);
-  const PACKING_TOTAL = 46;
+  const [tripPackingProgress] = useState(getStoredPackingProgress);
+  const tripPackingPct = tripPackingProgress.pct;
+  const tripPackingCount = tripPackingProgress.count;
 
-  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => {
-    try {
-      const raw = typeof window !== "undefined" ? localStorage.getItem("tripflow-upcoming-trips") : null;
-      if (raw) return JSON.parse(raw) as UpcomingTrip[];
-    } catch { /* ignore */ }
-    return INITIAL_UPCOMING;
-  });
-  const [archivedTrips, setArchivedTrips] = useState<ArchivedTrip[]>(INITIAL_ARCHIVED);
+  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() =>
+    readStoredList(UPCOMING_TRIPS_KEY, normalizeUpcomingTrip, INITIAL_UPCOMING)
+  );
+  const [archivedTrips, setArchivedTrips] = useState<ArchivedTrip[]>(() =>
+    readStoredList(ARCHIVED_TRIPS_KEY, normalizeArchivedTrip, INITIAL_ARCHIVED)
+  );
   const [showArchived, setShowArchived] = useState(false);
 
   // Edit sheet
@@ -421,7 +494,7 @@ export default function TripPage() {
         id: editingTrip.id,
         title: editingTrip.title,
         destination: editingTrip.destination,
-        dateRange: buildSubtitle(editingTrip.startDate, editingTrip.nights, editingTrip.travelersCount),
+        dateRange: getTripSubtitle(editingTrip),
         emoji: editingTrip.emoji,
         photo: editingTrip.photo,
         photoAlt: editingTrip.photoAlt,
@@ -444,7 +517,7 @@ export default function TripPage() {
       id: t.id,
       title: t.title,
       destination: t.destination,
-      dateRange: buildSubtitle(t.startDate, t.nights, t.travelersCount),
+      dateRange: getTripSubtitle(t),
       emoji: t.emoji,
       photo: t.photo,
       photoAlt: t.photoAlt,
@@ -499,23 +572,14 @@ export default function TripPage() {
     }
   }
 
-  // Persist upcoming trips to localStorage whenever they change
+  // Persist trip lifecycle data after lazy state has read client storage.
   useEffect(() => {
-    try { localStorage.setItem("tripflow-upcoming-trips", JSON.stringify(upcomingTrips)); } catch { /* ignore */ }
+    try { localStorage.setItem(UPCOMING_TRIPS_KEY, JSON.stringify(upcomingTrips)); } catch { /* ignore */ }
   }, [upcomingTrips]);
 
-  // Load packing progress from localStorage
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("tripflow-packing-maui26");
-      if (raw) {
-        const ids = JSON.parse(raw) as string[];
-        const count = ids.length;
-        setTripPackingCount(count);
-        setTripPackingPct(Math.round((count / PACKING_TOTAL) * 100));
-      }
-    } catch { /* ignore */ }
-  }, []);
+    try { localStorage.setItem(ARCHIVED_TRIPS_KEY, JSON.stringify(archivedTrips)); } catch { /* ignore */ }
+  }, [archivedTrips]);
 
   useEffect(() => {
     async function fetchTripData() {
@@ -1303,7 +1367,7 @@ export default function TripPage() {
                 <span className="text-2xl flex-none">{t.emoji}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-black text-emerald-800 leading-tight truncate">{t.title}</p>
-                  <p className="text-[10px] text-emerald-600 mt-0.5">Trip complete · {buildSubtitle(t.startDate, t.nights, t.travelersCount)}</p>
+                  <p className="text-[10px] text-emerald-600 mt-0.5">Trip complete · {getTripSubtitle(t)}</p>
                 </div>
                 <button
                   onClick={() => archiveTripById(t)}
@@ -1353,7 +1417,7 @@ export default function TripPage() {
                     <div className="absolute bottom-0 left-0 right-0 px-4 pb-3.5 flex items-end justify-between">
                       <div>
                         <p className="text-base font-black text-white leading-tight">{upNextTrip.title}</p>
-                        <p className="text-xs text-white/70 mt-0.5">{buildSubtitle(upNextTrip.startDate, upNextTrip.nights, upNextTrip.travelersCount)}</p>
+                        <p className="text-xs text-white/70 mt-0.5">{getTripSubtitle(upNextTrip)}</p>
                       </div>
                       <span className="text-xl">{upNextTrip.emoji}</span>
                     </div>
@@ -1414,7 +1478,7 @@ export default function TripPage() {
                                 <span className="text-sm flex-none">{t.emoji}</span>
                                 <p className="text-sm font-bold text-slate-900 leading-tight truncate">{t.title}</p>
                               </div>
-                              <p className="text-[11px] text-slate-400 truncate">{buildSubtitle(t.startDate, t.nights, t.travelersCount)}</p>
+                              <p className="text-[11px] text-slate-400 truncate">{getTripSubtitle(t)}</p>
                               {daysAway !== null && (
                                 <p className="text-[10px] text-sky-400 font-semibold mt-0.5">in {daysAway} days</p>
                               )}
@@ -1464,7 +1528,7 @@ export default function TripPage() {
                           </div>
                           <p className="text-[11px] text-slate-400 truncate">{t.dateRange}</p>
                           {t.highlight ? (
-                            <p className="text-[10px] text-slate-400 mt-0.5 italic truncate">"{t.highlight}"</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5 italic truncate">&ldquo;{t.highlight}&rdquo;</p>
                           ) : null}
                         </div>
                         <div className="pr-3 flex items-center flex-none">

@@ -113,8 +113,7 @@ export async function GET() {
       source: "live" as const,
       forecast: mergedForecast,
     });
-  } catch (err) {
-    console.error("Weather API error:", err);
+  } catch {
     return NextResponse.json({ ...STATIC_CURRENT, forecast: TRIP_FORECAST });
   }
 }

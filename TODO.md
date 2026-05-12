@@ -32,6 +32,16 @@
 - [ ] Weather widget under the Trips hero  Embed a 7-day Maui forecast pulled from Open-Meteo (free, no API key). Showing "82°F ☀️" on the hero card would be a wow moment.
 - [ ] Reservation badge/reminders  Items marked as `reservation: true` could have a small calendar badge and a note about when to confirm. Could eventually tie into push notifications.
 
+## Completed in Codex UX Pass
+- [x] Simplified Explore hero: shorter headline, removed recommendation chips, raised search, reduced visual clutter.
+- [x] Generalized My Day travel guidance so all reservations with times get leave-by guidance, including future unknown venues with estimated fallback.
+- [x] Fixed Trip tab lifecycle persistence so Up Next and Archived Trips no longer revert to demo/hardcoded data across reloads.
+- [x] Normalized `/trip` and `/trips` upcoming trip storage so both pages preserve the same richer trip shape.
+- [x] Polished auth/loading/nav surfaces with image-led auth treatment, branded loading state, and lucide bottom navigation.
+- [x] Added Supabase-backed packing items with localStorage fallback and a confirmation sheet for reset.
+- [x] Stabilized production build by removing remote `next/font/google` dependency and using local/system font variables.
+- [x] Reduced expected weather API console noise when OpenWeather credentials are unavailable.
+
       
 ## Future Milestone – iOS App (Capacitor)
 - [ ] Move `/api/assistant` route to Supabase Edge Function (required for static export)
@@ -39,7 +49,7 @@
 - [ ] Add `output: "export"` to next.config.ts and verify static build works
 - [ ] Install and configure Capacitor (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`)
 - [ ] Fix Unsplash hero image caching for mobile (add Cache-Control or switch to local copies)
-- [ ] Replace `next/font` Geist with static CSS import in globals.css
+- [x] Replace `next/font` Geist with static CSS import in globals.css
 - [ ] Pre-generate app icons as static PNGs in /public (replace next/og icon routes)
 - [ ] Configure Capacitor for iOS — bundle ID, display name, splash screen, safe area insets
 - [ ] Test full app in iOS Simulator

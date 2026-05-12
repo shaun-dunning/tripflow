@@ -22,13 +22,6 @@ function timeToMinutes(t: string): number {
   return h * 60 + m;
 }
 
-function formatGap(mins: number): string {
-  if (mins < 60) return `${mins} min`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m > 0 ? `${h} hr ${m} min` : `${h} hr`;
-}
-
 type Item = {
   id: string;
   time: string;
@@ -362,53 +355,16 @@ function getWeatherAlert(w: WeatherForAlert | null, agenda: Item[], isToday: boo
   return null;
 }
 
-// Smart gap suggestions — checks wishlist first, then time-of-day defaults
-type GapSuggestion = { emoji: string; name: string; note: string; fromWishlist?: boolean };
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  Beach: "🏖️", Food: "🍽️", Activity: "📍", Spa: "💆",
-};
-
-function getGapSuggestion(
-  afterTime: string,
-  gapMins: number,
-  wishlist: WishlistEntry[],
-): GapSuggestion | null {
-  if (gapMins < 90) return null;
-  const mins = timeToMinutes(afterTime);
-  if (isNaN(mins)) return null;
-
-  // Prefer a saved wishlist item whose category fits the time of day
-  if (wishlist.length > 0) {
-    const preferFood = mins >= 660 && mins < 840;   // 11am–2pm
-    const preferSpa  = mins >= 840 && mins < 1020;  // 2pm–5pm (adults free time)
-    const match =
-      wishlist.find((e) => preferFood  && e.category === "Food")   ??
-      wishlist.find((e) => preferSpa   && e.category === "Spa")    ??
-      wishlist.find((e) => e.category === "Beach")                  ??
-      wishlist.find((e) => e.category === "Activity")               ??
-      wishlist[0];
-    if (match) return {
-      emoji: CATEGORY_EMOJI[match.category] ?? "📍",
-      name: match.name,
-      note: `${match.drive} · saved by you`,
-      fromWishlist: true,
-    };
-  }
-
-  // Default time-of-day suggestions
-  if (mins < 720) return { emoji: "🚶", name: "Wailea Beach Path", note: "Free · 5 min walk · stunning views" };
-  if (mins < 840) return { emoji: "🍜", name: "Monkeypod Kitchen", note: "Farm-to-table · 4 min drive" };
-  if (mins < 1020) {
-    return gapMins >= 120
-      ? { emoji: "🏖️", name: "Kapalua Beach", note: "Calm bay · 8 min drive · kids love it" }
-      : { emoji: "🍧", name: "Ululani's Shave Ice", note: "Best on the island · 5 min drive" };
-  }
-  return { emoji: "🍹", name: "Down the Hatch", note: "Waterfront happy hour · 14 min drive" };
-}
-
 // Sentinel prefix for optimistically-created items not yet in DB
 const NEW_ID_PREFIX = "optimistic-";
+
+function getStoredDayIndex(): number {
+  if (typeof window === "undefined") return 0;
+  const saved = localStorage.getItem("tripflow-dayIndex");
+  if (saved === null) return 0;
+  const idx = parseInt(saved, 10);
+  return !isNaN(idx) && idx >= 0 && idx < DAYS.length ? idx : 0;
+}
 
 export default function MyDayPage() {
   const router = useRouter();
@@ -416,8 +372,8 @@ export default function MyDayPage() {
   const [currentMins, setCurrentMins] = useState(nowMinutes);
   const [wishlist, setWishlist] = useState<WishlistEntry[]>([]);
   const [todayDayIndex, setTodayDayIndex] = useState(0);
-  const [dayIndex, setDayIndex] = useState(0);
-  const savedDayRestored = useRef(false);
+  const [dayIndex, setDayIndex] = useState(getStoredDayIndex);
+  const savedDayRestored = useRef(dayIndex !== 0);
   const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
   // Move-to-day sheet
   const [showMoveSheet, setShowMoveSheet] = useState(false);
@@ -495,18 +451,8 @@ export default function MyDayPage() {
     return () => window.removeEventListener("focus", refresh);
   }, []);
 
-  // Restore last-viewed day from localStorage so navigation doesn't reset position
-  // Also pick up any item bridged from Explore and inject it immediately
+  // Pick up any item bridged from Explore and inject it immediately.
   useEffect(() => {
-    const saved = localStorage.getItem("tripflow-dayIndex");
-    if (saved !== null) {
-      const idx = parseInt(saved, 10);
-      if (!isNaN(idx) && idx >= 0 && idx < DAYS.length) {
-        setDayIndex(idx);
-        savedDayRestored.current = true;
-      }
-    }
-
     // Consume a pending item passed from the Explore tab
     const bridgeStr = localStorage.getItem("tripflow-explore-add");
     if (bridgeStr) {
@@ -517,22 +463,24 @@ export default function MyDayPage() {
           time: string; notes: string; done: boolean; reservation: boolean; fromSupabase: boolean;
         };
         if (bridged.dayIndex >= 0 && bridged.dayIndex < DAYS.length) {
-          setAgendas((prev) =>
-            prev.map((agenda, i) =>
-              i === bridged.dayIndex
-                ? [...agenda.filter((a) => a.title !== bridged.title), {
-                    id: bridged.id,
-                    title: bridged.title,
-                    emoji: bridged.emoji,
-                    time: bridged.time,
-                    notes: bridged.notes,
-                    done: bridged.done,
-                    reservation: bridged.reservation,
-                    fromSupabase: bridged.fromSupabase,
-                  }]
-                : agenda
-            )
-          );
+          queueMicrotask(() => {
+            setAgendas((prev) =>
+              prev.map((agenda, i) =>
+                i === bridged.dayIndex
+                  ? [...agenda.filter((a) => a.title !== bridged.title), {
+                      id: bridged.id,
+                      title: bridged.title,
+                      emoji: bridged.emoji,
+                      time: bridged.time,
+                      notes: bridged.notes,
+                      done: bridged.done,
+                      reservation: bridged.reservation,
+                      fromSupabase: bridged.fromSupabase,
+                    }]
+                  : agenda
+              )
+            );
+          });
         }
       } catch { /* ignore bad data */ }
     }
@@ -550,23 +498,25 @@ export default function MyDayPage() {
     if (!pendingItem) return;
     const { dayIndex: targetDay, ...item } = pendingItem;
     if (targetDay >= 0 && targetDay < DAYS.length) {
-      setDayIndex(targetDay);
-      setAgendas((prev) =>
-        prev.map((agenda, i) =>
-          i === targetDay
-            ? [...agenda.filter((a) => a.title !== item.title), {
-                id: item.id,
-                title: item.title,
-                emoji: item.emoji,
-                time: item.time,
-                notes: item.notes,
-                done: item.done,
-                reservation: item.reservation,
-                fromSupabase: true,
-              }]
-            : agenda
-        )
-      );
+      queueMicrotask(() => {
+        setDayIndex(targetDay);
+        setAgendas((prev) =>
+          prev.map((agenda, i) =>
+            i === targetDay
+              ? [...agenda.filter((a) => a.title !== item.title), {
+                  id: item.id,
+                  title: item.title,
+                  emoji: item.emoji,
+                  time: item.time,
+                  notes: item.notes,
+                  done: item.done,
+                  reservation: item.reservation,
+                  fromSupabase: true,
+                }]
+              : agenda
+          )
+        );
+      });
     }
     setPendingItem(null); // clear so it doesn't fire again
   }, [pendingItem, setPendingItem]);
@@ -1094,7 +1044,6 @@ export default function MyDayPage() {
     // reassign times: within-section reorders keep the section's existing times
     // sorted by position; cross-section moves adopt the target section's default time.
     const existingSections = sections; // capture current before update
-    const sectionKeys = existingSections.map((s) => s.key);
 
     // Build a map of old item times so we can detect cross-section moves
     const oldSectionByItemId: Record<string, string> = {};
@@ -1154,7 +1103,7 @@ export default function MyDayPage() {
         .eq("id", id)
         .then(() => {}); // intentionally fire-and-forget
     });
-  }, [sections, dayIndex, dayIdMap, day.dayNum]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sections, dayIndex, dayIdMap, day.dayNum]);
 
   return (
     <div className="flex flex-col">
@@ -1519,7 +1468,7 @@ export default function MyDayPage() {
                   </div>
                   <div className="pt-1">
                     <p className="text-xs font-bold text-slate-700">Sheraton Maui Resort</p>
-                    <p className="text-[10px] text-slate-400">Your home base · Ka'anapali</p>
+                    <p className="text-[10px] text-slate-400">Your home base · Ka&apos;anapali</p>
                   </div>
                 </div>
 

@@ -6,11 +6,8 @@ import { supabase } from "@/lib/supabase";
 import { haptic } from "@/lib/haptic";
 
 // ---------------------------------------------------------------------------
-// Persistence
-// NOTE: Supabase `packing_items` table not yet provisioned (placeholder .env
-// keys). Using localStorage as primary storage. When the table exists, swap
-// loadItems/saveItems to supabase.from("packing_items") queries.
-// Schema: { id, trip_id, name, category, assignee, packed, is_suggested }
+// Persistence uses Supabase when the shared `packing_items` table is available,
+// with localStorage as a graceful fallback for offline/dev sessions.
 // ---------------------------------------------------------------------------
 const LS_KEY = "tripflow-packing-v2-maui26";
 
@@ -80,6 +77,17 @@ type PackItem = {
   assignee: Assignee;
   packed: boolean;
   is_suggested: boolean;
+};
+
+type PackingRow = {
+  id: string;
+  trip_id: string;
+  name: string;
+  category: Category;
+  assignee: string;
+  packed: boolean;
+  is_suggested: boolean;
+  sort_order: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -178,7 +186,7 @@ function buildDefaultItems(): PackItem[] {
     // Beach Gear
     { id: "b1", name: "Beach towels",            category: "Beach Gear",  assignee: "Anyone" },
     { id: "b2", name: "Snorkel gear",            category: "Beach Gear",  assignee: "Anyone" },
-    { id: "b3", name: "Underwater camera",       category: "Beach Gear",  assignee: "Shaun" },
+    { id: "b3", name: "Underwater camera",       category: "Beach Gear",  assignee: "Anyone" },
     { id: "b4", name: "Boogie boards",           category: "Beach Gear",  assignee: "Anyone" },
     // Kids
     { id: "k1", name: "Kids' sunscreen",         category: "Kids",        assignee: "Anyone" },
@@ -211,9 +219,10 @@ const CATEGORY_PRESETS: Record<Category, string[]> = {
 };
 
 // ---------------------------------------------------------------------------
-// localStorage helpers
+// Persistence helpers
 // ---------------------------------------------------------------------------
-function loadItems(): PackItem[] {
+function loadLocalItems(): PackItem[] {
+  if (typeof window === "undefined") return buildDefaultItems();
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return JSON.parse(raw) as PackItem[];
@@ -221,10 +230,49 @@ function loadItems(): PackItem[] {
   return buildDefaultItems();
 }
 
-function saveItems(items: PackItem[]): void {
+function saveLocalItems(items: PackItem[]): void {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(items));
   } catch { /* ignore */ }
+}
+
+function rowToItem(row: PackingRow): PackItem {
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    assignee: row.assignee,
+    packed: row.packed,
+    is_suggested: row.is_suggested,
+  };
+}
+
+function itemToRow(item: PackItem, index: number): PackingRow {
+  return {
+    ...item,
+    trip_id: TRIP_ID,
+    sort_order: (index + 1) * 10,
+  };
+}
+
+async function loadSharedItems(): Promise<{ items: PackItem[]; shared: boolean }> {
+  const localItems = loadLocalItems();
+  const { data, error } = await supabase
+    .from("packing_items")
+    .select("id, trip_id, name, category, assignee, packed, is_suggested, sort_order")
+    .eq("trip_id", TRIP_ID)
+    .order("sort_order", { ascending: true });
+
+  if (error) return { items: localItems, shared: false };
+  if (data && data.length > 0) return { items: (data as PackingRow[]).map(rowToItem), shared: true };
+
+  await saveSharedItems(localItems);
+  return { items: localItems, shared: true };
+}
+
+async function saveSharedItems(items: PackItem[]): Promise<void> {
+  const rows = items.map(itemToRow);
+  await supabase.from("packing_items").upsert(rows, { onConflict: "id" });
 }
 
 // ---------------------------------------------------------------------------
@@ -253,6 +301,8 @@ export default function PackingPage() {
   const [showMustHaves, setShowMustHaves] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [shareToast, setShareToast] = useState<string | null>(null);
+  const [sharedPacking, setSharedPacking] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
 
   // Add-item sheet
   const [showAddSheet, setShowAddSheet] = useState(false);
@@ -264,9 +314,13 @@ export default function PackingPage() {
 
   // Load on mount
   useEffect(() => {
-    const loaded = loadItems();
-    setItems(loaded);
-    setHydrated(true);
+    let cancelled = false;
+    loadSharedItems().then(({ items: loadedItems, shared }) => {
+      if (cancelled) return;
+      setItems(loadedItems);
+      setSharedPacking(shared);
+      setHydrated(true);
+    });
 
     supabase
       .from("travelers")
@@ -276,6 +330,7 @@ export default function PackingPage() {
       .then(({ data }) => {
         if (data && data.length > 0) setTravelers(data as Traveler[]);
       });
+    return () => { cancelled = true; };
   }, []);
 
   // Scroll-aware sticky header
@@ -290,8 +345,9 @@ export default function PackingPage() {
   useEffect(() => {
     if (!hydrated) return;
     if (isFirstRender.current) { isFirstRender.current = false; return; }
-    saveItems(items);
-  }, [items, hydrated]);
+    saveLocalItems(items);
+    if (sharedPacking) void saveSharedItems(items);
+  }, [items, hydrated, sharedPacking]);
 
   // Focus add-name field when sheet opens
   useEffect(() => {
@@ -344,6 +400,7 @@ export default function PackingPage() {
 
   function deleteItem(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id));
+    if (sharedPacking) void supabase.from("packing_items").delete().eq("trip_id", TRIP_ID).eq("id", id);
   }
 
   function toggleCategory(cat: Category) {
@@ -358,7 +415,7 @@ export default function PackingPage() {
   function addSuggestedItem(sug: Suggestion) {
     haptic([10, 30, 10]);
     const newItem: PackItem = {
-      id: `sug-added-${Date.now()}-${sug.id}`,
+      id: `sug-added-${crypto.randomUUID()}-${sug.id}`,
       name: sug.name,
       category: sug.category,
       assignee: "Anyone",
@@ -386,7 +443,7 @@ export default function PackingPage() {
     if (!trimmed) return;
     haptic([10, 30, 10]);
     const newItem: PackItem = {
-      id: `user-${Date.now()}`,
+      id: `user-${crypto.randomUUID()}`,
       name: trimmed,
       category: addCategory,
       assignee: addAssignee,
@@ -397,9 +454,17 @@ export default function PackingPage() {
     setShowAddSheet(false);
   }
 
-  function usePreset(name: string) {
+  function applyPreset(name: string) {
     setAddName(name);
     addNameRef.current?.focus();
+  }
+
+  function resetPackedProgress() {
+    const reset = items.map((i) => ({ ...i, packed: false }));
+    setItems(reset);
+    setConfirmReset(false);
+    saveLocalItems(reset);
+    if (sharedPacking) void saveSharedItems(reset);
   }
 
   async function shareList() {
@@ -555,7 +620,7 @@ export default function PackingPage() {
                   {CATEGORY_PRESETS[addCategory].map((preset) => (
                     <button
                       key={preset}
-                      onClick={() => usePreset(preset)}
+                      onClick={() => applyPreset(preset)}
                       className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition-colors"
                     >
                       {preset}
@@ -626,6 +691,44 @@ export default function PackingPage() {
         </div>
       )}
 
+      {/* ── Reset confirmation sheet ── */}
+      {confirmReset && (
+        <div className="fixed inset-0 z-[65] flex items-end justify-center" onClick={() => setConfirmReset(false)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+          <div
+            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl px-5 pt-3 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pb-4">
+              <div className="w-9 h-1 bg-slate-200 rounded-full" />
+            </div>
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-amber-50 flex items-center justify-center text-xl flex-none">↺</div>
+              <div className="flex-1">
+                <h3 className="text-base font-black text-slate-900">Reset packed progress?</h3>
+                <p className="text-sm text-slate-500 leading-relaxed mt-1">
+                  Items stay on the list, but every checkbox will return to unpacked.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setConfirmReset(false)}
+                className="flex-1 border border-slate-200 text-slate-600 font-bold py-3.5 rounded-2xl text-sm"
+              >
+                Keep progress
+              </button>
+              <button
+                onClick={resetPackedProgress}
+                className="flex-1 bg-slate-950 text-white font-bold py-3.5 rounded-2xl text-sm"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Hero ── */}
       <div className="relative h-44 w-full overflow-hidden flex-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -657,7 +760,7 @@ export default function PackingPage() {
           </p>
           <h1 className="text-2xl font-black text-white leading-tight">Pack Smart</h1>
           <p className="text-xs text-white/60 mt-0.5">
-            {totalItems} items across {ALL_CATEGORIES.length} categories · {crewNames.length || "–"} travelers
+            {totalItems} items · {sharedPacking ? "shared with the group" : "saved on this device"}
           </p>
         </div>
       </div>
@@ -714,13 +817,7 @@ export default function PackingPage() {
           <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wide leading-none mt-0.5">days</span>
           {packedCount > 0 && (
             <button
-              onClick={() => {
-                if (confirm("Reset all packing progress?")) {
-                  const reset = items.map((i) => ({ ...i, packed: false }));
-                  setItems(reset);
-                  saveItems(reset);
-                }
-              }}
+              onClick={() => setConfirmReset(true)}
               className="text-[8px] text-slate-300 hover:text-rose-400 transition-colors mt-1.5 leading-none"
             >
               reset
