@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
-import { INVITE_CODE, TRIP_ID } from "@/lib/tripConfig";
+import { INVITE_CODE, PREVIEW_INVITE_KEY, TRIP_ID } from "@/lib/tripConfig";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Message = {
@@ -51,6 +51,33 @@ const QUICK_ACTIONS = [
 const AVATAR_OPTIONS = ["🧔", "👩", "👦", "👧", "👵", "👴", "🧑", "👨", "👩‍🦱", "👨‍🦳", "🧒", "👶"];
 const ROLE_PRESETS = ["Trip Organizer", "Co-traveler", "Kid", "Guest", "Grandparent", "Traveler"];
 
+const FALLBACK_TRAVELERS: Traveler[] = [
+  { id: "preview-shaun", name: "Shaun", avatar: "🧔", avatar_url: null, role: "Trip Organizer", status: "active" },
+  { id: "preview-jess", name: "Jess", avatar: "👩", avatar_url: null, role: "Co-traveler", status: "active" },
+  { id: "preview-kids", name: "Kids", avatar: "👧", avatar_url: null, role: "Beach crew", status: "active" },
+  { id: "preview-grandma", name: "Grandma", avatar: "👵", avatar_url: null, role: "Guest", status: "invited" },
+];
+
+const FALLBACK_MESSAGES: Message[] = [
+  {
+    id: "preview-welcome",
+    sender_name: "TripFlow",
+    sender_avatar: "🌺",
+    text: "Welcome to the Maui group. Share plans, quick polls, photos, and day-of updates here.",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: "preview-plan",
+    sender_name: "Shaun",
+    sender_avatar: "🧔",
+    card_type: "plan",
+    card_title: "Maui Trip Plan",
+    card_sub: "7 days · Jun 5-11 · Ka'anapali, Maui - tap to open My Day",
+    card_emoji: "📋",
+    created_at: new Date().toISOString(),
+  },
+];
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusColor(status: string) {
   return status === "active" ? "bg-emerald-400" : "bg-slate-300";
@@ -80,6 +107,10 @@ function isSameDay(a: string, b: string): boolean {
   const da = new Date(a);
   const db = new Date(b);
   return da.getFullYear() === db.getFullYear() && da.getMonth() === db.getMonth() && da.getDate() === db.getDate();
+}
+
+function isSingleObjectCoercionIssue(message?: string | null) {
+  return message?.toLowerCase().includes("single json object") ?? false;
 }
 
 // Unified avatar — shows photo if available, else emoji
@@ -185,15 +216,22 @@ export default function ChatPage() {
     async function fetchData() {
       setLoadIssue(null);
       try {
+        const isPreviewSession = localStorage.getItem(PREVIEW_INVITE_KEY) === "1";
         const [msgResult, travelerResult, tripResult] = await Promise.all([
           supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
           supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
           supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
         ]);
-        const error = msgResult.error ?? travelerResult.error;
+        const error = [msgResult.error, travelerResult.error].find(
+          (issue) => issue && !isSingleObjectCoercionIssue(issue.message)
+        );
         if (error) setLoadIssue(error.message);
-        if (msgResult.data) setMessages(msgResult.data as Message[]);
-        if (travelerResult.data) setTravelers(travelerResult.data as Traveler[]);
+        const liveTravelers = (travelerResult.data ?? []) as Traveler[];
+        const usePreviewFallback = isPreviewSession || liveTravelers.length === 0;
+        setTravelers(liveTravelers.length > 0 ? liveTravelers : FALLBACK_TRAVELERS);
+
+        const liveMessages = (msgResult.data ?? []) as Message[];
+        setMessages(liveMessages.length > 0 ? liveMessages : usePreviewFallback ? FALLBACK_MESSAGES : []);
         if (tripResult.data) {
           setTripTitle(tripResult.data.title);
           setTripDateInfo(getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date));
