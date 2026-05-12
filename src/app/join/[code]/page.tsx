@@ -3,7 +3,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { INVITE_CODE } from "@/lib/tripConfig";
+import {
+  APP_PREVIEW_INVITE_CODES,
+  FAMILY_INVITE_KEY,
+  INVITE_CODE,
+  PREVIEW_INVITE_KEY,
+  TRIP_ID,
+} from "@/lib/tripConfig";
 import type { User } from "@supabase/supabase-js";
 
 type TripInfo = {
@@ -18,12 +24,26 @@ type TripInfo = {
 
 const MAUI_FALLBACK =
   "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=80";
+const FALLBACK_TRIP: TripInfo = {
+  id: TRIP_ID,
+  title: "Maui Family Trip",
+  destination: "Maui, Hawaii",
+  start_date: "2026-06-05",
+  end_date: "2026-06-11",
+  cover_photo: MAUI_FALLBACK,
+  travelers: [
+    { id: "fallback-shaun", name: "Shaun", avatar: "🧔", avatar_url: null },
+    { id: "fallback-family", name: "Family", avatar: "🌺", avatar_url: null },
+  ],
+};
 const AVATARS = ["🌺", "🏄", "🌊", "☀️", "🧳", "🍍"];
 const ONBOARDING_STEPS = [
   { title: "See the plan", body: "Check each day, reservations, maps, and what is coming up next.", icon: "🗓️" },
   { title: "Join the group", body: "Chat, vote on plans, and keep everyone moving together.", icon: "💬" },
   { title: "Arrive ready", body: "Use packing, docs, and leave-by guidance when the trip gets close.", icon: "✨" },
 ];
+
+type InviteMode = "family" | "preview";
 
 function formatDateRange(start: string, end: string) {
   const s = new Date(start + "T12:00:00");
@@ -66,11 +86,35 @@ async function joinTrip(tripId: string, user: User, avatar = "🧑") {
   });
 }
 
+async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null> {
+  const select = `id, title, destination, start_date, end_date, cover_photo,
+                 travelers(id, name, avatar, avatar_url)`;
+  const byCode = await supabase
+    .from("trips")
+    .select(select)
+    .eq("invite_code", inviteCode)
+    .maybeSingle();
+
+  if (byCode.data) return byCode.data as TripInfo;
+
+  if (inviteCode === INVITE_CODE) {
+    const byId = await supabase
+      .from("trips")
+      .select(select)
+      .eq("id", TRIP_ID)
+      .single();
+    if (byId.data) return byId.data as TripInfo;
+  }
+
+  return null;
+}
+
 export default function JoinPage() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
 
   const [trip, setTrip] = useState<TripInfo | null>(null);
+  const [inviteMode, setInviteMode] = useState<InviteMode>("family");
   const [notFound, setNotFound] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [alreadyMember, setAlreadyMember] = useState(false);
@@ -88,20 +132,18 @@ export default function JoinPage() {
   // 1. Load trip info
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase
-        .from("trips")
-        .select(`id, title, destination, start_date, end_date, cover_photo,
-                 travelers(id, name, avatar, avatar_url)`)
-        .eq("invite_code", (code ?? INVITE_CODE).toUpperCase())
-        .single();
+      const inviteCode = (code ?? INVITE_CODE).toUpperCase();
+      const isPreviewInvite = APP_PREVIEW_INVITE_CODES.includes(inviteCode);
+      setInviteMode(isPreviewInvite ? "preview" : "family");
 
-      if (error || !data) {
+  const tripData = await loadTripByInviteCode(isPreviewInvite ? INVITE_CODE : inviteCode);
+      if (!tripData && inviteCode !== INVITE_CODE && !isPreviewInvite) {
         setNotFound(true);
         return;
       }
-      setTrip(data as TripInfo);
+      setTrip(tripData ?? FALLBACK_TRIP);
     }
-    load();
+    void load();
   }, [code]);
 
   // 2. Check if already logged in
@@ -113,7 +155,7 @@ export default function JoinPage() {
 
   // 3. If logged in + trip loaded → check membership
   useEffect(() => {
-    if (!currentUser || !trip) return;
+    if (!currentUser || !trip || inviteMode !== "family") return;
     supabase
       .from("travelers")
       .select("id")
@@ -123,12 +165,17 @@ export default function JoinPage() {
       .then(({ data }) => {
         if (data) setAlreadyMember(true);
       });
-  }, [currentUser, trip]);
+  }, [currentUser, trip, inviteMode]);
 
   async function handleJoinAsLoggedIn() {
     if (!trip || !currentUser) return;
     setJoining(true);
-    await joinTrip(trip.id, currentUser, selectedAvatar);
+    if (inviteMode === "family") {
+      localStorage.setItem(FAMILY_INVITE_KEY, "1");
+      await joinTrip(trip.id, currentUser, selectedAvatar);
+    } else {
+      localStorage.setItem(PREVIEW_INVITE_KEY, "1");
+    }
     router.replace("/");
   }
 
@@ -155,7 +202,12 @@ export default function JoinPage() {
     }
 
     if (user) {
-      await joinTrip(trip.id, user, selectedAvatar);
+      if (inviteMode === "family") {
+        localStorage.setItem(FAMILY_INVITE_KEY, "1");
+        await joinTrip(trip.id, user, selectedAvatar);
+      } else {
+        localStorage.setItem(PREVIEW_INVITE_KEY, "1");
+      }
       router.replace("/");
     }
     setAuthLoading(false);
@@ -205,11 +257,15 @@ export default function JoinPage() {
 
         <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
           <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-1">
-            🌺 You&apos;re invited
+            {inviteMode === "family" ? "🌺 You're invited" : "✨ Preview TripFlow"}
           </p>
-          <h1 className="text-2xl font-black text-white leading-tight">{trip.title}</h1>
+          <h1 className="text-2xl font-black text-white leading-tight">
+            {inviteMode === "family" ? trip.title : "Try TripFlow"}
+          </h1>
           <p className="text-sm text-white/70 mt-1">
-            {formatDateRange(trip.start_date, trip.end_date)} · {trip.destination}
+            {inviteMode === "family"
+              ? `${formatDateRange(trip.start_date, trip.end_date)} · ${trip.destination}`
+              : "A polished sample trip you can explore before joining a real group"}
           </p>
         </div>
       </div>
@@ -237,13 +293,22 @@ export default function JoinPage() {
           )}
         </div>
         <div>
-          <p className="text-sm font-bold text-slate-900">
-            {trip.travelers.length} traveler{trip.travelers.length !== 1 ? "s" : ""} going
-          </p>
-          <p className="text-xs text-slate-400">
-            {visibleTravelers.map((t) => t.name).join(", ")}
-            {extraCount > 0 ? ` +${extraCount} more` : ""}
-          </p>
+          {inviteMode === "family" ? (
+            <>
+              <p className="text-sm font-bold text-slate-900">
+                {trip.travelers.length} traveler{trip.travelers.length !== 1 ? "s" : ""} going
+              </p>
+              <p className="text-xs text-slate-400">
+                {visibleTravelers.map((t) => t.name).join(", ")}
+                {extraCount > 0 ? ` +${extraCount} more` : ""}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-bold text-slate-900">Sample Maui trip</p>
+              <p className="text-xs text-slate-400">Explore the app without joining Shaun&apos;s family trip</p>
+            </>
+          )}
         </div>
       </div>
 
@@ -263,7 +328,7 @@ export default function JoinPage() {
         {/* Already logged in */}
         {currentUser ? (
           <div className="flex flex-col items-center gap-4 pt-4 text-center">
-            {alreadyMember ? (
+            {inviteMode === "family" && alreadyMember ? (
               <>
                 <span className="text-4xl">✅</span>
                 <div>
@@ -281,7 +346,9 @@ export default function JoinPage() {
               <>
                 <span className="text-4xl">👋</span>
                 <div>
-                  <h2 className="text-lg font-black text-slate-900">Ready to join?</h2>
+                  <h2 className="text-lg font-black text-slate-900">
+                    {inviteMode === "family" ? "Ready to join?" : "Ready to try it?"}
+                  </h2>
                   <p className="text-sm text-slate-400 mt-1">
                     Signed in as <span className="font-semibold text-slate-700">{currentUser.email}</span>
                   </p>
@@ -309,7 +376,7 @@ export default function JoinPage() {
                   disabled={joining}
                   className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-50"
                 >
-                  {joining ? "Joining…" : `Join ${trip.title}`}
+                  {joining ? (inviteMode === "family" ? "Joining…" : "Opening…") : (inviteMode === "family" ? `Join ${trip.title}` : "Open TripFlow")}
                 </button>
               </>
             )}
@@ -322,8 +389,12 @@ export default function JoinPage() {
             </h2>
             <p className="text-sm text-slate-400 mb-6">
               {mode === "signup"
-                ? "You'll be added to the trip automatically."
-                : "Sign in and you'll be added to the trip."}
+                ? inviteMode === "family"
+                  ? "You'll be added to the trip automatically."
+                  : "Create an account to explore the sample experience."
+                : inviteMode === "family"
+                  ? "Sign in and you'll be added to the trip."
+                  : "Sign in to preview TripFlow without joining the family trip."}
             </p>
 
             {/* Mode toggle */}
@@ -429,8 +500,8 @@ export default function JoinPage() {
                 {authLoading
                   ? "Please wait…"
                   : mode === "signup"
-                  ? `Join ${trip.title}`
-                  : "Sign in & Join Trip"}
+                  ? inviteMode === "family" ? `Join ${trip.title}` : "Create Account & Preview"
+                  : inviteMode === "family" ? "Sign in & Join Trip" : "Sign in & Preview"}
               </button>
             </form>
           </>

@@ -1,5 +1,8 @@
 export const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 export const INVITE_CODE = "MAUI26";
+export const APP_PREVIEW_INVITE_CODES = ["TRIPFLOW", "TRYTRIPFLOW", "DEMO"];
+export const PREVIEW_INVITE_KEY = "tripflow-preview-invite";
+export const FAMILY_INVITE_KEY = "tripflow-family-invite";
 
 export const UPCOMING_TRIPS_KEY = "tripflow-upcoming-trips";
 export const ARCHIVED_TRIPS_KEY = "tripflow-archived-trips";

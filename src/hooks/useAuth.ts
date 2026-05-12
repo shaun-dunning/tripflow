@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { TRIP_ID } from "@/lib/tripConfig";
+import { FAMILY_INVITE_KEY, TRIP_ID } from "@/lib/tripConfig";
 import type { User } from "@supabase/supabase-js";
 
 // When a user signs in, link their auth account to the "is_me" traveler row
@@ -47,7 +47,10 @@ export function useAuth() {
     // Get current session on mount
     supabase.auth.getUser().then(({ data }) => {
       setUser(data.user);
-      if (data.user) linkUserToTrip(data.user);
+      if (data.user && localStorage.getItem(FAMILY_INVITE_KEY) === "1") {
+        localStorage.removeItem(FAMILY_INVITE_KEY);
+        void linkUserToTrip(data.user);
+      }
       setLoading(false);
     });
 
@@ -55,7 +58,10 @@ export function useAuth() {
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       setUser(u);
-      if (u) linkUserToTrip(u);
+      if (u && localStorage.getItem(FAMILY_INVITE_KEY) === "1") {
+        localStorage.removeItem(FAMILY_INVITE_KEY);
+        void linkUserToTrip(u);
+      }
     });
 
     return () => listener.subscription.unsubscribe();

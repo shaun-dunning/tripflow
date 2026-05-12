@@ -1,5 +1,5 @@
 /* TripFlow Service Worker — offline-first caching */
-const CACHE_VER = "v1";
+const CACHE_VER = "v2";
 const SHELL_CACHE  = `tripflow-shell-${CACHE_VER}`;
 const IMAGE_CACHE  = `tripflow-images-${CACHE_VER}`;
 const API_CACHE    = `tripflow-api-${CACHE_VER}`;
@@ -36,6 +36,13 @@ self.addEventListener("fetch", (event) => {
 
   // Only handle GET over HTTP(S)
   if (request.method !== "GET" || !url.protocol.startsWith("http")) return;
+
+  // Auth and invite pages should always be fresh. Stale invite screens are worse
+  // than losing offline support for these entry points.
+  if (url.pathname.startsWith("/join/") || url.pathname === "/auth") {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   // Unsplash hero / thumbnail images — cache-first (long-lived)
   if (url.hostname === "images.unsplash.com") {
