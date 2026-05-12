@@ -7,6 +7,7 @@ import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, type WishlistEntry } from "@/lib/wishlist";
 import { useExploreContext } from "@/lib/exploreContext";
 import { SortableAgendaSections, type Section as DndSection, getMapsInfo, SHERATON } from "@/components/SortableAgendaSection";
+import { ResilientState } from "@/components/ResilientState";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -394,6 +395,9 @@ export default function MyDayPage() {
 
   // Loading / pull-to-refresh
   const [loading, setLoading] = useState(true);
+  const [loadIssue, setLoadIssue] = useState<string | null>(null);
+  const [weatherIssue, setWeatherIssue] = useState(false);
+  const [actionIssue, setActionIssue] = useState<string | null>(null);
   const [pullDistance, setPullDistance] = useState(0);  // visual only
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const fetchDataRef = useRef<(() => Promise<void>) | null>(null);
@@ -525,65 +529,74 @@ export default function MyDayPage() {
     fetch("/api/weather")
       .then((r) => r.json())
       .then((data) => setWeather(data))
-      .catch(() => {});
+      .catch(() => setWeatherIssue(true));
 
     async function fetchData() {
-      const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult] = await Promise.all([
-        supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
-        supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
-        supabase.from("agenda_items").select("*").order("sort_order", { ascending: true }),
-        supabase.from("trip_days").select("id, day_number, label").eq("trip_id", TRIP_ID),
-        supabase.from("documents")
-          .select("id, category, name, emoji, date, notes, confirmation, provider, status")
-          .eq("trip_id", TRIP_ID),
-      ]);
+      setLoadIssue(null);
+      try {
+        const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult] = await Promise.all([
+          supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
+          supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
+          supabase.from("agenda_items").select("*").order("sort_order", { ascending: true }),
+          supabase.from("trip_days").select("id, day_number, label").eq("trip_id", TRIP_ID),
+          supabase.from("documents")
+            .select("id, category, name, emoji, date, notes, confirmation, provider, status")
+            .eq("trip_id", TRIP_ID),
+        ]);
+
+        const blockingError = tripResult.error ?? agendaResult.error ?? tripDaysResult.error;
+        if (blockingError) {
+          setLoadIssue(blockingError.message);
+          setLoading(false);
+          return;
+        }
 
 
-      if (docsResult.data?.length) {
-        const confirmed = docsResult.data.filter((d) => d.status === "confirmed").length;
-        setDocReadiness({ confirmed, total: docsResult.data.length });
-      }
+        if (docsResult.data?.length) {
+          const confirmed = docsResult.data.filter((d) => d.status === "confirmed").length;
+          setDocReadiness({ confirmed, total: docsResult.data.length });
+        }
 
-      if (tripResult.data) {
-        const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
-        setTripInfo({ status: info.status, daysUntilTrip: info.daysUntilTrip });
-        const idx = Math.max(0, Math.min(info.currentDayNumber - 1, DAYS.length - 1));
-        setTodayDayIndex(idx);
-        // Only auto-jump to today if user hasn't manually selected a day
-        if (!savedDayRestored.current) setDayIndex(idx);
-      }
+        if (tripResult.data) {
+          const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
+          setTripInfo({ status: info.status, daysUntilTrip: info.daysUntilTrip });
+          const idx = Math.max(0, Math.min(info.currentDayNumber - 1, DAYS.length - 1));
+          setTodayDayIndex(idx);
+          // Only auto-jump to today if user hasn't manually selected a day
+          if (!savedDayRestored.current) setDayIndex(idx);
+        }
 
-      if (travelersResult.data?.length) {
-        setCrewMembers(travelersResult.data.map((t) => ({
-          name: t.name,
-          avatar: t.avatar,
-          avatar_url: t.avatar_url ?? null,
-        })));
-      }
+        if (travelersResult.data?.length) {
+          setCrewMembers(travelersResult.data.map((t) => ({
+            name: t.name,
+            avatar: t.avatar,
+            avatar_url: t.avatar_url ?? null,
+          })));
+        }
 
       // Build dayIdMap and dayLabels for all days
-      if (tripDaysResult.data) {
-        const map: Record<number, string> = {};
-        const labels: Record<number, string> = {};
-        tripDaysResult.data.forEach((td) => {
-          map[td.day_number] = td.id;
-          if (td.label) {
+        if (tripDaysResult.data) {
+          const map: Record<number, string> = {};
+          const labels: Record<number, string> = {};
+          tripDaysResult.data.forEach((td) => {
+            map[td.day_number] = td.id;
+            if (td.label) {
             // Strip "Day N · " prefix if present, keep just the description
             const parts = (td.label as string).split(" · ");
             labels[td.day_number] = parts.length > 1 ? parts.slice(1).join(" · ") : td.label;
-          }
-        });
-        setDayIdMap(map);
-        setDayLabels(labels);
-      }
+            }
+          });
+          setDayIdMap(map);
+          setDayLabels(labels);
+        }
 
       // Build agenda from Supabase agenda_items, then overlay doc-sourced reservations
-      {
-        const byDay: Record<string, NonNullable<typeof agendaResult.data>> = {};
-        (agendaResult.data ?? []).forEach((item) => {
-          if (!byDay[item.trip_day_id]) byDay[item.trip_day_id] = [];
-          byDay[item.trip_day_id].push(item);
-        });
+        {
+          const byDay: Record<string, NonNullable<typeof agendaResult.data>> = {};
+          (agendaResult.data ?? []).forEach((item) => {
+            if (!byDay[item.trip_day_id]) byDay[item.trip_day_id] = [];
+            byDay[item.trip_day_id].push(item);
+          });
 
         // Dining / Activity docs → pseudo agenda items
         const docItems: Array<{ dayIndex: number; item: Item }> = [];
@@ -666,7 +679,11 @@ export default function MyDayPage() {
           });
         });
 
-        setAgendas(fresh);
+          setAgendas(fresh);
+        }
+      } catch (err) {
+        setLoadIssue(err instanceof Error ? err.message : "The trip could not be refreshed.");
+      } finally {
         setLoading(false);
       }
     }
@@ -801,7 +818,8 @@ export default function MyDayPage() {
       )
     );
     if (item.fromSupabase) {
-      await supabase.from("agenda_items").update({ done: !item.done }).eq("id", id);
+      const { error } = await supabase.from("agenda_items").update({ done: !item.done }).eq("id", id);
+      if (error) setActionIssue(error.message);
     }
   }
 
@@ -852,7 +870,7 @@ export default function MyDayPage() {
     );
 
     if (sheetItem.fromSupabase) {
-      await supabase.from("agenda_items").update({
+      const { error } = await supabase.from("agenda_items").update({
         title: draft.title,
         emoji: draft.emoji,
         time: draft.time,
@@ -860,6 +878,7 @@ export default function MyDayPage() {
         is_reservation: draft.reservation ?? false,
         done: draft.done,
       }).eq("id", sheetItem.id);
+      if (error) setActionIssue(error.message);
     }
 
     setSheetSaving(false);
@@ -894,7 +913,7 @@ export default function MyDayPage() {
 
     // Persist to Supabase if we have the day's ID
     if (tripDayId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("agenda_items")
         .insert({
           trip_day_id: tripDayId,
@@ -910,6 +929,7 @@ export default function MyDayPage() {
         .single();
       if (data) newItem.id = data.id;
       newItem.fromSupabase = !!data;
+      if (error) setActionIssue(error.message);
     }
 
     setAgendas((prev) =>
@@ -929,7 +949,8 @@ export default function MyDayPage() {
       )
     );
     if (sheetItem.fromSupabase) {
-      await supabase.from("agenda_items").delete().eq("id", sheetItem.id);
+      const { error } = await supabase.from("agenda_items").delete().eq("id", sheetItem.id);
+      if (error) setActionIssue(error.message);
     }
     setSheetSaving(false);
     closeSheet();
@@ -954,9 +975,10 @@ export default function MyDayPage() {
     );
 
     if (sheetItem.fromSupabase) {
-      await supabase.from("agenda_items")
+      const { error } = await supabase.from("agenda_items")
         .update({ trip_day_id: targetDayId })
         .eq("id", sheetItem.id);
+      if (error) setActionIssue(error.message);
     }
 
     setShowMoveSheet(false);
@@ -1928,6 +1950,46 @@ export default function MyDayPage() {
           </div>
         )}
 
+
+        {loadIssue && !loading && (
+          <ResilientState
+            title="Showing the saved itinerary"
+            message="TripFlow couldn't refresh the latest shared trip data, so the page is staying usable with the itinerary already on this device."
+            detail={loadIssue}
+            actionLabel="Try again"
+            onAction={() => { setLoading(true); void fetchDataRef.current?.(); }}
+            compact
+          />
+        )}
+
+        {weatherIssue && !weather && !loading && (
+          <ResilientState
+            eyebrow="Weather paused"
+            title="Forecast is temporarily unavailable"
+            message="Agenda details still work. Weather will update automatically the next time the service responds."
+            actionLabel="Retry weather"
+            onAction={() => {
+              setWeatherIssue(false);
+              fetch("/api/weather")
+                .then((r) => r.json())
+                .then((data) => setWeather(data))
+                .catch(() => setWeatherIssue(true));
+            }}
+            compact
+          />
+        )}
+
+        {actionIssue && (
+          <ResilientState
+            eyebrow="Not saved"
+            title="That change stayed local"
+            message="The app couldn't update the shared trip yet. Your screen is still responsive, but you may want to retry when you're online."
+            detail={actionIssue}
+            actionLabel="Dismiss"
+            onAction={() => setActionIssue(null)}
+            compact
+          />
+        )}
 
         {/* ── Skeleton loaders (initial page load) ── */}
         {loading && (

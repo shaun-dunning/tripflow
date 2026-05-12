@@ -20,7 +20,7 @@
 - [x] Design system pass — consistent shadow elevation tiers, formalize accent color roles (sky/emerald/amber/indigo)
 - [x] Add haptic feedback on key actions (navigator.vibrate(10) on toggle/add)
 - [ ] Smooth page transitions between tabs (View Transitions API)
-- [ ] Better error states  If Supabase fails or is offline, the user sees nothing. A friendly "couldn't load your trip" message with a retry button would go a long way.
+- [x] Better error states  If Supabase fails or is offline, the user sees nothing. A friendly "couldn't load your trip" message with a retry button would go a long way.
 
                                                                                                                             
   ## Backlog                                                                                                          
@@ -28,7 +28,7 @@
 - [x] Map view for the day — toggle on My Day shows pins color-coded by section with optimal route, Apple/Google Maps deep-link on tap. But don't overload My Day which we just cleaned up. FIgure out a graceful place to surface the Map and directions. Keep a lot of the busier elements on a dialog after a click to not clutter the page.
 - [ ] Shared family presence — per-item "who's going" toggles with avatars + real-time "I'm in / I'll skip" via Supabase Realtime
 - [ ] Smart pre-trip readiness dashboard — combine docReadiness + packingProgress + weather warnings into single "87% trip-ready" card
-- [ ] First-trip onboarding — 3-screen welcome for users joining via /join/[code], includes avatar picker
+- [x] First-trip onboarding — 3-screen welcome for users joining via /join/[code], includes avatar picker
 - [ ] Weather widget under the Trips hero  Embed a 7-day Maui forecast pulled from Open-Meteo (free, no API key). Showing "82°F ☀️" on the hero card would be a wow moment.
 - [ ] Reservation badge/reminders  Items marked as `reservation: true` could have a small calendar badge and a note about when to confirm. Could eventually tie into push notifications.
 
@@ -37,6 +37,8 @@
 - [x] Added offline-first/PWA foundation: service worker registration, static/image caching, Supabase stale-while-revalidate caching, and IndexedDB agenda/sync helpers.
 - [x] Added design-system foundation: shadow elevation tiers, accent role tokens, and documented visual roles in `globals.css`.
 - [x] Added haptic feedback utility and wired haptics into Packing and My Day toggle/add interactions.
+- [x] Added composed retry/error states across My Day, Trips, Trip overview, Group Chat, Vault, Packing, weather, and assistant failure paths.
+- [x] Added invite onboarding on `/join/[code]` with first-trip orientation cards and avatar selection for new or signed-in travelers.
 - [x] Simplified Explore hero: shorter headline, removed recommendation chips, raised search, reduced visual clutter.
 - [x] Generalized My Day travel guidance so all reservations with times get leave-by guidance, including future unknown venues with estimated fallback.
 - [x] Fixed Trip tab lifecycle persistence so Up Next and Archived Trips no longer revert to demo/hardcoded data across reloads.

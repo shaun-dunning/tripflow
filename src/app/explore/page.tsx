@@ -1060,7 +1060,10 @@ export default function ExplorePage() {
       const data = await res.json();
       setAiMessages([...newMessages, { role: "assistant", content: data.reply ?? "Sorry, I couldn't get a response." }]);
     } catch {
-      setAiMessages([...newMessages, { role: "assistant", content: "Something went wrong. Make sure the GEMINI_API_KEY or ANTHROPIC_API_KEY is set in your environment variables." }]);
+      setAiMessages([...newMessages, {
+        role: "assistant",
+        content: "I couldn't reach the trip assistant just now. Your Explore page still works, so try again in a moment or keep browsing nearby picks.",
+      }]);
     }
     setAiLoading(false);
   }

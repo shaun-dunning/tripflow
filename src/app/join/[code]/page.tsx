@@ -17,6 +17,12 @@ type TripInfo = {
 
 const MAUI_FALLBACK =
   "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=80";
+const AVATARS = ["🌺", "🏄", "🌊", "☀️", "🧳", "🍍"];
+const ONBOARDING_STEPS = [
+  { title: "See the plan", body: "Check each day, reservations, maps, and what is coming up next.", icon: "🗓️" },
+  { title: "Join the group", body: "Chat, vote on plans, and keep everyone moving together.", icon: "💬" },
+  { title: "Arrive ready", body: "Use packing, docs, and leave-by guidance when the trip gets close.", icon: "✨" },
+];
 
 function formatDateRange(start: string, end: string) {
   const s = new Date(start + "T12:00:00");
@@ -25,7 +31,7 @@ function formatDateRange(start: string, end: string) {
   return `${month} ${s.getDate()}–${e.getDate()}, ${s.getFullYear()}`;
 }
 
-async function joinTrip(tripId: string, user: User) {
+async function joinTrip(tripId: string, user: User, avatar = "🧑") {
   // Don't double-add
   const { data: existing } = await supabase
     .from("travelers")
@@ -44,7 +50,7 @@ async function joinTrip(tripId: string, user: User) {
   await supabase.from("travelers").insert({
     trip_id: tripId,
     name,
-    avatar: "🧑",
+    avatar,
     role: "Co-traveler",
     status: "active",
     is_me: false,
@@ -61,6 +67,7 @@ export default function JoinPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [alreadyMember, setAlreadyMember] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
 
   // Auth form state
   const [mode, setMode] = useState<"signup" | "signin">("signup");
@@ -113,7 +120,7 @@ export default function JoinPage() {
   async function handleJoinAsLoggedIn() {
     if (!trip || !currentUser) return;
     setJoining(true);
-    await joinTrip(trip.id, currentUser);
+    await joinTrip(trip.id, currentUser, selectedAvatar);
     router.replace("/");
   }
 
@@ -140,7 +147,7 @@ export default function JoinPage() {
     }
 
     if (user) {
-      await joinTrip(trip.id, user);
+      await joinTrip(trip.id, user, selectedAvatar);
       router.replace("/");
     }
     setAuthLoading(false);
@@ -235,6 +242,16 @@ export default function JoinPage() {
       {/* ── Join section ── */}
       <div className="flex-1 px-6 pt-6 pb-10">
 
+        <div className="mb-6 grid grid-cols-3 gap-2">
+          {ONBOARDING_STEPS.map((step) => (
+            <div key={step.title} className="rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3">
+              <div className="text-xl">{step.icon}</div>
+              <p className="mt-2 text-[11px] font-black leading-tight text-slate-900">{step.title}</p>
+              <p className="mt-1 text-[10px] leading-snug text-slate-400">{step.body}</p>
+            </div>
+          ))}
+        </div>
+
         {/* Already logged in */}
         {currentUser ? (
           <div className="flex flex-col items-center gap-4 pt-4 text-center">
@@ -260,6 +277,24 @@ export default function JoinPage() {
                   <p className="text-sm text-slate-400 mt-1">
                     Signed in as <span className="font-semibold text-slate-700">{currentUser.email}</span>
                   </p>
+                </div>
+                <div className="w-full">
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">Trip avatar</p>
+                  <div className="grid grid-cols-6 gap-2">
+                    {AVATARS.map((avatar) => (
+                      <button
+                        key={avatar}
+                        onClick={() => setSelectedAvatar(avatar)}
+                        className={`h-11 rounded-2xl text-xl transition-all ${
+                          selectedAvatar === avatar
+                            ? "bg-slate-900 shadow-sm"
+                            : "bg-slate-100"
+                        }`}
+                      >
+                        {avatar}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <button
                   onClick={handleJoinAsLoggedIn}
@@ -304,6 +339,28 @@ export default function JoinPage() {
             </div>
 
             <form onSubmit={handleAuthSubmit} className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">
+                  Choose your trip avatar
+                </label>
+                <div className="grid grid-cols-6 gap-2">
+                  {AVATARS.map((avatar) => (
+                    <button
+                      key={avatar}
+                      type="button"
+                      onClick={() => setSelectedAvatar(avatar)}
+                      className={`h-11 rounded-2xl text-xl transition-all ${
+                        selectedAvatar === avatar
+                          ? "bg-slate-900 shadow-sm"
+                          : "bg-slate-100"
+                      }`}
+                    >
+                      {avatar}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {mode === "signup" && (
                 <div>
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">

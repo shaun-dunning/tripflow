@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
+import { ResilientState } from "@/components/ResilientState";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Message = {
@@ -127,6 +128,8 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [travelers, setTravelers] = useState<Traveler[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadIssue, setLoadIssue] = useState<string | null>(null);
+  const [actionIssue, setActionIssue] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
   const [tripTitle, setTripTitle] = useState("Maui Trip Group");
@@ -183,16 +186,23 @@ export default function ChatPage() {
   // ── Data ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchData() {
-      const [msgResult, travelerResult, tripResult] = await Promise.all([
-        supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
-        supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
-        supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).single(),
-      ]);
-      if (msgResult.data) setMessages(msgResult.data as Message[]);
-      if (travelerResult.data) setTravelers(travelerResult.data as Traveler[]);
-      if (tripResult.data) {
-        setTripTitle(tripResult.data.title);
-        setTripDateInfo(getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date));
+      setLoadIssue(null);
+      try {
+        const [msgResult, travelerResult, tripResult] = await Promise.all([
+          supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
+          supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
+          supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).single(),
+        ]);
+        const error = msgResult.error ?? travelerResult.error ?? tripResult.error;
+        if (error) setLoadIssue(error.message);
+        if (msgResult.data) setMessages(msgResult.data as Message[]);
+        if (travelerResult.data) setTravelers(travelerResult.data as Traveler[]);
+        if (tripResult.data) {
+          setTripTitle(tripResult.data.title);
+          setTripDateInfo(getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date));
+        }
+      } catch (err) {
+        setLoadIssue(err instanceof Error ? err.message : "Group chat could not refresh.");
       }
       setLoading(false);
     }
@@ -229,13 +239,18 @@ export default function ChatPage() {
     setInput("");
     const senderName =
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
-    const { data } = await supabase.from("messages").insert({
+    const { data, error } = await supabase.from("messages").insert({
       trip_id: TRIP_ID,
       sender_name: senderName,
       sender_avatar: myTraveler?.avatar ?? "🧔",
       sender_user_id: user?.id ?? null,
       text,
     }).select().single();
+    if (error) {
+      setInput(text);
+      setActionIssue(error.message);
+      return;
+    }
     if (data) setMessages((prev) => [...prev, data as Message]);
   }
 
@@ -455,6 +470,19 @@ export default function ChatPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-[calc(100vh-5rem)]">
+
+      {(loadIssue || actionIssue) && (
+        <div className="px-4 pt-3">
+          <ResilientState
+            title={actionIssue ? "Message not sent" : "Group chat is using the latest saved view"}
+            message={actionIssue ? "Your message is back in the composer so you can try again." : "The group space is still available, but live updates could not refresh just now."}
+            detail={actionIssue ?? loadIssue}
+            actionLabel={actionIssue ? "Dismiss" : "Retry"}
+            onAction={() => actionIssue ? setActionIssue(null) : window.location.reload()}
+            compact
+          />
+        </div>
+      )}
 
       {/* ── Invite Sheet ─────────────────────────────────────────────────── */}
       {showInviteSheet && (

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { ResilientState } from "@/components/ResilientState";
 
 type Doc = {
   id: string;
@@ -382,8 +383,10 @@ export default function VaultPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadingDocId = useRef<string | null>(null);
 
-  useEffect(() => {
-    (async () => {
+  async function loadDocs() {
+    setLoading(true);
+    setError(null);
+    try {
       const { data, error } = await supabase
         .from("documents").select("*").eq("trip_id", TRIP_ID)
         .order("created_at", { ascending: true });
@@ -398,8 +401,16 @@ export default function VaultPage() {
       } else {
         setDocs(data as Doc[]);
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reach the trip vault.");
+    }
       setLoading(false);
-    })();
+  }
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadDocs();
+    });
   }, []);
 
   // ── Sheet helpers ──────────────────────────────────────────────────────
@@ -570,10 +581,14 @@ export default function VaultPage() {
     </div>
   );
   if (error) return (
-    <div className="flex flex-col items-center justify-center h-64 gap-3 px-6 text-center">
-      <span className="text-3xl">⚠️</span>
-      <p className="text-sm font-semibold text-slate-700">Couldn&apos;t load docs</p>
-      <p className="text-xs text-slate-400 font-mono">{error}</p>
+    <div className="px-4 pt-8">
+      <ResilientState
+        title="Couldn't load your trip vault"
+        message="Reservations and travel documents are temporarily unavailable. Nothing was changed."
+        detail={error}
+        actionLabel="Try again"
+        onAction={() => void loadDocs()}
+      />
     </div>
   );
 

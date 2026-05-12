@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 import { useAuth } from "@/hooks/useAuth";
+import { ResilientState } from "@/components/ResilientState";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 
@@ -136,44 +137,52 @@ export default function TripsPage() {
   const [tripInfo, setTripInfo] = useState<TripDateInfo | null>(null);
   const [travelerCount, setTravelerCount] = useState(4);
   const [todayItems, setTodayItems] = useState<AgendaItem[]>(FALLBACK_TODAY);
+  const [loadIssue, setLoadIssue] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadTrip() {
-      const [tripResult, travelerResult] = await Promise.all([
-        supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).single(),
-        supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", TRIP_ID),
-      ]);
+      setLoadIssue(null);
+      try {
+        const [tripResult, travelerResult] = await Promise.all([
+          supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).single(),
+          supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", TRIP_ID),
+        ]);
 
-      if (tripResult.data) {
-        setTripTitle(tripResult.data.title);
-        setTripDateRange(formatDateRange(tripResult.data.start_date, tripResult.data.end_date));
-        const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
-        setTripInfo(info);
+        if (tripResult.error) setLoadIssue(tripResult.error.message);
+
+        if (tripResult.data) {
+          setTripTitle(tripResult.data.title);
+          setTripDateRange(formatDateRange(tripResult.data.start_date, tripResult.data.end_date));
+          const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
+          setTripInfo(info);
 
         // Fetch today's agenda items if trip is active
-        if (info.status === "active" && info.currentDayNumber > 0) {
-          const { data: dayData } = await supabase
+          if (info.status === "active" && info.currentDayNumber > 0) {
+            const { data: dayData } = await supabase
             .from("trip_days")
             .select("id")
             .eq("trip_id", TRIP_ID)
             .eq("day_number", info.currentDayNumber)
             .single();
 
-          if (dayData) {
-            const { data: items } = await supabase
+            if (dayData) {
+              const { data: items } = await supabase
               .from("agenda_items")
               .select("emoji, title, time")
               .eq("trip_day_id", dayData.id)
               .order("time")
               .limit(3);
-            if (items && items.length > 0) {
-              setTodayItems(items as AgendaItem[]);
+              if (items && items.length > 0) {
+                setTodayItems(items as AgendaItem[]);
+              }
             }
           }
         }
-      }
 
-      if (travelerResult.count) setTravelerCount(travelerResult.count);
+        if (travelerResult.count) setTravelerCount(travelerResult.count);
+      } catch (err) {
+        setLoadIssue(err instanceof Error ? err.message : "Trip radar could not refresh.");
+      }
     }
 
     loadTrip();
@@ -452,6 +461,17 @@ export default function TripsPage() {
         <p className="text-2xl font-black text-slate-900">{greeting}, {firstName}</p>
         <p className="text-sm text-slate-400 mt-0.5">Here&apos;s what&apos;s on your travel radar.</p>
       </div>
+
+      {loadIssue && (
+        <ResilientState
+          title="Travel radar is using saved trip details"
+          message="Upcoming trips are still available from this device, but the active trip summary could not refresh."
+          detail={loadIssue}
+          actionLabel="Retry"
+          onAction={() => window.location.reload()}
+          compact
+        />
+      )}
 
       {/* ══════════════════════════════════════
           ACTIVE TRIP CARD

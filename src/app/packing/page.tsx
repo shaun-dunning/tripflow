@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { haptic } from "@/lib/haptic";
+import { ResilientState } from "@/components/ResilientState";
 
 // ---------------------------------------------------------------------------
 // Persistence uses Supabase when the shared `packing_items` table is available,
@@ -302,6 +303,7 @@ export default function PackingPage() {
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [sharedPacking, setSharedPacking] = useState(false);
+  const [packingIssue, setPackingIssue] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
 
   // Add-item sheet
@@ -319,17 +321,26 @@ export default function PackingPage() {
       if (cancelled) return;
       setItems(loadedItems);
       setSharedPacking(shared);
+      if (!shared) setPackingIssue("Shared packing is unavailable, so changes are saved on this device.");
+      setHydrated(true);
+    }).catch((err) => {
+      if (cancelled) return;
+      setItems(loadLocalItems());
+      setSharedPacking(false);
+      setPackingIssue(err instanceof Error ? err.message : "Shared packing is unavailable.");
       setHydrated(true);
     });
 
-    supabase
-      .from("travelers")
-      .select("*")
-      .eq("trip_id", TRIP_ID)
-      .order("created_at", { ascending: true })
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const { data } = await supabase
+          .from("travelers")
+          .select("*")
+          .eq("trip_id", TRIP_ID)
+          .order("created_at", { ascending: true });
         if (data && data.length > 0) setTravelers(data as Traveler[]);
-      });
+      } catch { /* traveler chips are optional */ }
+    })();
     return () => { cancelled = true; };
   }, []);
 
@@ -764,6 +775,19 @@ export default function PackingPage() {
           </p>
         </div>
       </div>
+
+      {packingIssue && (
+        <div className="px-4 pt-4">
+          <ResilientState
+            title="Packing is saved locally"
+            message="You can keep checking things off. Group sync will resume when the shared list is reachable."
+            detail={packingIssue}
+            actionLabel="Dismiss"
+            onAction={() => setPackingIssue(null)}
+            compact
+          />
+        </div>
+      )}
 
       {/* ── Progress card ── */}
       <div className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center gap-4 flex-none">

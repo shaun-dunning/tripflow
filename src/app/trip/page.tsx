@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, getDayStatus, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
+import { ResilientState } from "@/components/ResilientState";
 
 const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 const INVITE_CODE = "MAUI26";
@@ -411,6 +412,7 @@ export default function TripPage() {
   const [todayGlance, setTodayGlance] = useState(TODAY_GLANCE);
   const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
   const [travelers, setTravelers] = useState<Traveler[]>([]);
+  const [loadIssue, setLoadIssue] = useState<string | null>(null);
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [copied, setCopied] = useState(false);
   const [savedTripToast, setSavedTripToast] = useState<string | null>(null);
@@ -583,6 +585,8 @@ export default function TripPage() {
 
   useEffect(() => {
     async function fetchTripData() {
+      setLoadIssue(null);
+      try {
       // Fetch trip meta
       const { data: tripData } = await supabase
         .from("trips")
@@ -672,6 +676,9 @@ export default function TripPage() {
           if (upcoming.length) setTodayGlance(upcoming);
         }
       }
+      } catch (err) {
+        setLoadIssue(err instanceof Error ? err.message : "Trip details could not be refreshed.");
+      }
     }
 
     fetchTripData();
@@ -702,6 +709,17 @@ export default function TripPage() {
           <span className="truncate max-w-[200px]">{savedTripToast}</span>
           <span className="text-white/70">saved</span>
         </div>
+      )}
+
+      {loadIssue && (
+        <ResilientState
+          title="Trip details are using saved defaults"
+          message="The overview stayed available, but shared trip data could not refresh just now."
+          detail={loadIssue}
+          actionLabel="Retry"
+          onAction={() => window.location.reload()}
+          compact
+        />
       )}
 
       {/* ── Edit upcoming trip sheet ─────────────────────────────────────── */}
