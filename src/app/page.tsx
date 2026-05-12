@@ -280,6 +280,15 @@ type LiveWeather = {
 
 // ISO date for each trip day (Jun 5 = day 1)
 const TRIP_START_ISO = "2026-06-05";
+const AGENDA_DOC_CATEGORIES = new Set(["Flights", "Hotel", "Car", "Activities", "Dining"]);
+const DOC_CATEGORY_EMOJI: Record<string, string> = {
+  Flights: "✈️",
+  Hotel: "🏨",
+  Car: "🚙",
+  Activities: "🎟️",
+  Dining: "🍽️",
+};
+
 function getDayISO(dayNum: number): string {
   const d = new Date(TRIP_START_ISO + "T12:00:00");
   d.setDate(d.getDate() + dayNum - 1);
@@ -301,7 +310,7 @@ function parseDocForAgenda(dateStr: string): { dayIndex: number; time: string } 
   const dayIndex = Math.round((docDate.getTime() - tripStart.getTime()) / 86_400_000);
   if (dayIndex < 0 || dayIndex > 13) return null; // outside a 2-week window
   const tMatch = dateStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  const time = tMatch ? `${tMatch[1]}:${tMatch[2]} ${tMatch[3].toUpperCase()}` : "";
+  const time = tMatch ? `${tMatch[1]}:${tMatch[2]} ${tMatch[3].toUpperCase()}` : "TBD";
   return { dayIndex, time };
 }
 
@@ -599,10 +608,11 @@ export default function MyDayPage() {
             byDay[item.trip_day_id].push(item);
           });
 
-        // Dining / Activity docs → pseudo agenda items
+        // Dated Vault docs → linked agenda items. They open back to Vault
+        // instead of behaving like editable agenda rows.
         const docItems: Array<{ dayIndex: number; item: Item }> = [];
         (docsResult.data ?? [])
-          .filter((d) => d.category === "Dining" || d.category === "Activities")
+          .filter((d) => AGENDA_DOC_CATEGORIES.has(d.category))
           .forEach((doc) => {
             const parsed = parseDocForAgenda(doc.date ?? "");
             if (!parsed) return;
@@ -617,7 +627,7 @@ export default function MyDayPage() {
                 id: `doc-${doc.id}`,
                 time: parsed.time,
                 title: doc.name,
-                emoji: doc.emoji ?? (doc.category === "Dining" ? "🍽️" : "🎯"),
+                emoji: doc.emoji ?? DOC_CATEGORY_EMOJI[doc.category] ?? "📍",
                 done: doc.status === "completed",
                 notes: notesParts.join(" · "),
                 reservation: true,
@@ -668,11 +678,20 @@ export default function MyDayPage() {
         docItems.forEach(({ dayIndex, item }) => {
           if (dayIndex < 0 || dayIndex >= fresh.length) return;
           const existing = fresh[dayIndex];
-          const titleLC = item.title.toLowerCase();
+          const normalize = (value: string) =>
+            value
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, " ")
+              .replace(/\b(the|and|of|at|by)\b/g, "")
+              .replace(/\s+/g, " ")
+              .trim();
+          const titleLC = normalize(item.title);
           const dupe = existing.some(
-            (e) =>
-              e.title.toLowerCase().includes(titleLC) ||
-              titleLC.includes(e.title.toLowerCase()),
+            (e) => {
+              if (e.id === item.id || e.sourceDocId === item.sourceDocId) return true;
+              const existingTitle = normalize(e.title);
+              return existingTitle.includes(titleLC) || titleLC.includes(existingTitle);
+            },
           );
           if (dupe) return;
           fresh[dayIndex] = [...existing, item].sort((a, b) => {
