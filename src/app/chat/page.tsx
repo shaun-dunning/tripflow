@@ -188,9 +188,9 @@ export default function ChatPage() {
         const [msgResult, travelerResult, tripResult] = await Promise.all([
           supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
           supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
-          supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).single(),
+          supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
         ]);
-        const error = msgResult.error ?? travelerResult.error ?? tripResult.error;
+        const error = msgResult.error ?? travelerResult.error;
         if (error) setLoadIssue(error.message);
         if (msgResult.data) setMessages(msgResult.data as Message[]);
         if (travelerResult.data) setTravelers(travelerResult.data as Traveler[]);

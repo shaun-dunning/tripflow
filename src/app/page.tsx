@@ -545,7 +545,7 @@ export default function MyDayPage() {
       setLoadIssue(null);
       try {
         const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult] = await Promise.all([
-          supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
+          supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
           supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
           supabase.from("agenda_items").select("*").order("sort_order", { ascending: true }),
           supabase.from("trip_days").select("id, day_number, label").eq("trip_id", TRIP_ID),
@@ -554,7 +554,7 @@ export default function MyDayPage() {
             .eq("trip_id", TRIP_ID),
         ]);
 
-        const blockingError = tripResult.error ?? agendaResult.error ?? tripDaysResult.error;
+        const blockingError = agendaResult.error ?? tripDaysResult.error;
         if (blockingError) {
           setLoadIssue(blockingError.message);
           setLoading(false);

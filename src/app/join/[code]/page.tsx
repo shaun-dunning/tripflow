@@ -102,7 +102,7 @@ async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null
       .from("trips")
       .select(select)
       .eq("id", TRIP_ID)
-      .single();
+      .maybeSingle();
     if (byId.data) return byId.data as TripInfo;
   }
 

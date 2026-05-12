@@ -53,11 +53,9 @@ export default function TripsPage() {
       setLoadIssue(null);
       try {
         const [tripResult, travelerResult] = await Promise.all([
-          supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).single(),
+          supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
           supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", TRIP_ID),
         ]);
-
-        if (tripResult.error) setLoadIssue(tripResult.error.message);
 
         if (tripResult.data) {
           setTripTitle(tripResult.data.title);
@@ -65,22 +63,22 @@ export default function TripsPage() {
           const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
           setTripInfo(info);
 
-        // Fetch today's agenda items if trip is active
+          // Fetch today's agenda items if trip is active
           if (info.status === "active" && info.currentDayNumber > 0) {
             const { data: dayData } = await supabase
-            .from("trip_days")
-            .select("id")
-            .eq("trip_id", TRIP_ID)
-            .eq("day_number", info.currentDayNumber)
-            .single();
+              .from("trip_days")
+              .select("id")
+              .eq("trip_id", TRIP_ID)
+              .eq("day_number", info.currentDayNumber)
+              .maybeSingle();
 
             if (dayData) {
               const { data: items } = await supabase
-              .from("agenda_items")
-              .select("emoji, title, time")
-              .eq("trip_day_id", dayData.id)
-              .order("time")
-              .limit(3);
+                .from("agenda_items")
+                .select("emoji, title, time")
+                .eq("trip_day_id", dayData.id)
+                .order("time")
+                .limit(3);
               if (items && items.length > 0) {
                 setTodayItems(items as AgendaItem[]);
               }

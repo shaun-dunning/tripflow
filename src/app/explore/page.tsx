@@ -927,7 +927,7 @@ export default function ExplorePage() {
 
     async function fetchTripDays() {
       const [tripResult, daysResult] = await Promise.all([
-        supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).single(),
+        supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
         supabase.from("trip_days").select("id, day_number, label").eq("trip_id", TRIP_ID).order("day_number"),
       ]);
 

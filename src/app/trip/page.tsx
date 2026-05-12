@@ -534,7 +534,7 @@ export default function TripPage() {
         .from("trips")
         .select("*")
         .eq("id", TRIP_ID)
-        .single();
+        .maybeSingle();
 
       let dateInfo: TripDateInfo | null = null;
 

@@ -14,7 +14,7 @@ async function linkUserToTrip(user: User) {
     .select("id")
     .eq("trip_id", TRIP_ID)
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (existing) return; // already linked
 
@@ -25,7 +25,7 @@ async function linkUserToTrip(user: User) {
     .eq("trip_id", TRIP_ID)
     .eq("is_me", true)
     .is("user_id", null)
-    .single();
+    .maybeSingle();
 
   if (unlinked) {
     const displayName = user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "You";
