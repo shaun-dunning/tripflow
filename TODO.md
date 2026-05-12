@@ -33,6 +33,10 @@
 - [ ] Reservation badge/reminders  Items marked as `reservation: true` could have a small calendar badge and a note about when to confirm. Could eventually tie into push notifications.
 
 ## Completed in Codex UX Pass
+- [x] Merged prior remote work into `main` and pushed the combined branch after rebasing.
+- [x] Added offline-first/PWA foundation: service worker registration, static/image caching, Supabase stale-while-revalidate caching, and IndexedDB agenda/sync helpers.
+- [x] Added design-system foundation: shadow elevation tiers, accent role tokens, and documented visual roles in `globals.css`.
+- [x] Added haptic feedback utility and wired haptics into Packing and My Day toggle/add interactions.
 - [x] Simplified Explore hero: shorter headline, removed recommendation chips, raised search, reduced visual clutter.
 - [x] Generalized My Day travel guidance so all reservations with times get leave-by guidance, including future unknown venues with estimated fallback.
 - [x] Fixed Trip tab lifecycle persistence so Up Next and Archived Trips no longer revert to demo/hardcoded data across reloads.
