@@ -19,14 +19,14 @@
 - [x] Offline-first / PWA caching — service worker + IndexedDB cache so app works on airplane / bad Wi-Fi, syncs when reconnected
 - [x] Design system pass — consistent shadow elevation tiers, formalize accent color roles (sky/emerald/amber/indigo)
 - [x] Add haptic feedback on key actions (navigator.vibrate(10) on toggle/add)
-- [ ] Smooth page transitions between tabs (View Transitions API)
+- [x] Smooth page transitions between tabs (View Transitions API)
 - [x] Better error states  If Supabase fails or is offline, the user sees nothing. A friendly "couldn't load your trip" message with a retry button would go a long way.
 
                                                                                                                             
   ## Backlog                                                                                                          
 - [x] Smart trip recap / memory book — auto-generated day cards after each day passes, swipeable "Trip Memories" reel at trip end
 - [x] Map view for the day — toggle on My Day shows pins color-coded by section with optimal route, Apple/Google Maps deep-link on tap. But don't overload My Day which we just cleaned up. FIgure out a graceful place to surface the Map and directions. Keep a lot of the busier elements on a dialog after a click to not clutter the page.
-- [ ] Shared family presence — per-item "who's going" toggles with avatars + real-time "I'm in / I'll skip" via Supabase Realtime
+- [x] Shared family presence — per-item "who's going" toggles with avatars + real-time "I'm in / I'll skip" via Supabase Realtime
 - [ ] Smart pre-trip readiness dashboard — combine docReadiness + packingProgress + weather warnings into single "87% trip-ready" card
 - [x] First-trip onboarding — 3-screen welcome for users joining via /join/[code], includes avatar picker
 - [ ] Weather widget under the Trips hero  Embed a 7-day Maui forecast pulled from Open-Meteo (free, no API key). Showing "82°F ☀️" on the hero card would be a wow moment.

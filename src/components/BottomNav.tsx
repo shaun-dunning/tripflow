@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { startTransition } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { CalendarDays, Compass, FolderCheck, MessageCircle, SunMedium } from "lucide-react";
 
 const NEXT_EVENT_MINUTES = 42;
@@ -14,8 +14,31 @@ const tabs = [
   { href: "/chat", label: "Group", icon: MessageCircle, badge: 0 },
 ];
 
+function tabIndex(pathname: string): number {
+  const i = tabs.findIndex((t) => t.href === pathname);
+  return i === -1 ? 1 : i; // default to "Today" (index 1)
+}
+
 export default function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  function navigate(href: string) {
+    if (href === pathname) return;
+    navigator.vibrate?.(8);
+
+    const dir = tabIndex(href) > tabIndex(pathname) ? "forward" : "back";
+    document.documentElement.setAttribute("data-nav-dir", dir);
+
+    if (!("startViewTransition" in document)) {
+      startTransition(() => router.push(href));
+      return;
+    }
+
+    (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(
+      () => { startTransition(() => router.push(href)); }
+    );
+  }
 
   return (
     <nav
@@ -27,10 +50,9 @@ export default function BottomNav() {
           const active = pathname === tab.href;
           const Icon = tab.icon;
           return (
-            <Link
+            <button
               key={tab.href}
-              href={tab.href}
-              onClick={() => navigator.vibrate?.(8)}
+              onClick={() => navigate(tab.href)}
               className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 rounded-[1.15rem] py-2 transition-all ${
                 active ? "bg-slate-950 text-white shadow-sm" : "text-slate-400 active:bg-slate-100"
               }`}
@@ -52,7 +74,7 @@ export default function BottomNav() {
               <span className={`text-[10px] leading-none transition-all ${active ? "font-bold" : "font-semibold"}`}>
                 {tab.label}
               </span>
-            </Link>
+            </button>
           );
         })}
       </div>

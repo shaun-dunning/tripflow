@@ -47,7 +47,7 @@ export default function RootLayout({
              * Falls back to 80 px on non-notched devices.
              */}
             <main
-              className="flex-1"
+              className="flex-1 tab-main-content"
               style={{
                 paddingBottom:
                   "calc(64px + env(safe-area-inset-bottom, 0px))",
