@@ -639,11 +639,13 @@ export default function TripPage() {
   }, []);
 
   const today = days.find((d) => d.status === "today") ?? days[0];
+  const fallbackDaysUntilTrip = trip?.startDate ? getDaysUntil(trip.startDate) : null;
+  const daysUntilTrip = tripDateInfo?.daysUntilTrip ?? fallbackDaysUntilTrip;
   const daysLeft = tripDateInfo?.daysLeft ?? days.filter((d) => d.status === "upcoming").length;
   const progress = tripDateInfo?.progressPercent ?? Math.round(((today.id - 1) / days.length) * 100);
   const tripStatus = tripDateInfo?.status ?? "upcoming";
   const countdownLabel = tripStatus === "upcoming"
-    ? `${tripDateInfo?.daysUntilTrip ?? "?"} days away`
+    ? `${daysUntilTrip ?? "—"} days away`
     : tripStatus === "completed"
     ? "Trip complete"
     : `${daysLeft} days left`;
@@ -1031,7 +1033,7 @@ export default function TripPage() {
           {/* Countdown pill */}
           <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-2 text-center">
             <p className="text-2xl font-black leading-none">
-              {tripStatus === "upcoming" ? tripDateInfo?.daysUntilTrip ?? "—" : tripStatus === "completed" ? "✓" : daysLeft}
+              {tripStatus === "upcoming" ? daysUntilTrip ?? "—" : tripStatus === "completed" ? "✓" : daysLeft}
             </p>
             <p className="text-[10px] font-semibold tracking-wide mt-0.5 opacity-80">{countdownLabel.split(" ").slice(1).join(" ") || "days left"}</p>
           </div>
