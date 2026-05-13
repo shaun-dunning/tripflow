@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowRight, Lock, Mail, MapPinned, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,24 +22,27 @@ export default function AuthPage() {
     setLoading(true);
 
     if (mode === "signup") {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { data: { full_name: name } },
       });
       if (error) {
         setError(error.message);
+      } else if (data.session) {
+        setSuccess("Account created. Opening TripFlow...");
+        router.replace("/");
       } else {
-        // Supabase auto-signs-in after signup (email confirm is off)
-        // AuthGuard's onAuthStateChange listener will redirect automatically
-        setSuccess("Account created! Taking you in…");
+        setSuccess("Account created. Check your email to confirm it, then sign in.");
+        setMode("signin");
       }
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setError(error.message);
+      } else {
+        router.replace("/");
       }
-      // On success, AuthGuard's onAuthStateChange listener handles the redirect
     }
 
     setLoading(false);
