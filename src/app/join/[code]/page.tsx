@@ -52,6 +52,14 @@ function formatDateRange(start: string, end: string) {
   return `${month} ${s.getDate()}–${e.getDate()}, ${s.getFullYear()}`;
 }
 
+function formatJoinError(err: unknown) {
+  const message = err instanceof Error ? err.message : "Could not join this trip.";
+  if (/row-level security|rls|policy/i.test(message)) {
+    return "TripFlow could not add this account to the trip because Supabase is missing the traveler invite policy. Apply the membership policy SQL, then try again.";
+  }
+  return message;
+}
+
 async function joinTrip(tripId: string, user: User, avatar = "🧑") {
   // Don't double-add
   const { data: existing, error: existingError } = await supabase
@@ -207,7 +215,7 @@ export default function JoinPage() {
       localStorage.setItem(PREVIEW_INVITE_KEY, "1");
       router.replace("/");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not join this trip.");
+      setError(formatJoinError(err));
       setJoining(false);
     }
   }
@@ -247,7 +255,7 @@ export default function JoinPage() {
         localStorage.setItem(PREVIEW_INVITE_KEY, "1");
         router.replace("/");
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not join this trip.");
+        setError(formatJoinError(err));
       }
     }
     setAuthLoading(false);
