@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { useTripMembership } from "@/hooks/useTripMembership";
 import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
 import { FAMILY_INVITE_KEY, INVITE_CODE, PREVIEW_INVITE_KEY, TRIP_ID } from "@/lib/tripConfig";
@@ -144,6 +145,7 @@ function TravelerAvatar({
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ChatPage() {
   const { user, signOut } = useAuth();
+  const membership = useTripMembership(user);
   const router = useRouter();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -213,7 +215,7 @@ export default function ChatPage() {
     sheet?.type === "traveler"
       ? travelers.find((t) => t.id === (sheet as { type: "traveler"; id: string }).id) ?? null
       : null;
-  const needsFamilyJoin = Boolean(user && !isPreviewSession && !myTraveler && !loadIssue);
+  const needsFamilyJoin = Boolean(user && !membership.isChecking && !membership.isMember && !isPreviewSession);
   const isReadOnlyGroup = isPreviewSession || needsFamilyJoin;
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -224,6 +226,18 @@ export default function ChatPage() {
         let previewSession = localStorage.getItem(PREVIEW_INVITE_KEY) === "1";
         setIsPreviewSession(previewSession);
         setHasFamilyInvite(localStorage.getItem(FAMILY_INVITE_KEY) === "1");
+
+        if (membership.isChecking) return;
+
+        if (!membership.isMember) {
+          setTravelers([]);
+          setMessages(previewSession ? FALLBACK_MESSAGES : []);
+          setTripTitle(previewSession ? "TripFlow Preview" : "Private Group");
+          setTripDateInfo(null);
+          setLoading(false);
+          return;
+        }
+
         const [msgResult, travelerResult, tripResult] = await Promise.all([
           supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
           supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
@@ -254,7 +268,7 @@ export default function ChatPage() {
       setLoading(false);
     }
     fetchData();
-  }, [user?.id]);
+  }, [membership.isChecking, membership.isMember, user?.id]);
 
   useEffect(() => {
     const channel = supabase
@@ -939,19 +953,21 @@ export default function ChatPage() {
         <div className="flex items-start justify-between mb-2.5">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <h1 className="text-lg font-black text-slate-900">{tripTitle}</h1>
-              {tripDateInfo?.status === "active" && (
+              <h1 className="text-lg font-black text-slate-900">
+                {needsFamilyJoin ? "Private Group" : tripTitle}
+              </h1>
+              {!needsFamilyJoin && tripDateInfo?.status === "active" && (
                 <span className="flex items-center gap-1 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                   <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-pulse inline-block" />
                   Live
                 </span>
               )}
-              {tripDateInfo?.status === "upcoming" && (
+              {!needsFamilyJoin && tripDateInfo?.status === "upcoming" && (
                 <span className="bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
                   ✈️ {tripDateInfo.daysUntilTrip}d
                 </span>
               )}
-              {tripDateInfo?.status === "completed" && (
+              {!needsFamilyJoin && tripDateInfo?.status === "completed" && (
                 <span className="bg-slate-100 text-slate-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">Complete</span>
               )}
             </div>
@@ -965,12 +981,15 @@ export default function ChatPage() {
                 : `${visibleTravelers.length} travelers`}
             </p>
           </div>
-          <button onClick={() => setShowInviteSheet(true)}
-            className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl mt-0.5">
-            <span>🔗</span> Invite
-          </button>
+          {!isReadOnlyGroup && (
+            <button onClick={() => setShowInviteSheet(true)}
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl mt-0.5">
+              <span>🔗</span> Invite
+            </button>
+          )}
         </div>
 
+        {!needsFamilyJoin && (
         <div className="flex items-start gap-3 overflow-x-auto pt-1 pb-1" style={{ scrollbarWidth: "none" }}>
           {[...visibleTravelers]
             .sort((a, b) => {
@@ -1026,6 +1045,7 @@ export default function ChatPage() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* ── Messages ─────────────────────────────────────────────────────── */}
