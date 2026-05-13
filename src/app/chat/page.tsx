@@ -1037,6 +1037,12 @@ export default function ChatPage() {
             >
               Join Maui Family Trip
             </button>
+            <button
+              onClick={handleSignOut}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600"
+            >
+              Sign out
+            </button>
             <p className="mt-3 text-xs leading-relaxed text-slate-400">
               Use a preview link only when you want someone to try TripFlow without joining your family group.
             </p>
