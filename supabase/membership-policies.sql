@@ -145,12 +145,17 @@ with check (
   )
 );
 
-alter table public.packing_items enable row level security;
+do $$
+begin
+  if to_regclass('public.packing_items') is not null then
+    alter table public.packing_items enable row level security;
 
-drop policy if exists "Trip members can manage packing items" on public.packing_items;
-create policy "Trip members can manage packing items"
-on public.packing_items
-for all
-to authenticated
-using (public.is_trip_member(trip_id))
-with check (public.is_trip_member(trip_id));
+    drop policy if exists "Trip members can manage packing items" on public.packing_items;
+    create policy "Trip members can manage packing items"
+    on public.packing_items
+    for all
+    to authenticated
+    using (public.is_trip_member(trip_id))
+    with check (public.is_trip_member(trip_id));
+  end if;
+end $$;
