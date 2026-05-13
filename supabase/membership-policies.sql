@@ -43,6 +43,81 @@ $$;
 
 grant execute on function public.get_trip_invite(text) to anon, authenticated;
 
+create or replace function public.create_trip_with_organizer(
+  trip_title text,
+  trip_destination text,
+  trip_start_date date,
+  trip_end_date date,
+  traveler_name text,
+  traveler_avatar text,
+  trip_cover_photo text default null
+)
+returns table (
+  id uuid,
+  title text,
+  destination text,
+  start_date date,
+  end_date date,
+  cover_photo text,
+  invite_code text
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_trip_id uuid;
+  new_invite_code text;
+  creator_id uuid;
+begin
+  creator_id := auth.uid();
+  if creator_id is null then
+    raise exception 'You must be signed in to create a trip.';
+  end if;
+
+  loop
+    new_invite_code := upper(
+      left(regexp_replace(coalesce(trip_title, 'TRIP'), '[^a-zA-Z0-9]', '', 'g'), 5)
+      || substr(md5(random()::text || clock_timestamp()::text), 1, 4)
+    );
+    if length(new_invite_code) < 4 then
+      new_invite_code := 'TRIP' || substr(md5(random()::text || clock_timestamp()::text), 1, 4);
+    end if;
+    exit when not exists (select 1 from public.trips where invite_code = new_invite_code);
+  end loop;
+
+  insert into public.trips (title, destination, start_date, end_date, invite_code, cover_photo, created_by)
+  values (
+    trim(trip_title),
+    trim(trip_destination),
+    trip_start_date,
+    trip_end_date,
+    new_invite_code,
+    trip_cover_photo,
+    creator_id
+  )
+  returning trips.id into new_trip_id;
+
+  insert into public.travelers (trip_id, user_id, name, avatar, role, status, is_me)
+  values (
+    new_trip_id,
+    creator_id,
+    coalesce(nullif(trim(traveler_name), ''), 'Trip organizer'),
+    coalesce(nullif(traveler_avatar, ''), '🧳'),
+    'Trip Organizer',
+    'active',
+    true
+  );
+
+  return query
+  select t.id, t.title, t.destination, t.start_date, t.end_date, t.cover_photo, t.invite_code
+  from public.trips t
+  where t.id = new_trip_id;
+end;
+$$;
+
+grant execute on function public.create_trip_with_organizer(text, text, date, date, text, text, text) to authenticated;
+
 alter table public.trips add column if not exists created_by uuid references auth.users(id) on delete set null;
 alter table public.trips enable row level security;
 

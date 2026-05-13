@@ -49,15 +49,6 @@ function normalizeTrip(value: unknown): ActiveTrip | null {
   };
 }
 
-function makeInviteCode(title: string): string {
-  const prefix = title
-    .replace(/[^a-z0-9]/gi, "")
-    .slice(0, 5)
-    .toUpperCase() || "TRIP";
-  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
-  return `${prefix}${suffix}`;
-}
-
 export function useActiveTrip(user: User | null) {
   const [status, setStatus] = useState<ActiveTripStatus>("checking");
   const [memberships, setMemberships] = useState<ActiveTripMembership[]>([]);
@@ -148,38 +139,23 @@ export function useActiveTrip(user: User | null) {
   const createTrip = useCallback(async (input: CreateTripInput) => {
     if (!user) throw new Error("Sign in before creating a trip.");
 
-    const inviteCode = makeInviteCode(input.title);
-    const { data: trip, error: tripError } = await supabase
-      .from("trips")
-      .insert({
-        title: input.title.trim(),
-        destination: input.destination.trim(),
-        start_date: input.startDate,
-        end_date: input.endDate,
-        created_by: user.id,
-        invite_code: inviteCode,
-        cover_photo: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=900&h=500&fit=crop&q=85",
-      })
-      .select("id, title, destination, start_date, end_date, invite_code, cover_photo")
-      .single();
-
-    if (tripError) throw new Error(tripError.message);
-    if (!trip) throw new Error("Trip could not be created.");
-
-    const { error: travelerError } = await supabase.from("travelers").insert({
-      trip_id: trip.id,
-      user_id: user.id,
-      name: input.travelerName.trim() || user.email?.split("@")[0] || "Trip organizer",
-      avatar: input.avatar ?? "🧳",
-      role: "Trip Organizer",
-      status: "active",
-      is_me: true,
+    const { data: trip, error: tripError } = await supabase.rpc("create_trip_with_organizer", {
+      trip_title: input.title.trim(),
+      trip_destination: input.destination.trim(),
+      trip_start_date: input.startDate,
+      trip_end_date: input.endDate,
+      traveler_name: input.travelerName.trim() || user.email?.split("@")[0] || "Trip organizer",
+      traveler_avatar: input.avatar ?? "🧳",
+      trip_cover_photo: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=900&h=500&fit=crop&q=85",
     });
 
-    if (travelerError) throw new Error(travelerError.message);
-    localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
+    if (tripError) throw new Error(tripError.message);
+    const createdTrip = Array.isArray(trip) ? trip[0] : trip;
+    if (!createdTrip) throw new Error("Trip could not be created.");
+
+    localStorage.setItem(ACTIVE_TRIP_KEY, createdTrip.id);
     await loadTrips();
-    return trip as ActiveTrip;
+    return createdTrip as ActiveTrip;
   }, [loadTrips, user]);
 
   return {
