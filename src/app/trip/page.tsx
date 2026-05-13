@@ -102,6 +102,27 @@ const TRIP: Day[] = [
   },
 ];
 
+type TripWeatherDay = {
+  date: string;
+  dayLabel: string;
+  emoji: string;
+  high: number;
+  low: number;
+  precip: number;
+};
+
+function wmoToEmoji(code: number): string {
+  if (code === 0) return "☀️";
+  if (code <= 2) return "🌤️";
+  if (code === 3) return "⛅";
+  if (code <= 48) return "🌫️";
+  if (code <= 55) return "🌦️";
+  if (code <= 65) return "🌧️";
+  if (code <= 75) return "❄️";
+  if (code <= 82) return "🌧️";
+  return "⛈️";
+}
+
 const TODAY_GLANCE = [
   { emoji: "😴", title: "Nap / downtime", time: "3:00 PM" },
   { emoji: "🤿", title: "Snorkeling – Molokini", time: "4:30 PM" },
@@ -374,6 +395,7 @@ export default function TripPage() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [copied, setCopied] = useState(false);
   const [savedTripToast, setSavedTripToast] = useState<string | null>(null);
+  const [tripWeather, setTripWeather] = useState<TripWeatherDay[]>([]);
 
   // ── Trips lifecycle state ───────────────────────────────────────────────────
   const [tripPackingProgress] = useState(getStoredPackingProgress);
@@ -541,6 +563,38 @@ export default function TripPage() {
   useEffect(() => {
     try { localStorage.setItem(ARCHIVED_TRIPS_KEY, JSON.stringify(archivedTrips)); } catch { /* ignore */ }
   }, [archivedTrips]);
+
+  useEffect(() => {
+    const url =
+      "https://api.open-meteo.com/v1/forecast" +
+      "?latitude=20.9282&longitude=-156.6942" +
+      "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode" +
+      "&timezone=Pacific%2FHonolulu&forecast_days=7&temperature_unit=fahrenheit";
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        const { time, temperature_2m_max, temperature_2m_min, precipitation_probability_max, weathercode } =
+          data.daily as {
+            time: string[];
+            temperature_2m_max: number[];
+            temperature_2m_min: number[];
+            precipitation_probability_max: number[];
+            weathercode: number[];
+          };
+        const today = new Date().toISOString().slice(0, 10);
+        setTripWeather(
+          time.map((date, i) => ({
+            date,
+            dayLabel: date === today ? "Today" : new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "short" }),
+            emoji: wmoToEmoji(weathercode[i]),
+            high: Math.round(temperature_2m_max[i]),
+            low: Math.round(temperature_2m_min[i]),
+            precip: Math.round(precipitation_probability_max[i]),
+          }))
+        );
+      })
+      .catch(() => { /* fail silently — no weather strip shown */ });
+  }, []);
 
   useEffect(() => {
     if (!activeTrip.activeTripId) return;
@@ -1080,6 +1134,11 @@ export default function TripPage() {
                 <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-1">{activeTripLabel}</p>
                 <h2 className="text-2xl font-black text-white leading-tight">{trip?.title ?? "Maui Family Trip"}</h2>
                 <p className="text-sm text-white/70 mt-0.5">{trip?.subtitle ?? "Jun 5–11 · 4 travelers"}</p>
+                {tripWeather.length > 0 && (
+                  <p className="text-sm font-semibold text-white/90 mt-1.5">
+                    {tripWeather[0].emoji} {tripWeather[0].high}°F in Maui right now
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => setShowShareSheet(true)}
@@ -1112,6 +1171,34 @@ export default function TripPage() {
             </div>
           </div>
         </div>
+
+        {/* ── 7-day Maui forecast strip ── */}
+        {tripWeather.length > 0 && (
+          <div
+            className="px-3 pt-3 pb-1.5"
+            style={{ background: "linear-gradient(180deg, #bae6fd 0%, #e0f2fe 100%)" }}
+          >
+            <p className="text-[9px] font-bold text-sky-700/60 uppercase tracking-widest mb-2 pl-0.5">
+              Maui · Next 7 Days
+            </p>
+            <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+              {tripWeather.map((d) => (
+                <div
+                  key={d.date}
+                  className="flex-none flex flex-col items-center gap-0.5 bg-white/70 backdrop-blur-sm rounded-xl px-2.5 py-2 min-w-[50px]"
+                >
+                  <span className="text-[10px] font-bold text-slate-500 leading-none">{d.dayLabel}</span>
+                  <span className="text-lg leading-none my-0.5">{d.emoji}</span>
+                  <span className="text-[13px] font-black text-slate-800 leading-none">{d.high}°</span>
+                  <span className="text-[10px] text-slate-400 leading-none">{d.low}°</span>
+                  {d.precip > 20 && (
+                    <span className="text-[9px] font-bold text-sky-500 leading-none mt-0.5">{d.precip}%</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Day cards body — warm tropical background ── */}
         <div
