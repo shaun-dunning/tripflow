@@ -7,12 +7,11 @@ import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, getDayStatus, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
 import TripAccessGate from "@/components/TripAccessGate";
+import FirstTripSetup from "@/components/FirstTripSetup";
 import { useAuth } from "@/hooks/useAuth";
-import { useTripMembership } from "@/hooks/useTripMembership";
+import { useActiveTrip } from "@/hooks/useActiveTrip";
 import {
   ARCHIVED_TRIPS_KEY,
-  INVITE_CODE,
-  TRIP_ID,
   UPCOMING_TRIPS_KEY,
   getStoredTripSubtitle,
   isDefaultUpcomingTrips,
@@ -364,7 +363,7 @@ function getStoredPackingProgress(): { count: number; pct: number } {
 export default function TripPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const membership = useTripMembership(user);
+  const activeTrip = useActiveTrip(user);
   const [selected, setSelected] = useState<number | null>(null);
   const [trip, setTrip] = useState<TripMeta | null>(null);
   const [days, setDays] = useState<Day[]>(TRIP);
@@ -510,8 +509,9 @@ export default function TripPage() {
   }
 
   function getInviteLink() {
-    if (typeof window === "undefined") return `/join/${INVITE_CODE}`;
-    return `${window.location.origin}/join/${INVITE_CODE}`;
+    const code = activeTrip.activeTrip?.invite_code ?? "";
+    if (typeof window === "undefined") return code ? `/join/${code}` : "/join";
+    return code ? `${window.location.origin}/join/${code}` : window.location.origin;
   }
 
   async function copyLink() {
@@ -543,7 +543,7 @@ export default function TripPage() {
   }, [archivedTrips]);
 
   useEffect(() => {
-    if (membership.isChecking || !membership.isMember) return;
+    if (!activeTrip.activeTripId) return;
 
     async function fetchTripData() {
       setLoadIssue(null);
@@ -552,7 +552,7 @@ export default function TripPage() {
       const { data: tripData } = await supabase
         .from("trips")
         .select("*")
-        .eq("id", TRIP_ID)
+        .eq("id", activeTrip.activeTripId)
         .maybeSingle();
 
       let dateInfo: TripDateInfo | null = null;
@@ -573,14 +573,14 @@ export default function TripPage() {
       const { data: tripDays } = await supabase
         .from("trip_days")
         .select("*, agenda_items(*)")
-        .eq("trip_id", TRIP_ID)
+        .eq("trip_id", activeTrip.activeTripId)
         .order("day_number");
 
       // Fetch travelers
       const { data: travelerData } = await supabase
         .from("travelers")
         .select("id, name, avatar, avatar_url, status")
-        .eq("trip_id", TRIP_ID)
+        .eq("trip_id", activeTrip.activeTripId)
         .order("created_at", { ascending: true });
       if (travelerData) setTravelers(travelerData as Traveler[]);
 
@@ -643,7 +643,7 @@ export default function TripPage() {
     }
 
     fetchTripData();
-  }, [membership.isChecking, membership.isMember]);
+  }, [activeTrip.activeTripId]);
 
   const today = days.find((d) => d.status === "today") ?? days[0];
   const fallbackDaysUntilTrip = trip?.startDate ? getDaysUntil(trip.startDate) : null;
@@ -662,7 +662,7 @@ export default function TripPage() {
     ? "Completed Trip"
     : `Active Trip · Day ${tripDateInfo?.currentDayNumber} of ${tripDateInfo?.totalDays}`;
 
-  if (membership.isChecking) {
+  if (activeTrip.isChecking) {
     return (
       <div className="flex min-h-[calc(100vh-9rem)] items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
@@ -670,22 +670,22 @@ export default function TripPage() {
     );
   }
 
-  if (!membership.isMember) {
+  if (activeTrip.hasNoTrip) {
+    return (
+      <FirstTripSetup
+        defaultName={user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? ""}
+        onCreate={activeTrip.createTrip}
+      />
+    );
+  }
+
+  if (activeTrip.isPreview) {
     return (
       <TripAccessGate
-        mode={membership.isPreview ? "preview" : "not-member"}
-        title={membership.isPreview
-          ? "Trip details are private"
-          : membership.hasFamilyInvite
-          ? "Join the trip to see details"
-          : "No trip joined yet"}
-        message={membership.isPreview
-          ? "Preview profiles can browse the app shell, but Shaun's live family trip stays private until they join."
-          : membership.hasFamilyInvite
-          ? "This profile is signed in, but it is not a traveler on the Maui family trip yet."
-          : "This profile has not joined a private trip. Use an invite link or code from the organizer to unlock trip details."}
-        detail={membership.error}
-        showJoinAction={membership.hasFamilyInvite}
+        mode="preview"
+        title="Trip details are private"
+        message="Preview profiles can browse TripFlow, but live trip details stay private until they join or create a trip."
+        detail={activeTrip.error}
       />
     );
   }
@@ -1004,7 +1004,7 @@ export default function TripPage() {
                 <div className="bg-white/10 border border-white/20 rounded-xl px-4 py-3 flex items-center justify-between">
                   <div>
                     <p className="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-0.5">Invite code</p>
-                    <p className="text-2xl font-black text-white tracking-widest font-mono">{INVITE_CODE}</p>
+                    <p className="text-2xl font-black text-white tracking-widest font-mono">{activeTrip.activeTrip?.invite_code ?? "INVITE"}</p>
                   </div>
                   <button
                     onClick={copyLink}
@@ -1315,7 +1315,7 @@ export default function TripPage() {
           <div className="flex items-center gap-2">
             <div className="bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 flex items-center gap-2">
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Code</span>
-              <span className="text-sm font-black text-white tracking-widest font-mono">{INVITE_CODE}</span>
+              <span className="text-sm font-black text-white tracking-widest font-mono">{activeTrip.activeTrip?.invite_code ?? "INVITE"}</span>
             </div>
             <p className="text-[10px] text-white/40">Tap to copy link or share →</p>
           </div>

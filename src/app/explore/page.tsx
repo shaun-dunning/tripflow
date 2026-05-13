@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
-import { TRIP_ID } from "@/lib/tripConfig";
+import { useAuth } from "@/hooks/useAuth";
+import { useActiveTrip } from "@/hooks/useActiveTrip";
 
 type Place = {
   id: number;
@@ -853,6 +854,8 @@ type AiMessage = { role: "user" | "assistant"; content: string };
 
 export default function ExplorePage() {
   const searchParams = useSearchParams();
+  const { user } = useAuth();
+  const activeTrip = useActiveTrip(user);
   const [activeFilter, setActiveFilter] = useState("All");
   const [activeScenario, setActiveScenario] = useState<number | null>(null);
   const [maxDrive, setMaxDrive] = useState(30);
@@ -919,16 +922,19 @@ export default function ExplorePage() {
     updateTime();
     const timer = setInterval(updateTime, 60_000);
 
-    supabase
-      .from("travelers")
-      .select("id", { count: "exact", head: true })
-      .eq("trip_id", TRIP_ID)
-      .then(({ count }) => { if (count) setTravelerCount(count); });
+    if (activeTrip.activeTripId) {
+      supabase
+        .from("travelers")
+        .select("id", { count: "exact", head: true })
+        .eq("trip_id", activeTrip.activeTripId)
+        .then(({ count }) => { if (count) setTravelerCount(count); });
+    }
 
     async function fetchTripDays() {
+      if (!activeTrip.activeTripId) return;
       const [tripResult, daysResult] = await Promise.all([
-        supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
-        supabase.from("trip_days").select("id, day_number, label").eq("trip_id", TRIP_ID).order("day_number"),
+        supabase.from("trips").select("start_date, end_date").eq("id", activeTrip.activeTripId).maybeSingle(),
+        supabase.from("trip_days").select("id, day_number, label").eq("trip_id", activeTrip.activeTripId).order("day_number"),
       ]);
 
       if (tripResult.data) {
@@ -959,7 +965,7 @@ export default function ExplorePage() {
     });
 
     return () => clearInterval(timer);
-  }, []);
+  }, [activeTrip.activeTripId]);
 
   useEffect(() => {
     aiBottomRef.current?.scrollIntoView({ behavior: "smooth" });

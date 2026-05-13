@@ -13,6 +13,7 @@ create table trips (
   end_date    date not null,
   invite_code text unique,
   cover_photo text,               -- Unsplash URL
+  created_by  uuid references auth.users(id) on delete set null,
   created_at  timestamptz default now()
 );
 

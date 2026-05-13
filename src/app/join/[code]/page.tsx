@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
+  ACTIVE_TRIP_KEY,
   APP_PREVIEW_INVITE_CODES,
   FAMILY_INVITE_KEY,
   INVITE_CODE,
@@ -116,6 +117,12 @@ async function joinTrip(tripId: string, user: User, avatar = "🧑") {
 async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null> {
   const select = `id, title, destination, start_date, end_date, cover_photo,
                  travelers(id, name, avatar, avatar_url)`;
+  const inviteResult = await supabase.rpc("get_trip_invite", { target_invite_code: inviteCode });
+  if (inviteResult.data?.[0]) {
+    const trip = inviteResult.data[0];
+    return { ...trip, travelers: [] } as TripInfo;
+  }
+
   const byCode = await supabase
     .from("trips")
     .select(select)
@@ -165,7 +172,7 @@ export default function JoinPage() {
       if (isPreviewInvite) {
         localStorage.removeItem(FAMILY_INVITE_KEY);
         localStorage.setItem(PREVIEW_INVITE_KEY, "1");
-      } else if (inviteCode === INVITE_CODE) {
+      } else {
         localStorage.removeItem(PREVIEW_INVITE_KEY);
         localStorage.setItem(FAMILY_INVITE_KEY, "1");
       }
@@ -214,6 +221,7 @@ export default function JoinPage() {
       if (inviteMode === "family") {
         localStorage.removeItem(PREVIEW_INVITE_KEY);
         await joinTrip(trip.id, currentUser, selectedAvatar);
+        localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
         localStorage.removeItem(FAMILY_INVITE_KEY);
         router.replace("/chat");
         return;
@@ -254,6 +262,7 @@ export default function JoinPage() {
         if (inviteMode === "family") {
           localStorage.removeItem(PREVIEW_INVITE_KEY);
           await joinTrip(trip.id, user, selectedAvatar);
+          localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
           localStorage.removeItem(FAMILY_INVITE_KEY);
           router.replace("/chat");
           return;
@@ -394,6 +403,7 @@ export default function JoinPage() {
                   onClick={() => {
                     localStorage.removeItem(PREVIEW_INVITE_KEY);
                     localStorage.removeItem(FAMILY_INVITE_KEY);
+                    localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
                     router.replace("/");
                   }}
                   className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"

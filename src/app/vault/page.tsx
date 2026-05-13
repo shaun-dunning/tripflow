@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ResilientState } from "@/components/ResilientState";
 import TripAccessGate from "@/components/TripAccessGate";
+import FirstTripSetup from "@/components/FirstTripSetup";
 import { useAuth } from "@/hooks/useAuth";
-import { useTripMembership } from "@/hooks/useTripMembership";
-import { TRIP_ID } from "@/lib/tripConfig";
+import { useActiveTrip } from "@/hooks/useActiveTrip";
 
 type Doc = {
   id: string;
@@ -356,7 +356,7 @@ function parseSortKey(dateStr: string): number {
 export default function VaultPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const membership = useTripMembership(user);
+  const activeTrip = useActiveTrip(user);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -388,17 +388,18 @@ export default function VaultPage() {
   const uploadingDocId = useRef<string | null>(null);
 
   async function loadDocs() {
+    if (!activeTrip.activeTripId) return;
     setLoading(true);
     setError(null);
     try {
       const { data, error } = await supabase
-        .from("documents").select("*").eq("trip_id", TRIP_ID)
+        .from("documents").select("*").eq("trip_id", activeTrip.activeTripId)
         .order("created_at", { ascending: true });
       if (error) { setError(error.message); setLoading(false); return; }
       if (!data || data.length === 0) {
         const { data: seeded, error: seedError } = await supabase
           .from("documents")
-          .insert(SEED_DOCS.map((d) => ({ ...d, trip_id: TRIP_ID })))
+          .insert(SEED_DOCS.map((d) => ({ ...d, trip_id: activeTrip.activeTripId })))
           .select();
         if (seedError) setError(seedError.message);
         else if (seeded) {
@@ -426,14 +427,11 @@ export default function VaultPage() {
   }
 
   useEffect(() => {
-    if (membership.isChecking) return;
-    if (!membership.isMember) {
-      return;
-    }
+    if (!activeTrip.activeTripId) return;
     queueMicrotask(() => {
       void loadDocs();
     });
-  }, [membership.isChecking, membership.isMember]);
+  }, [activeTrip.activeTripId]);
 
   // ── Sheet helpers ──────────────────────────────────────────────────────
   function openDetail(doc: Doc) { setDetailDoc(doc); setIsEditing(false); setDeleteConfirm(false); setSaveError(null); }
@@ -507,7 +505,7 @@ export default function VaultPage() {
     if (!file || !docId) return;
     setUploadingId(docId);
     const ext = file.name.split(".").pop() ?? "pdf";
-    const path = `${TRIP_ID}/${docId}.${ext}`;
+    const path = `${activeTrip.activeTripId}/${docId}.${ext}`;
     const { error } = await supabase.storage.from("documents").upload(path, file, { upsert: true });
     if (!error) {
       const { data } = supabase.storage.from("documents").getPublicUrl(path);
@@ -539,7 +537,7 @@ export default function VaultPage() {
 
     const { data, error } = await supabase
       .from("documents")
-      .insert({ ...docPayload, trip_id: TRIP_ID })
+      .insert({ ...docPayload, trip_id: activeTrip.activeTripId })
       .select()
       .single();
 
@@ -596,28 +594,26 @@ export default function VaultPage() {
     .sort((a, b) => parseSortKey(a.date) - parseSortKey(b.date))
     .slice(0, 3);
 
-  if (membership.isChecking) return (
+  if (activeTrip.isChecking) return (
     <div className="flex flex-col items-center justify-center h-64 gap-3">
       <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
       <p className="text-sm text-slate-400">Checking trip access…</p>
     </div>
   );
 
-  if (!membership.isMember) return (
-      <TripAccessGate
-        mode={membership.isPreview ? "preview" : "not-member"}
-        title={membership.isPreview
-          ? "Docs are private to the trip"
-          : membership.hasFamilyInvite
-          ? "Join the trip to see Docs"
-          : "Docs are private"}
-        message={membership.isPreview
-        ? "Preview profiles can explore TripFlow, but live reservations stay private until they join the family trip."
-        : membership.hasFamilyInvite
-        ? "This profile is signed in, but it is not a traveler on the Maui family trip yet."
-        : "This profile has not joined a private trip. Use an invite link or code from the organizer to unlock Docs."}
-      detail={membership.error}
-      showJoinAction={membership.hasFamilyInvite}
+  if (activeTrip.hasNoTrip) return (
+    <FirstTripSetup
+      defaultName={user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? ""}
+      onCreate={activeTrip.createTrip}
+    />
+  );
+
+  if (activeTrip.isPreview) return (
+    <TripAccessGate
+      mode="preview"
+      title="Docs are private to the trip"
+      message="Preview profiles can explore TripFlow, but live reservations stay private until they join or create a trip."
+      detail={activeTrip.error}
     />
   );
 

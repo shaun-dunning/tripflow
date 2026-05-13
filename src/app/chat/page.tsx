@@ -4,10 +4,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
-import { useTripMembership } from "@/hooks/useTripMembership";
+import { useActiveTrip } from "@/hooks/useActiveTrip";
 import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
-import { FAMILY_INVITE_KEY, INVITE_CODE, PREVIEW_INVITE_KEY, TRIP_ID } from "@/lib/tripConfig";
+import FirstTripSetup from "@/components/FirstTripSetup";
+import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Message = {
@@ -145,7 +146,7 @@ function TravelerAvatar({
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ChatPage() {
   const { user, signOut } = useAuth();
-  const membership = useTripMembership(user);
+  const activeTrip = useActiveTrip(user);
   const router = useRouter();
 
   const [messages, setMessages] = useState<Message[]>([]);
@@ -215,7 +216,7 @@ export default function ChatPage() {
     sheet?.type === "traveler"
       ? travelers.find((t) => t.id === (sheet as { type: "traveler"; id: string }).id) ?? null
       : null;
-  const needsFamilyJoin = Boolean(user && !membership.isChecking && !membership.isMember && !isPreviewSession);
+  const needsFamilyJoin = Boolean(user && !activeTrip.isChecking && !activeTrip.isReady && !isPreviewSession);
   const isReadOnlyGroup = isPreviewSession || needsFamilyJoin;
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -227,9 +228,9 @@ export default function ChatPage() {
         setIsPreviewSession(previewSession);
         setHasFamilyInvite(localStorage.getItem(FAMILY_INVITE_KEY) === "1");
 
-        if (membership.isChecking) return;
+        if (activeTrip.isChecking) return;
 
-        if (!membership.isMember) {
+        if (!activeTrip.isReady || !activeTrip.activeTripId) {
           setTravelers([]);
           setMessages(previewSession ? FALLBACK_MESSAGES : []);
           setTripTitle(previewSession ? "TripFlow Preview" : "Private Group");
@@ -239,9 +240,9 @@ export default function ChatPage() {
         }
 
         const [msgResult, travelerResult, tripResult] = await Promise.all([
-          supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
-          supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
-          supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
+          supabase.from("messages").select("*").eq("trip_id", activeTrip.activeTripId).order("created_at", { ascending: true }),
+          supabase.from("travelers").select("*").eq("trip_id", activeTrip.activeTripId).order("created_at", { ascending: true }),
+          supabase.from("trips").select("title, start_date, end_date").eq("id", activeTrip.activeTripId).maybeSingle(),
         ]);
         const error = [msgResult.error, travelerResult.error].find(
           (issue) => issue && !isSingleObjectCoercionIssue(issue.message)
@@ -268,14 +269,15 @@ export default function ChatPage() {
       setLoading(false);
     }
     fetchData();
-  }, [membership.isChecking, membership.isMember, user?.id]);
+  }, [activeTrip.activeTripId, activeTrip.isChecking, activeTrip.isReady, user?.id]);
 
   useEffect(() => {
+    if (!activeTrip.activeTripId) return;
     const channel = supabase
       .channel("messages-realtime")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `trip_id=eq.${TRIP_ID}` },
+        { event: "INSERT", schema: "public", table: "messages", filter: `trip_id=eq.${activeTrip.activeTripId}` },
         (payload) => {
           const newMsg = payload.new as Message;
           setMessages((prev) =>
@@ -287,7 +289,7 @@ export default function ChatPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [activeTrip.activeTripId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -297,6 +299,7 @@ export default function ChatPage() {
   async function send() {
     const text = input.trim();
     if (!text) return;
+    if (!activeTrip.activeTripId) return;
     if (isReadOnlyGroup) {
       setActionIssue(isPreviewSession
         ? "Preview mode is read-only. Use the family invite link when you want to join the real trip."
@@ -307,7 +310,7 @@ export default function ChatPage() {
     const senderName =
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
     const { data, error } = await supabase.from("messages").insert({
-      trip_id: TRIP_ID,
+      trip_id: activeTrip.activeTripId,
       sender_name: senderName,
       sender_avatar: myTraveler?.avatar ?? "🧔",
       sender_user_id: user?.id ?? null,
@@ -404,6 +407,7 @@ export default function ChatPage() {
   async function addTraveler() {
     const name = newName.trim();
     if (!name) return;
+    if (!activeTrip.activeTripId) return;
     if (isReadOnlyGroup) {
       setActionIssue(isPreviewSession
         ? "Preview mode is read-only. Use the family invite link to manage real travelers."
@@ -412,7 +416,7 @@ export default function ChatPage() {
     }
     const { data } = await supabase
       .from("travelers")
-      .insert({ trip_id: TRIP_ID, name, avatar: "🧑", role: "Traveler", status: "invited", is_me: false })
+      .insert({ trip_id: activeTrip.activeTripId, name, avatar: "🧑", role: "Traveler", status: "invited", is_me: false })
       .select()
       .single();
     if (data) setTravelers((prev) => [...prev, data as Traveler]);
@@ -429,7 +433,8 @@ export default function ChatPage() {
   }
 
   function getInviteLink() {
-    return `${window.location.origin}/join/${INVITE_CODE}`;
+    const code = activeTrip.activeTrip?.invite_code;
+    return code ? `${window.location.origin}/join/${code}` : window.location.origin;
   }
 
   async function copyInviteLink() {
@@ -481,9 +486,10 @@ export default function ChatPage() {
 
     const card = payloads[key];
     if (!card) return;
+    if (!activeTrip.activeTripId) return;
 
     const { data } = await supabase.from("messages").insert({
-      trip_id: TRIP_ID,
+      trip_id: activeTrip.activeTripId,
       sender_name: senderName,
       sender_avatar: avatar,
       sender_user_id: user?.id ?? null,
@@ -497,11 +503,12 @@ export default function ChatPage() {
     const opts = pollOptions.map((o) => o.trim()).filter(Boolean);
     if (!question || opts.length < 2) return;
     if (isReadOnlyGroup) return;
+    if (!activeTrip.activeTripId) return;
 
     const senderName =
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
     const { data } = await supabase.from("messages").insert({
-      trip_id: TRIP_ID,
+      trip_id: activeTrip.activeTripId,
       sender_name: senderName,
       sender_avatar: myTraveler?.avatar ?? "🧔",
       sender_user_id: user?.id ?? null,
@@ -527,6 +534,7 @@ export default function ChatPage() {
       if (msgPhotoRef.current) msgPhotoRef.current.value = "";
       return;
     }
+    if (!activeTrip.activeTripId) return;
     const ext = file.name.split(".").pop() ?? "jpg";
     const path = `msg-${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
@@ -535,7 +543,7 @@ export default function ChatPage() {
       const senderName =
         user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
       const { data } = await supabase.from("messages").insert({
-        trip_id: TRIP_ID,
+        trip_id: activeTrip.activeTripId,
         sender_name: senderName,
         sender_avatar: myTraveler?.avatar ?? "🧔",
         sender_user_id: user?.id ?? null,
@@ -553,6 +561,15 @@ export default function ChatPage() {
         <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
         <p className="text-sm text-slate-400">Loading chat…</p>
       </div>
+    );
+  }
+
+  if (activeTrip.hasNoTrip) {
+    return (
+      <FirstTripSetup
+        defaultName={user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? ""}
+        onCreate={activeTrip.createTrip}
+      />
     );
   }
 
@@ -587,20 +604,20 @@ export default function ChatPage() {
             <div className="px-6 pt-3 pb-10">
               <h3 className="text-lg font-black text-slate-900 mb-1">Invite to Trip</h3>
               <p className="text-sm text-slate-400 mb-5">
-                Share this family link only with people you want to add to your real Maui trip.
+                Share this link only with people you want to add to this trip.
               </p>
 
               <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3 mb-4">
                 <span className="text-base">🔗</span>
                 <p className="flex-1 text-xs text-slate-600 font-mono truncate">
-                  {typeof window !== "undefined" ? getInviteLink() : `…/join/${INVITE_CODE}`}
+                  {typeof window !== "undefined" ? getInviteLink() : `…/join/${activeTrip.activeTrip?.invite_code ?? "CODE"}`}
                 </p>
               </div>
 
               <div className="flex items-center justify-center gap-2 mb-5">
                 <span className="text-xs text-slate-400">Or share the code</span>
                 <span className="text-base font-black text-slate-900 tracking-widest bg-slate-100 px-3 py-1 rounded-xl">
-                  {INVITE_CODE}
+                  {activeTrip.activeTrip?.invite_code ?? "CODE"}
                 </span>
               </div>
 
@@ -1069,7 +1086,7 @@ export default function ChatPage() {
             </p>
             {hasFamilyInvite && (
               <button
-                onClick={() => router.push(`/join/${INVITE_CODE}`)}
+                onClick={() => router.push(getInviteLink())}
                 className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white"
               >
                 Join Maui Family Trip

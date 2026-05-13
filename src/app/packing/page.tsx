@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { haptic } from "@/lib/haptic";
-import { TRIP_ID } from "@/lib/tripConfig";
+import { useAuth } from "@/hooks/useAuth";
+import { useActiveTrip } from "@/hooks/useActiveTrip";
+import FirstTripSetup from "@/components/FirstTripSetup";
 
 // ---------------------------------------------------------------------------
 // Persistence uses Supabase when the shared `packing_items` table is available,
@@ -246,31 +248,31 @@ function rowToItem(row: PackingRow): PackItem {
   };
 }
 
-function itemToRow(item: PackItem, index: number): PackingRow {
+function itemToRow(item: PackItem, index: number, tripId: string): PackingRow {
   return {
     ...item,
-    trip_id: TRIP_ID,
+    trip_id: tripId,
     sort_order: (index + 1) * 10,
   };
 }
 
-async function loadSharedItems(): Promise<{ items: PackItem[]; shared: boolean }> {
+async function loadSharedItems(tripId: string): Promise<{ items: PackItem[]; shared: boolean }> {
   const localItems = loadLocalItems();
   const { data, error } = await supabase
     .from("packing_items")
     .select("id, trip_id, name, category, assignee, packed, is_suggested, sort_order")
-    .eq("trip_id", TRIP_ID)
+    .eq("trip_id", tripId)
     .order("sort_order", { ascending: true });
 
   if (error) return { items: localItems, shared: false };
   if (data && data.length > 0) return { items: (data as PackingRow[]).map(rowToItem), shared: true };
 
-  await saveSharedItems(localItems);
+  await saveSharedItems(localItems, tripId);
   return { items: localItems, shared: true };
 }
 
-async function saveSharedItems(items: PackItem[]): Promise<void> {
-  const rows = items.map(itemToRow);
+async function saveSharedItems(items: PackItem[], tripId: string): Promise<void> {
+  const rows = items.map((item, index) => itemToRow(item, index, tripId));
   await supabase.from("packing_items").upsert(rows, { onConflict: "id" });
 }
 
@@ -292,6 +294,8 @@ function getMilestone(pct: number): Milestone {
 // ---------------------------------------------------------------------------
 export default function PackingPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const activeTrip = useActiveTrip(user);
   const [items, setItems] = useState<PackItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [travelers, setTravelers] = useState<Traveler[]>([]);
@@ -313,8 +317,17 @@ export default function PackingPage() {
 
   // Load on mount
   useEffect(() => {
+    if (activeTrip.isPreview) {
+      queueMicrotask(() => {
+        setItems(loadLocalItems());
+        setSharedPacking(false);
+        setHydrated(true);
+      });
+      return;
+    }
+    if (!activeTrip.activeTripId) return;
     let cancelled = false;
-    loadSharedItems().then(({ items: loadedItems, shared }) => {
+    loadSharedItems(activeTrip.activeTripId).then(({ items: loadedItems, shared }) => {
       if (cancelled) return;
       setItems(loadedItems);
       setSharedPacking(shared);
@@ -332,13 +345,13 @@ export default function PackingPage() {
         const { data } = await supabase
           .from("travelers")
           .select("*")
-          .eq("trip_id", TRIP_ID)
+          .eq("trip_id", activeTrip.activeTripId)
           .order("created_at", { ascending: true });
         if (data && data.length > 0) setTravelers(data as Traveler[]);
       } catch { /* traveler chips are optional */ }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [activeTrip.activeTripId, activeTrip.isPreview]);
 
   // Scroll-aware sticky header
   useEffect(() => {
@@ -353,8 +366,8 @@ export default function PackingPage() {
     if (!hydrated) return;
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     saveLocalItems(items);
-    if (sharedPacking) void saveSharedItems(items);
-  }, [items, hydrated, sharedPacking]);
+    if (sharedPacking && activeTrip.activeTripId) void saveSharedItems(items, activeTrip.activeTripId);
+  }, [activeTrip.activeTripId, items, hydrated, sharedPacking]);
 
   // Focus add-name field when sheet opens
   useEffect(() => {
@@ -407,7 +420,9 @@ export default function PackingPage() {
 
   function deleteItem(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id));
-    if (sharedPacking) void supabase.from("packing_items").delete().eq("trip_id", TRIP_ID).eq("id", id);
+    if (sharedPacking && activeTrip.activeTripId) {
+      void supabase.from("packing_items").delete().eq("trip_id", activeTrip.activeTripId).eq("id", id);
+    }
   }
 
   function toggleCategory(cat: Category) {
@@ -471,7 +486,7 @@ export default function PackingPage() {
     setItems(reset);
     setConfirmReset(false);
     saveLocalItems(reset);
-    if (sharedPacking) void saveSharedItems(reset);
+    if (sharedPacking && activeTrip.activeTripId) void saveSharedItems(reset, activeTrip.activeTripId);
   }
 
   async function shareList() {
@@ -536,7 +551,16 @@ export default function PackingPage() {
 
   const milestone = getMilestone(pct);
 
-  if (!hydrated) {
+  if (activeTrip.hasNoTrip) {
+    return (
+      <FirstTripSetup
+        defaultName={user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? ""}
+        onCreate={activeTrip.createTrip}
+      />
+    );
+  }
+
+  if (!hydrated || activeTrip.isChecking) {
     return (
       <div className="flex flex-col bg-slate-50 min-h-screen items-center justify-center">
         <span className="text-2xl animate-pulse">🧳</span>

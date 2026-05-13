@@ -20,6 +20,54 @@ $$;
 
 grant execute on function public.is_trip_member(uuid) to authenticated;
 
+create or replace function public.get_trip_invite(target_invite_code text)
+returns table (
+  id uuid,
+  title text,
+  destination text,
+  start_date date,
+  end_date date,
+  cover_photo text,
+  invite_code text
+)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select t.id, t.title, t.destination, t.start_date, t.end_date, t.cover_photo, t.invite_code
+  from public.trips t
+  where upper(t.invite_code) = upper(target_invite_code)
+  limit 1;
+$$;
+
+grant execute on function public.get_trip_invite(text) to anon, authenticated;
+
+alter table public.trips add column if not exists created_by uuid references auth.users(id) on delete set null;
+alter table public.trips enable row level security;
+
+drop policy if exists "Trip creators can create trips" on public.trips;
+create policy "Trip creators can create trips"
+on public.trips
+for insert
+to authenticated
+with check (created_by = auth.uid());
+
+drop policy if exists "Trip members can read trips" on public.trips;
+create policy "Trip members can read trips"
+on public.trips
+for select
+to authenticated
+using (created_by = auth.uid() or public.is_trip_member(id));
+
+drop policy if exists "Trip members can update trips" on public.trips;
+create policy "Trip members can update trips"
+on public.trips
+for update
+to authenticated
+using (created_by = auth.uid() or public.is_trip_member(id))
+with check (created_by = auth.uid() or public.is_trip_member(id));
+
 alter table public.travelers enable row level security;
 
 drop policy if exists "Travelers can read their trip crew" on public.travelers;

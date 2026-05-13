@@ -8,9 +8,9 @@ import { getTripDateInfo, formatDateRange, type TripDateInfo } from "@/lib/tripD
 import { useAuth } from "@/hooks/useAuth";
 import { ResilientState } from "@/components/ResilientState";
 import TripAccessGate from "@/components/TripAccessGate";
-import { useTripMembership } from "@/hooks/useTripMembership";
+import FirstTripSetup from "@/components/FirstTripSetup";
+import { useActiveTrip } from "@/hooks/useActiveTrip";
 import {
-  TRIP_ID,
   UPCOMING_TRIPS_KEY,
   getStoredTripSubtitle,
   readStoredTrips,
@@ -38,7 +38,7 @@ function getGreeting(): string {
 export default function TripsPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const membership = useTripMembership(user);
+  const activeTrip = useActiveTrip(user);
   const [greeting] = useState(getGreeting);
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "traveler";
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => readStoredTrips([]));
@@ -52,14 +52,14 @@ export default function TripsPage() {
   const [loadIssue, setLoadIssue] = useState<string | null>(null);
 
   useEffect(() => {
-    if (membership.isChecking || !membership.isMember) return;
+    if (!activeTrip.activeTripId) return;
 
     async function loadTrip() {
       setLoadIssue(null);
       try {
         const [tripResult, travelerResult] = await Promise.all([
-          supabase.from("trips").select("title, start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
-          supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", TRIP_ID),
+          supabase.from("trips").select("title, start_date, end_date").eq("id", activeTrip.activeTripId).maybeSingle(),
+          supabase.from("travelers").select("id", { count: "exact", head: true }).eq("trip_id", activeTrip.activeTripId),
         ]);
 
         if (tripResult.data) {
@@ -70,12 +70,12 @@ export default function TripsPage() {
 
           // Fetch today's agenda items if trip is active
           if (info.status === "active" && info.currentDayNumber > 0) {
-            const { data: dayData } = await supabase
-              .from("trip_days")
-              .select("id")
-              .eq("trip_id", TRIP_ID)
-              .eq("day_number", info.currentDayNumber)
-              .maybeSingle();
+              const { data: dayData } = await supabase
+                .from("trip_days")
+                .select("id")
+                .eq("trip_id", activeTrip.activeTripId)
+                .eq("day_number", info.currentDayNumber)
+                .maybeSingle();
 
             if (dayData) {
               const { data: items } = await supabase
@@ -98,7 +98,7 @@ export default function TripsPage() {
     }
 
     loadTrip();
-  }, [membership.isChecking, membership.isMember]);
+  }, [activeTrip.activeTripId]);
 
   // Persist upcoming trips to localStorage whenever they change
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function TripsPage() {
     setNewTravelers("2");
   }
 
-  if (membership.isChecking) {
+  if (activeTrip.isChecking) {
     return (
       <div className="flex min-h-[calc(100vh-9rem)] items-center justify-center">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
@@ -205,22 +205,22 @@ export default function TripsPage() {
     );
   }
 
-  if (!membership.isMember) {
+  if (activeTrip.hasNoTrip) {
+    return (
+      <FirstTripSetup
+        defaultName={firstName}
+        onCreate={activeTrip.createTrip}
+      />
+    );
+  }
+
+  if (activeTrip.isPreview) {
     return (
       <TripAccessGate
-        mode={membership.isPreview ? "preview" : "not-member"}
-        title={membership.isPreview
-          ? "Trips are private"
-          : membership.hasFamilyInvite
-          ? "Join the trip to see Trips"
-          : "No trip joined yet"}
-        message={membership.isPreview
-          ? "Preview profiles can explore TripFlow, but Shaun's live family trip list stays private until they join."
-          : membership.hasFamilyInvite
-          ? "This profile is signed in, but it is not a traveler on the Maui family trip yet."
-          : "This profile has not joined a private trip. Use an invite link or code from the organizer to unlock trip details."}
-        detail={membership.error}
-        showJoinAction={membership.hasFamilyInvite}
+        mode="preview"
+        title="Trips are private"
+        message="Preview profiles can explore TripFlow, but live trip lists stay private until they join or create a trip."
+        detail={activeTrip.error}
       />
     );
   }

@@ -9,9 +9,9 @@ import { useExploreContext } from "@/lib/exploreContext";
 import { SortableAgendaSections, type Section as DndSection, getMapsInfo, SHERATON } from "@/components/SortableAgendaSection";
 import { ResilientState } from "@/components/ResilientState";
 import TripAccessGate from "@/components/TripAccessGate";
+import FirstTripSetup from "@/components/FirstTripSetup";
 import { useAuth } from "@/hooks/useAuth";
-import { useTripMembership } from "@/hooks/useTripMembership";
-import { TRIP_ID } from "@/lib/tripConfig";
+import { useActiveTrip } from "@/hooks/useActiveTrip";
 
 function timeToMinutes(t: string): number {
   if (!t || t === "TBD" || t === "tbd") return -1; // TBD items sort to top of Morning
@@ -383,7 +383,7 @@ function getStoredDayIndex(): number {
 export default function MyDayPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const membership = useTripMembership(user);
+  const activeTrip = useActiveTrip(user);
   const { pendingItem, setPendingItem } = useExploreContext();
   const [currentMins, setCurrentMins] = useState(nowMinutes);
   const [wishlist, setWishlist] = useState<WishlistEntry[]>([]);
@@ -541,10 +541,7 @@ export default function MyDayPage() {
   }, [pendingItem, setPendingItem]);
 
   useEffect(() => {
-    if (membership.isChecking) return;
-    if (!membership.isMember) {
-      return;
-    }
+    if (!activeTrip.activeTripId) return;
 
     fetch("/api/weather")
       .then((r) => r.json())
@@ -555,13 +552,17 @@ export default function MyDayPage() {
       setLoadIssue(null);
       try {
         const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult] = await Promise.all([
-          supabase.from("trips").select("start_date, end_date").eq("id", TRIP_ID).maybeSingle(),
-          supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", TRIP_ID).order("created_at"),
-          supabase.from("agenda_items").select("*").order("sort_order", { ascending: true }),
-          supabase.from("trip_days").select("id, day_number, label").eq("trip_id", TRIP_ID),
+          supabase.from("trips").select("start_date, end_date").eq("id", activeTrip.activeTripId).maybeSingle(),
+          supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", activeTrip.activeTripId).order("created_at"),
+          supabase
+            .from("agenda_items")
+            .select("*, trip_days!inner(trip_id)")
+            .eq("trip_days.trip_id", activeTrip.activeTripId)
+            .order("sort_order", { ascending: true }),
+          supabase.from("trip_days").select("id, day_number, label").eq("trip_id", activeTrip.activeTripId),
           supabase.from("documents")
             .select("id, category, name, emoji, date, notes, confirmation, provider, status")
-            .eq("trip_id", TRIP_ID),
+            .eq("trip_id", activeTrip.activeTripId),
         ]);
 
         const blockingError = agendaResult.error ?? tripDaysResult.error;
@@ -804,7 +805,7 @@ export default function MyDayPage() {
       document.removeEventListener("touchmove", handleTouchMove);
       document.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [membership.isChecking, membership.isMember]);
+  }, [activeTrip.activeTripId]);
 
   const day = DAYS[dayIndex];
   const items = agendas[dayIndex];
@@ -1164,7 +1165,7 @@ export default function MyDayPage() {
     });
   }, [sections, dayIndex, dayIdMap, day.dayNum]);
 
-  if (membership.isChecking) {
+  if (activeTrip.isChecking) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
@@ -1173,22 +1174,22 @@ export default function MyDayPage() {
     );
   }
 
-  if (!membership.isMember) {
+  if (activeTrip.hasNoTrip) {
+    return (
+      <FirstTripSetup
+        defaultName={user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? ""}
+        onCreate={activeTrip.createTrip}
+      />
+    );
+  }
+
+  if (activeTrip.isPreview) {
     return (
       <TripAccessGate
-        mode={membership.isPreview ? "preview" : "not-member"}
-        title={membership.isPreview
-          ? "Today is private to the trip"
-          : membership.hasFamilyInvite
-          ? "Join the trip to see Today"
-          : "Today is private"}
-        message={membership.isPreview
-          ? "Preview profiles can browse the app shell, but the live family itinerary stays private until they join the trip."
-          : membership.hasFamilyInvite
-          ? "This profile is signed in, but it is not a traveler on the Maui family trip yet."
-          : "This profile has not joined a private trip. Use an invite link or code from the organizer to unlock Today."}
-        detail={membership.error}
-        showJoinAction={membership.hasFamilyInvite}
+        mode="preview"
+        title="Today is private to the trip"
+        message="Preview profiles can browse TripFlow, but live itineraries stay private until they join or create a trip."
+        detail={activeTrip.error}
       />
     );
   }
