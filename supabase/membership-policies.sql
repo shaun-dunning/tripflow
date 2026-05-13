@@ -83,7 +83,11 @@ begin
     if length(new_invite_code) < 4 then
       new_invite_code := 'TRIP' || substr(md5(random()::text || clock_timestamp()::text), 1, 4);
     end if;
-    exit when not exists (select 1 from public.trips where invite_code = new_invite_code);
+    exit when not exists (
+      select 1
+      from public.trips existing_trip
+      where existing_trip.invite_code = new_invite_code
+    );
   end loop;
 
   insert into public.trips (title, destination, start_date, end_date, invite_code, cover_photo, created_by)
