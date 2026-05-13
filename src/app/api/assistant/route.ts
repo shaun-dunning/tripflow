@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             system_instruction: { parts: [{ text: effectiveSystemPrompt }] },
             contents,
-            generationConfig: { maxOutputTokens: 600 },
+            generationConfig: { maxOutputTokens: 1200 },
           }),
         });
 
@@ -185,11 +185,14 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        const reply =
-          candidate.content?.parts?.[0]?.text ??
+        let reply =
+          candidate.content?.parts?.map((part: { text?: string }) => part.text ?? "").join("").trim() ??
           (candidate.finishReason === "SAFETY"
             ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
             : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
+        if (candidate.finishReason === "MAX_TOKENS") {
+          reply = `${reply.replace(/\s+$/, "")}\n\nI was cut off there. Ask me to continue and I'll pick up from this point.`;
+        }
         return NextResponse.json({ reply });
       }
     } catch (err) {
@@ -217,7 +220,7 @@ export async function POST(req: NextRequest) {
 
       const response = await client.messages.create({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 600,
+        max_tokens: 1200,
         system: effectiveSystemPrompt,
         messages,
       });
