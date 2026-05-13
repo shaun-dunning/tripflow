@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { haptic } from "@/lib/haptic";
-import { ResilientState } from "@/components/ResilientState";
 import { TRIP_ID } from "@/lib/tripConfig";
 
 // ---------------------------------------------------------------------------
@@ -302,7 +301,6 @@ export default function PackingPage() {
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [sharedPacking, setSharedPacking] = useState(false);
-  const [packingIssue, setPackingIssue] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
 
   // Add-item sheet
@@ -320,13 +318,12 @@ export default function PackingPage() {
       if (cancelled) return;
       setItems(loadedItems);
       setSharedPacking(shared);
-      if (!shared) setPackingIssue("Shared packing is unavailable, so changes are private on this device.");
       setHydrated(true);
     }).catch((err) => {
       if (cancelled) return;
+      console.warn("Packing list is using local fallback.", err);
       setItems(loadLocalItems());
       setSharedPacking(false);
-      setPackingIssue(err instanceof Error ? err.message : "Shared packing is unavailable.");
       setHydrated(true);
     });
 
@@ -774,19 +771,6 @@ export default function PackingPage() {
           </p>
         </div>
       </div>
-
-      {packingIssue && (
-        <div className="px-4 pt-4">
-          <ResilientState
-            title="Packing is saved locally"
-            message="You can keep checking things off. Group sync will resume when the shared list is reachable."
-            detail={packingIssue}
-            actionLabel="Dismiss"
-            onAction={() => setPackingIssue(null)}
-            compact
-          />
-        </div>
-      )}
 
       {/* ── Progress card ── */}
       <div className="bg-white border-b border-slate-100 px-4 py-3.5 flex items-center gap-4 flex-none">
