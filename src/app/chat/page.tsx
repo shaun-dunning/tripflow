@@ -188,6 +188,14 @@ export default function ChatPage() {
 
   // Derived
   const myTraveler = travelers.find((t) => t.user_id === user?.id);
+  const visibleTravelers = travelers.filter((t) => {
+    const legacyOrganizerPlaceholder =
+      myTraveler &&
+      t.is_me &&
+      !t.user_id &&
+      t.name.trim().toLowerCase() === "you";
+    return !legacyOrganizerPlaceholder;
+  });
   const displayName =
     myTraveler?.name ??
     user?.user_metadata?.full_name?.split(" ")[0] ??
@@ -204,7 +212,7 @@ export default function ChatPage() {
     sheet?.type === "traveler"
       ? travelers.find((t) => t.id === (sheet as { type: "traveler"; id: string }).id) ?? null
       : null;
-  const needsFamilyJoin = Boolean(user && !isPreviewSession && travelers.length === 0 && !loadIssue);
+  const needsFamilyJoin = Boolean(user && !isPreviewSession && !myTraveler && !loadIssue);
   const isReadOnlyGroup = isPreviewSession || needsFamilyJoin;
 
   // ── Data ──────────────────────────────────────────────────────────────────
@@ -949,8 +957,8 @@ export default function ChatPage() {
                 : needsFamilyJoin
                 ? "Not joined yet"
                 : tripDateInfo?.status === "active"
-                ? `Day ${tripDateInfo.currentDayNumber} of ${tripDateInfo.totalDays} · ${travelers.length} travelers`
-                : `${travelers.length} travelers`}
+                ? `Day ${tripDateInfo.currentDayNumber} of ${tripDateInfo.totalDays} · ${visibleTravelers.length} travelers`
+                : `${visibleTravelers.length} travelers`}
             </p>
           </div>
           <button onClick={() => setShowInviteSheet(true)}
@@ -960,7 +968,7 @@ export default function ChatPage() {
         </div>
 
         <div className="flex items-start gap-3 overflow-x-auto pt-1 pb-1" style={{ scrollbarWidth: "none" }}>
-          {[...travelers]
+          {[...visibleTravelers]
             .sort((a, b) => {
               if (a.user_id === user?.id) return -1;
               if (b.user_id === user?.id) return 1;
