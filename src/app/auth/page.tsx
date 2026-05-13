@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Lock, Mail, MapPinned, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
 
 export default function AuthPage() {
   const router = useRouter();
@@ -14,6 +15,11 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    localStorage.removeItem(FAMILY_INVITE_KEY);
+    localStorage.removeItem(PREVIEW_INVITE_KEY);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

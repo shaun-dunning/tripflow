@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 import { useAuth } from "@/hooks/useAuth";
 import { ResilientState } from "@/components/ResilientState";
+import TripAccessGate from "@/components/TripAccessGate";
+import { useTripMembership } from "@/hooks/useTripMembership";
 import {
   TRIP_ID,
   UPCOMING_TRIPS_KEY,
@@ -36,6 +38,7 @@ function getGreeting(): string {
 export default function TripsPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const membership = useTripMembership(user);
   const [greeting] = useState(getGreeting);
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "traveler";
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => readStoredTrips([]));
@@ -49,6 +52,8 @@ export default function TripsPage() {
   const [loadIssue, setLoadIssue] = useState<string | null>(null);
 
   useEffect(() => {
+    if (membership.isChecking || !membership.isMember) return;
+
     async function loadTrip() {
       setLoadIssue(null);
       try {
@@ -93,7 +98,7 @@ export default function TripsPage() {
     }
 
     loadTrip();
-  }, []);
+  }, [membership.isChecking, membership.isMember]);
 
   // Persist upcoming trips to localStorage whenever they change
   useEffect(() => {
@@ -190,6 +195,34 @@ export default function TripsPage() {
     setNewDestination("");
     setNewDates("");
     setNewTravelers("2");
+  }
+
+  if (membership.isChecking) {
+    return (
+      <div className="flex min-h-[calc(100vh-9rem)] items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+      </div>
+    );
+  }
+
+  if (!membership.isMember) {
+    return (
+      <TripAccessGate
+        mode={membership.isPreview ? "preview" : "not-member"}
+        title={membership.isPreview
+          ? "Trips are private"
+          : membership.hasFamilyInvite
+          ? "Join the trip to see Trips"
+          : "No trip joined yet"}
+        message={membership.isPreview
+          ? "Preview profiles can explore TripFlow, but Shaun's live family trip list stays private until they join."
+          : membership.hasFamilyInvite
+          ? "This profile is signed in, but it is not a traveler on the Maui family trip yet."
+          : "This profile has not joined a private trip. Use an invite link or code from the organizer to unlock trip details."}
+        detail={membership.error}
+        showJoinAction={membership.hasFamilyInvite}
+      />
+    );
   }
 
   return (

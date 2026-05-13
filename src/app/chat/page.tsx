@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
-import { INVITE_CODE, PREVIEW_INVITE_KEY, TRIP_ID } from "@/lib/tripConfig";
+import { FAMILY_INVITE_KEY, INVITE_CODE, PREVIEW_INVITE_KEY, TRIP_ID } from "@/lib/tripConfig";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Message = {
@@ -155,6 +155,7 @@ export default function ChatPage() {
   const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
   const [tripTitle, setTripTitle] = useState("Maui Trip Group");
   const [isPreviewSession, setIsPreviewSession] = useState(false);
+  const [hasFamilyInvite, setHasFamilyInvite] = useState(false);
 
   // Poll creation modal
   const [pollModal, setPollModal] = useState(false);
@@ -222,6 +223,7 @@ export default function ChatPage() {
       try {
         let previewSession = localStorage.getItem(PREVIEW_INVITE_KEY) === "1";
         setIsPreviewSession(previewSession);
+        setHasFamilyInvite(localStorage.getItem(FAMILY_INVITE_KEY) === "1");
         const [msgResult, travelerResult, tripResult] = await Promise.all([
           supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
           supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
@@ -406,6 +408,8 @@ export default function ChatPage() {
 
   async function handleSignOut() {
     closeSheet();
+    localStorage.removeItem(PREVIEW_INVITE_KEY);
+    localStorage.removeItem(FAMILY_INVITE_KEY);
     await signOut();
     router.replace("/auth");
   }
@@ -1035,24 +1039,32 @@ export default function ChatPage() {
         {needsFamilyJoin && (
           <div className="mx-auto mt-10 w-full max-w-sm rounded-3xl border border-slate-200 bg-white px-5 py-5 text-center shadow-sm">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-sky-50 text-2xl">🔗</div>
-            <h2 className="text-base font-black text-slate-900">Join this trip to use Group</h2>
+            <h2 className="text-base font-black text-slate-900">
+              {hasFamilyInvite ? "Join this trip to use Group" : "Group is private"}
+            </h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">
-              You are signed in, but this profile is not a traveler on the Maui family trip yet.
+              {hasFamilyInvite
+                ? "You are signed in, but this profile is not a traveler on the Maui family trip yet."
+                : "This profile has not joined a trip yet. Ask the organizer for an invite link or code."}
             </p>
-            <button
-              onClick={() => router.push(`/join/${INVITE_CODE}`)}
-              className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white"
-            >
-              Join Maui Family Trip
-            </button>
+            {hasFamilyInvite && (
+              <button
+                onClick={() => router.push(`/join/${INVITE_CODE}`)}
+                className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white"
+              >
+                Join Maui Family Trip
+              </button>
+            )}
             <button
               onClick={handleSignOut}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600"
+              className={`${hasFamilyInvite ? "mt-2" : "mt-4"} w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600`}
             >
               Sign out
             </button>
             <p className="mt-3 text-xs leading-relaxed text-slate-400">
-              Use a preview link only when you want someone to try TripFlow without joining your family group.
+              {hasFamilyInvite
+                ? "Use a preview link only when you want someone to try TripFlow without joining your family group."
+                : "Private trip details only appear after an invite has been accepted."}
             </p>
           </div>
         )}

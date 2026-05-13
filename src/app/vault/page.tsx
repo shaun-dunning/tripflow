@@ -604,13 +604,20 @@ export default function VaultPage() {
   );
 
   if (!membership.isMember) return (
-    <TripAccessGate
-      mode={membership.isPreview ? "preview" : "not-member"}
-      title={membership.isPreview ? "Docs are private to the trip" : "Join the trip to see Docs"}
-      message={membership.isPreview
+      <TripAccessGate
+        mode={membership.isPreview ? "preview" : "not-member"}
+        title={membership.isPreview
+          ? "Docs are private to the trip"
+          : membership.hasFamilyInvite
+          ? "Join the trip to see Docs"
+          : "Docs are private"}
+        message={membership.isPreview
         ? "Preview profiles can explore TripFlow, but live reservations stay private until they join the family trip."
-        : "This profile is signed in, but it is not a traveler on the Maui family trip yet."}
+        : membership.hasFamilyInvite
+        ? "This profile is signed in, but it is not a traveler on the Maui family trip yet."
+        : "This profile has not joined a private trip. Use an invite link or code from the organizer to unlock Docs."}
       detail={membership.error}
+      showJoinAction={membership.hasFamilyInvite}
     />
   );
 

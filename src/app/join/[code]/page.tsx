@@ -162,6 +162,13 @@ export default function JoinPage() {
       const inviteCode = (code ?? INVITE_CODE).toUpperCase();
       const isPreviewInvite = APP_PREVIEW_INVITE_CODES.includes(inviteCode);
       setInviteMode(isPreviewInvite ? "preview" : "family");
+      if (isPreviewInvite) {
+        localStorage.removeItem(FAMILY_INVITE_KEY);
+        localStorage.setItem(PREVIEW_INVITE_KEY, "1");
+      } else if (inviteCode === INVITE_CODE) {
+        localStorage.removeItem(PREVIEW_INVITE_KEY);
+        localStorage.setItem(FAMILY_INVITE_KEY, "1");
+      }
 
       const tripData = await loadTripByInviteCode(isPreviewInvite ? INVITE_CODE : inviteCode);
       if (!tripData && inviteCode !== INVITE_CODE && !isPreviewInvite) {
@@ -206,8 +213,8 @@ export default function JoinPage() {
     try {
       if (inviteMode === "family") {
         localStorage.removeItem(PREVIEW_INVITE_KEY);
-        localStorage.removeItem(FAMILY_INVITE_KEY);
         await joinTrip(trip.id, currentUser, selectedAvatar);
+        localStorage.removeItem(FAMILY_INVITE_KEY);
         router.replace("/chat");
         return;
       }
@@ -246,8 +253,8 @@ export default function JoinPage() {
       try {
         if (inviteMode === "family") {
           localStorage.removeItem(PREVIEW_INVITE_KEY);
-          localStorage.removeItem(FAMILY_INVITE_KEY);
           await joinTrip(trip.id, user, selectedAvatar);
+          localStorage.removeItem(FAMILY_INVITE_KEY);
           router.replace("/chat");
           return;
         }

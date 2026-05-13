@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getTripDateInfo, getDayStatus, formatDateRange, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
+import TripAccessGate from "@/components/TripAccessGate";
+import { useAuth } from "@/hooks/useAuth";
+import { useTripMembership } from "@/hooks/useTripMembership";
 import {
   ARCHIVED_TRIPS_KEY,
   INVITE_CODE,
@@ -360,6 +363,8 @@ function getStoredPackingProgress(): { count: number; pct: number } {
 
 export default function TripPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const membership = useTripMembership(user);
   const [selected, setSelected] = useState<number | null>(null);
   const [trip, setTrip] = useState<TripMeta | null>(null);
   const [days, setDays] = useState<Day[]>(TRIP);
@@ -538,6 +543,8 @@ export default function TripPage() {
   }, [archivedTrips]);
 
   useEffect(() => {
+    if (membership.isChecking || !membership.isMember) return;
+
     async function fetchTripData() {
       setLoadIssue(null);
       try {
@@ -636,7 +643,7 @@ export default function TripPage() {
     }
 
     fetchTripData();
-  }, []);
+  }, [membership.isChecking, membership.isMember]);
 
   const today = days.find((d) => d.status === "today") ?? days[0];
   const fallbackDaysUntilTrip = trip?.startDate ? getDaysUntil(trip.startDate) : null;
@@ -654,6 +661,34 @@ export default function TripPage() {
     : tripStatus === "completed"
     ? "Completed Trip"
     : `Active Trip · Day ${tripDateInfo?.currentDayNumber} of ${tripDateInfo?.totalDays}`;
+
+  if (membership.isChecking) {
+    return (
+      <div className="flex min-h-[calc(100vh-9rem)] items-center justify-center">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-slate-900" />
+      </div>
+    );
+  }
+
+  if (!membership.isMember) {
+    return (
+      <TripAccessGate
+        mode={membership.isPreview ? "preview" : "not-member"}
+        title={membership.isPreview
+          ? "Trip details are private"
+          : membership.hasFamilyInvite
+          ? "Join the trip to see details"
+          : "No trip joined yet"}
+        message={membership.isPreview
+          ? "Preview profiles can browse the app shell, but Shaun's live family trip stays private until they join."
+          : membership.hasFamilyInvite
+          ? "This profile is signed in, but it is not a traveler on the Maui family trip yet."
+          : "This profile has not joined a private trip. Use an invite link or code from the organizer to unlock trip details."}
+        detail={membership.error}
+        showJoinAction={membership.hasFamilyInvite}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-5 px-4 pt-4 pb-6">

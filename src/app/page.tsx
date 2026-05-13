@@ -1177,11 +1177,18 @@ export default function MyDayPage() {
     return (
       <TripAccessGate
         mode={membership.isPreview ? "preview" : "not-member"}
-        title={membership.isPreview ? "Today is private to the trip" : "Join the trip to see Today"}
+        title={membership.isPreview
+          ? "Today is private to the trip"
+          : membership.hasFamilyInvite
+          ? "Join the trip to see Today"
+          : "Today is private"}
         message={membership.isPreview
           ? "Preview profiles can browse the app shell, but the live family itinerary stays private until they join the trip."
-          : "This profile is signed in, but it is not a traveler on the Maui family trip yet."}
+          : membership.hasFamilyInvite
+          ? "This profile is signed in, but it is not a traveler on the Maui family trip yet."
+          : "This profile has not joined a private trip. Use an invite link or code from the organizer to unlock Today."}
         detail={membership.error}
+        showJoinAction={membership.hasFamilyInvite}
       />
     );
   }

@@ -2,13 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { INVITE_CODE, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
+import { FAMILY_INVITE_KEY, INVITE_CODE, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
 
 type TripAccessGateProps = {
   mode?: "not-member" | "preview";
   title?: string;
   message?: string;
   detail?: string | null;
+  showJoinAction?: boolean;
 };
 
 export default function TripAccessGate({
@@ -16,12 +17,14 @@ export default function TripAccessGate({
   title,
   message,
   detail,
+  showJoinAction = false,
 }: TripAccessGateProps) {
   const router = useRouter();
   const isPreview = mode === "preview";
 
   async function signOut() {
     localStorage.removeItem(PREVIEW_INVITE_KEY);
+    localStorage.removeItem(FAMILY_INVITE_KEY);
     await supabase.auth.signOut();
     router.replace("/auth");
   }
@@ -45,15 +48,24 @@ export default function TripAccessGate({
             {detail}
           </p>
         )}
-        <button
-          onClick={() => router.push(`/join/${INVITE_CODE}`)}
-          className="mt-5 w-full rounded-2xl bg-slate-900 py-3.5 text-sm font-bold text-white"
-        >
-          Join Maui Family Trip
-        </button>
+        {showJoinAction ? (
+          <button
+            onClick={() => router.push(`/join/${INVITE_CODE}`)}
+            className="mt-5 w-full rounded-2xl bg-slate-900 py-3.5 text-sm font-bold text-white"
+          >
+            Join Maui Family Trip
+          </button>
+        ) : (
+          <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-left">
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Invite required</p>
+            <p className="mt-1 text-sm leading-relaxed text-slate-600">
+              Ask the trip organizer for their invite link or code to join a private trip.
+            </p>
+          </div>
+        )}
         <button
           onClick={signOut}
-          className="mt-2 w-full rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-600"
+          className={`${showJoinAction ? "mt-2" : "mt-4"} w-full rounded-2xl border border-slate-200 bg-white py-3.5 text-sm font-bold text-slate-600`}
         >
           Sign out
         </button>
