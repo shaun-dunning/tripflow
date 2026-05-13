@@ -30,7 +30,7 @@
 - [x] Smart pre-trip readiness dashboard — combine docReadiness + packingProgress + weather warnings into single "87% trip-ready" card
 - [x] First-trip onboarding — 3-screen welcome for users joining via /join/[code], includes avatar picker
 - [x] Weather widget under the Trips hero  Embed a 7-day Maui forecast pulled from Open-Meteo (free, no API key). Showing "82°F ☀️" on the hero card would be a wow moment.
-- [ ] Reservation badge/reminders  Items marked as `reservation: true` could have a small calendar badge and a note about when to confirm. Could eventually tie into push notifications.
+- [x] Reservation badge/reminders  Items marked as `reservation: true` could have a small calendar badge and a note about when to confirm. Could eventually tie into push notifications.
 
 ## Completed in Codex UX Pass
 - [x] Merged prior remote work into `main` and pushed the combined branch after rebasing.

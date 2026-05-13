@@ -23,7 +23,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useItemPresence } from "@/hooks/useItemPresence";
 
-// ── Family fixture for presence display ────────────────────────────────────────────
+// ── Family fixture for presence display ──────────────────────────────────────
+// Four slots representing the Maui family trip travelers.
+// Their "going" state lives only in the current user's localStorage —
+// real-time sync across devices would layer on top via Supabase Realtime.
 const FAMILY_SLOTS = [
   { id: "slot-dad",   initial: "D", label: "Dad",   color: "bg-sky-500"     },
   { id: "slot-mom",   initial: "M", label: "Mom",   color: "bg-pink-400"    },
@@ -56,7 +59,7 @@ export type Section = {
   items: AgendaItem[];
 };
 
-// ── Helper ────────────────────────────────────────────────────────────────────────
+// ── Helper ──────────────────────────────────────────────────────────────────
 function timeToMinutes(t: string): number {
   if (!t || t === "TBD" || t === "tbd") return -1;
   const [time, mer] = t.split(" ");
@@ -85,7 +88,7 @@ function formatClock(totalMins: number): string {
   return `${h12}:${String(m).padStart(2, "0")} ${mer}`;
 }
 
-// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ────────────
+// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ──────────
 const SHERATON = { lat: 20.9236, lng: -156.6941 };
 
 type MauiPlace = { keywords: string[]; driveMin: number; lat: number; lng: number; estimated?: boolean };
@@ -200,7 +203,7 @@ function getDepartureInfo(item: AgendaItem, driveMin: number): { leaveBy: string
   };
 }
 
-// ── Drag handle icon ──────────────────────────────────────────────────────────────────
+// ── Drag handle icon ──────────────────────────────────────────────────────────
 function DragHandle({ listeners, attributes }: { listeners?: object; attributes?: object }) {
   return (
     <div
@@ -216,7 +219,9 @@ function DragHandle({ listeners, attributes }: { listeners?: object; attributes?
   );
 }
 
-// ── Presence strip ──────────────────────────────────────────────────────────────────────────
+// ── Presence strip ────────────────────────────────────────────────────────────
+// Shows which family members are going to an activity and lets the current
+// device's user toggle their own attendance. State is localStorage-backed.
 function PresenceStrip({ itemId }: { itemId: string }) {
   const { attendees, iAmGoing, toggle } = useItemPresence(itemId);
 
@@ -254,7 +259,7 @@ function PresenceStrip({ itemId }: { itemId: string }) {
   );
 }
 
-// ── Item card (shared between sortable row and drag overlay) ───────────────────────────
+// ── Item card (shared between sortable row and drag overlay) ─────────────────
 export function AgendaItemCard({
   item,
   isToday,
@@ -286,7 +291,11 @@ export function AgendaItemCard({
           : item.done
           ? "opacity-50 border-slate-100"
           : "border-slate-100 hover:border-slate-200 hover:shadow-md"
-      } ${item.reservation && !isDragging ? "ring-1 ring-slate-900" : ""}`}
+      } ${item.reservation && !isDragging ? (() => {
+          const notesLower = (item.notes ?? "").toLowerCase();
+          const confirmed = notesLower.includes("confirmed") || notesLower.includes("confirmation:");
+          return confirmed ? "ring-1 ring-emerald-400" : "ring-1 ring-amber-400";
+        })() : ""}`}
     >
       {/* Main row: handle + content + photo/toggle */}
       <div className="flex items-stretch">
@@ -354,11 +363,19 @@ export function AgendaItemCard({
               </div>
             );
           })()}
-          {item.reservation && !item.done && (
-            <span className="inline-block mt-1.5 text-[10px] font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-full">
-              📃 Reserved
-            </span>
-          )}
+          {item.reservation && !item.done && (() => {
+            const notesLower = (item.notes ?? "").toLowerCase();
+            const isConfirmed = notesLower.includes("confirmed") || notesLower.includes("confirmation:");
+            return isConfirmed ? (
+              <span className="inline-block mt-1.5 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                ✓ Confirmed
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                🗓 Confirm before trip
+              </span>
+            );
+          })()}
           {item.sourceDocId && (
             <a
               href="/vault"
@@ -441,7 +458,7 @@ export function AgendaItemCard({
   );
 }
 
-// ── Sortable row wrapper ──────────────────────────────────────────────────────────────────────────────
+// ── Sortable row wrapper ──────────────────────────────────────────────────────────────
 function SortableItem({
   item,
   isToday,
@@ -558,7 +575,7 @@ function SortableItem({
   );
 }
 
-// ── SortableAgendaSections ──────────────────────────────────────────────────────────────────────────────────────────
+// ── SortableAgendaSections ──────────────────────────────────────────────────────────────────
 // The main exported component: wraps all sections in a single DndContext so
 // items can also be dragged *between* sections.
 
