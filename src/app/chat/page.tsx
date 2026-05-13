@@ -154,6 +154,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
   const [tripTitle, setTripTitle] = useState("Maui Trip Group");
+  const [isPreviewSession, setIsPreviewSession] = useState(false);
 
   // Poll creation modal
   const [pollModal, setPollModal] = useState(false);
@@ -203,13 +204,16 @@ export default function ChatPage() {
     sheet?.type === "traveler"
       ? travelers.find((t) => t.id === (sheet as { type: "traveler"; id: string }).id) ?? null
       : null;
+  const needsFamilyJoin = Boolean(user && !isPreviewSession && travelers.length === 0 && !loadIssue);
+  const isReadOnlyGroup = isPreviewSession || needsFamilyJoin;
 
   // ── Data ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     async function fetchData() {
       setLoadIssue(null);
       try {
-        const isPreviewSession = localStorage.getItem(PREVIEW_INVITE_KEY) === "1";
+        let previewSession = localStorage.getItem(PREVIEW_INVITE_KEY) === "1";
+        setIsPreviewSession(previewSession);
         const [msgResult, travelerResult, tripResult] = await Promise.all([
           supabase.from("messages").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
           supabase.from("travelers").select("*").eq("trip_id", TRIP_ID).order("created_at", { ascending: true }),
@@ -220,10 +224,16 @@ export default function ChatPage() {
         );
         if (error) setLoadIssue(error.message);
         const liveTravelers = (travelerResult.data ?? []) as Traveler[];
+        const signedInTraveler = liveTravelers.some((traveler) => traveler.user_id === user?.id);
+        if (previewSession && signedInTraveler) {
+          localStorage.removeItem(PREVIEW_INVITE_KEY);
+          previewSession = false;
+          setIsPreviewSession(false);
+        }
         setTravelers(liveTravelers);
 
         const liveMessages = (msgResult.data ?? []) as Message[];
-        setMessages(liveMessages.length > 0 ? liveMessages : isPreviewSession ? FALLBACK_MESSAGES : []);
+        setMessages(liveMessages.length > 0 ? liveMessages : previewSession ? FALLBACK_MESSAGES : []);
         if (tripResult.data) {
           setTripTitle(tripResult.data.title);
           setTripDateInfo(getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date));
@@ -234,7 +244,7 @@ export default function ChatPage() {
       setLoading(false);
     }
     fetchData();
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const channel = supabase
@@ -263,6 +273,12 @@ export default function ChatPage() {
   async function send() {
     const text = input.trim();
     if (!text) return;
+    if (isReadOnlyGroup) {
+      setActionIssue(isPreviewSession
+        ? "Preview mode is read-only. Use the family invite link when you want to join the real trip."
+        : "Join the trip before sending messages to the group.");
+      return;
+    }
     setInput("");
     const senderName =
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
@@ -364,6 +380,12 @@ export default function ChatPage() {
   async function addTraveler() {
     const name = newName.trim();
     if (!name) return;
+    if (isReadOnlyGroup) {
+      setActionIssue(isPreviewSession
+        ? "Preview mode is read-only. Use the family invite link to manage real travelers."
+        : "Join the trip before adding travelers.");
+      return;
+    }
     const { data } = await supabase
       .from("travelers")
       .insert({ trip_id: TRIP_ID, name, avatar: "🧑", role: "Traveler", status: "invited", is_me: false })
@@ -404,6 +426,12 @@ export default function ChatPage() {
   }
 
   async function handleQuickAction(key: string) {
+    if (isReadOnlyGroup) {
+      setActionIssue(isPreviewSession
+        ? "Preview mode is read-only. Use the family invite link when you want to join the real trip."
+        : "Join the trip before posting to the group.");
+      return;
+    }
     if (key === "poll") {
       setPollModal(true);
       return;
@@ -442,6 +470,7 @@ export default function ChatPage() {
     const question = pollQuestion.trim();
     const opts = pollOptions.map((o) => o.trim()).filter(Boolean);
     if (!question || opts.length < 2) return;
+    if (isReadOnlyGroup) return;
 
     const senderName =
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
@@ -465,6 +494,13 @@ export default function ChatPage() {
   async function handleMsgPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (isReadOnlyGroup) {
+      setActionIssue(isPreviewSession
+        ? "Preview mode is read-only. Use the family invite link when you want to join the real trip."
+        : "Join the trip before sending photos to the group.");
+      if (msgPhotoRef.current) msgPhotoRef.current.value = "";
+      return;
+    }
     const ext = file.name.split(".").pop() ?? "jpg";
     const path = `msg-${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
@@ -525,7 +561,7 @@ export default function ChatPage() {
             <div className="px-6 pt-3 pb-10">
               <h3 className="text-lg font-black text-slate-900 mb-1">Invite to Trip</h3>
               <p className="text-sm text-slate-400 mb-5">
-                Share this link with anyone you want to add to the Maui trip.
+                Share this family link only with people you want to add to your real Maui trip.
               </p>
 
               <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3 mb-4">
@@ -540,6 +576,13 @@ export default function ChatPage() {
                 <span className="text-base font-black text-slate-900 tracking-widest bg-slate-100 px-3 py-1 rounded-xl">
                   {INVITE_CODE}
                 </span>
+              </div>
+
+              <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-widest text-sky-700">Trying the app</p>
+                <p className="mt-1 text-sm leading-relaxed text-sky-800">
+                  For friends who should preview TripFlow without joining this family trip, use <span className="font-mono font-bold">/join/TRIPFLOW</span>.
+                </p>
               </div>
 
               <div className="flex gap-2.5">
@@ -901,7 +944,11 @@ export default function ChatPage() {
               )}
             </div>
             <p className="text-xs text-slate-400">
-              {tripDateInfo?.status === "active"
+              {isPreviewSession
+                ? "Preview mode · group is read-only"
+                : needsFamilyJoin
+                ? "Not joined yet"
+                : tripDateInfo?.status === "active"
                 ? `Day ${tripDateInfo.currentDayNumber} of ${tripDateInfo.totalDays} · ${travelers.length} travelers`
                 : `${travelers.length} travelers`}
             </p>
@@ -941,7 +988,7 @@ export default function ChatPage() {
               );
             })}
 
-          {addingTraveler ? (
+          {addingTraveler && !isReadOnlyGroup ? (
             <form onSubmit={(e) => { e.preventDefault(); addTraveler(); }}
               className="flex items-center gap-1.5 flex-none self-start mt-0.5">
               <input autoFocus type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
@@ -951,13 +998,20 @@ export default function ChatPage() {
               <button type="button" onClick={() => { setAddingTraveler(false); setNewName(""); }}
                 className="text-[10px] text-slate-400 font-semibold">✕</button>
             </form>
-          ) : (
+          ) : !isReadOnlyGroup ? (
             <button onClick={() => setAddingTraveler(true)} className="flex flex-col items-center gap-1 flex-none w-[52px]">
               <div className="w-9 h-9 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-slate-500 transition-colors">
                 <span className="text-base font-light">+</span>
               </div>
               <p className="text-[10px] text-slate-400">Add</p>
             </button>
+          ) : (
+            <div className="flex flex-col items-center gap-1 flex-none w-[52px] opacity-60">
+              <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+                <span className="text-sm">🔒</span>
+              </div>
+              <p className="text-[10px] text-slate-400">{isPreviewSession ? "Preview" : "Join"}</p>
+            </div>
           )}
         </div>
       </div>
@@ -970,7 +1024,35 @@ export default function ChatPage() {
           <div className="flex-1 h-px bg-slate-100" />
         </div>
 
-        {messages.map((msg, idx) => {
+        {needsFamilyJoin && (
+          <div className="mx-auto mt-10 w-full max-w-sm rounded-3xl border border-slate-200 bg-white px-5 py-5 text-center shadow-sm">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-sky-50 text-2xl">🔗</div>
+            <h2 className="text-base font-black text-slate-900">Join this trip to use Group</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500">
+              You are signed in, but this profile is not a traveler on the Maui family trip yet.
+            </p>
+            <button
+              onClick={() => router.push(`/join/${INVITE_CODE}`)}
+              className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white"
+            >
+              Join Maui Family Trip
+            </button>
+            <p className="mt-3 text-xs leading-relaxed text-slate-400">
+              Use a preview link only when you want someone to try TripFlow without joining your family group.
+            </p>
+          </div>
+        )}
+
+        {isPreviewSession && (
+          <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
+            <p className="text-xs font-black uppercase tracking-widest text-sky-700">Preview mode</p>
+            <p className="mt-1 text-sm leading-relaxed text-sky-800">
+              This sample group is read-only and does not add this profile to Shaun&apos;s family trip.
+            </p>
+          </div>
+        )}
+
+        {!needsFamilyJoin && messages.map((msg, idx) => {
           const isMe = msg.sender_user_id
             ? msg.sender_user_id === user?.id
             : msg.sender_name === (user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0]);
@@ -1099,7 +1181,8 @@ export default function ChatPage() {
           style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
           {QUICK_ACTIONS.map((a) => (
             <button key={a.key} onClick={() => handleQuickAction(a.key)}
-              className={`flex-none flex flex-col items-center gap-0.5 text-center px-3 py-2 rounded-2xl border transition-all active:scale-95 ${a.bg} ${a.border} ${a.text}`}
+              disabled={isReadOnlyGroup}
+              className={`flex-none flex flex-col items-center gap-0.5 text-center px-3 py-2 rounded-2xl border transition-all active:scale-95 disabled:opacity-50 disabled:active:scale-100 ${a.bg} ${a.border} ${a.text}`}
               style={{ minWidth: "64px" }}>
               <span className="text-xl leading-none">{a.emoji}</span>
               <span className="text-[10px] font-bold leading-tight whitespace-nowrap mt-0.5">{a.label}</span>
@@ -1108,13 +1191,15 @@ export default function ChatPage() {
         </div>
         <div className="flex gap-2 pb-3">
           <button onClick={() => msgPhotoRef.current?.click()}
-            className="w-10 h-10 flex-none bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-base hover:bg-slate-200 transition-colors"
+            disabled={isReadOnlyGroup}
+            className="w-10 h-10 flex-none bg-slate-100 text-slate-500 rounded-2xl flex items-center justify-center text-base hover:bg-slate-200 transition-colors disabled:opacity-50"
             title="Send photo">📷</button>
           <input type="text" value={input} onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send()}
-            placeholder="Message the group..."
+            disabled={isReadOnlyGroup}
+            placeholder={isPreviewSession ? "Preview is read-only" : needsFamilyJoin ? "Join the trip to message" : "Message the group..."}
             className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-200 transition-all" />
-          <button onClick={send} disabled={!input.trim()}
+          <button onClick={send} disabled={!input.trim() || isReadOnlyGroup}
             className="w-10 h-10 flex-none bg-sky-600 text-white rounded-2xl flex items-center justify-center font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed transition-opacity">↑</button>
         </div>
       </div>

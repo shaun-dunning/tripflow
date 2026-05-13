@@ -54,13 +54,16 @@ function formatDateRange(start: string, end: string) {
 
 async function joinTrip(tripId: string, user: User, avatar = "🧑") {
   // Don't double-add
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("travelers")
     .select("id")
     .eq("trip_id", tripId)
     .eq("user_id", user.id)
     .maybeSingle();
 
+  if (existingError) {
+    throw new Error(`Could not check trip membership: ${existingError.message}`);
+  }
   if (existing) return;
 
   const name =
@@ -68,7 +71,7 @@ async function joinTrip(tripId: string, user: User, avatar = "🧑") {
     user.email?.split("@")[0] ??
     "Traveler";
 
-  await supabase.from("travelers").insert({
+  const { error: insertError } = await supabase.from("travelers").insert({
     trip_id: tripId,
     name,
     avatar,
@@ -78,12 +81,28 @@ async function joinTrip(tripId: string, user: User, avatar = "🧑") {
     user_id: user.id,
   });
 
-  await supabase.from("messages").insert({
+  if (insertError) {
+    throw new Error(`Could not add you to this trip: ${insertError.message}`);
+  }
+
+  const { data: confirmed, error: confirmError } = await supabase
+    .from("travelers")
+    .select("id")
+    .eq("trip_id", tripId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (confirmError || !confirmed) {
+    throw new Error(confirmError?.message ?? "Trip membership could not be confirmed.");
+  }
+
+  const { error: messageError } = await supabase.from("messages").insert({
     trip_id: tripId,
     sender_name: "TripFlow",
     sender_avatar: "🌺",
     text: `${name} joined the trip.`,
   });
+  if (messageError) console.warn("Join announcement failed:", messageError.message);
 }
 
 async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null> {
@@ -136,11 +155,12 @@ export default function JoinPage() {
       const isPreviewInvite = APP_PREVIEW_INVITE_CODES.includes(inviteCode);
       setInviteMode(isPreviewInvite ? "preview" : "family");
 
-  const tripData = await loadTripByInviteCode(isPreviewInvite ? INVITE_CODE : inviteCode);
+      const tripData = await loadTripByInviteCode(isPreviewInvite ? INVITE_CODE : inviteCode);
       if (!tripData && inviteCode !== INVITE_CODE && !isPreviewInvite) {
         setNotFound(true);
         return;
       }
+      setNotFound(false);
       setTrip(tripData ?? FALLBACK_TRIP);
     }
     void load();
@@ -162,21 +182,34 @@ export default function JoinPage() {
       .eq("trip_id", trip.id)
       .eq("user_id", currentUser.id)
       .maybeSingle()
-      .then(({ data }) => {
-        if (data) setAlreadyMember(true);
+      .then(({ data, error }) => {
+        if (error) {
+          setError(`Could not check whether you're already on this trip: ${error.message}`);
+          return;
+        }
+        setAlreadyMember(Boolean(data));
       });
   }, [currentUser, trip, inviteMode]);
 
   async function handleJoinAsLoggedIn() {
     if (!trip || !currentUser) return;
+    setError(null);
     setJoining(true);
-    if (inviteMode === "family") {
-      localStorage.setItem(FAMILY_INVITE_KEY, "1");
-      await joinTrip(trip.id, currentUser, selectedAvatar);
-    } else {
+    try {
+      if (inviteMode === "family") {
+        localStorage.removeItem(PREVIEW_INVITE_KEY);
+        localStorage.removeItem(FAMILY_INVITE_KEY);
+        await joinTrip(trip.id, currentUser, selectedAvatar);
+        router.replace("/chat");
+        return;
+      }
+      localStorage.removeItem(FAMILY_INVITE_KEY);
       localStorage.setItem(PREVIEW_INVITE_KEY, "1");
+      router.replace("/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not join this trip.");
+      setJoining(false);
     }
-    router.replace("/");
   }
 
   async function handleAuthSubmit(e: React.FormEvent) {
@@ -202,13 +235,20 @@ export default function JoinPage() {
     }
 
     if (user) {
-      if (inviteMode === "family") {
-        localStorage.setItem(FAMILY_INVITE_KEY, "1");
-        await joinTrip(trip.id, user, selectedAvatar);
-      } else {
+      try {
+        if (inviteMode === "family") {
+          localStorage.removeItem(PREVIEW_INVITE_KEY);
+          localStorage.removeItem(FAMILY_INVITE_KEY);
+          await joinTrip(trip.id, user, selectedAvatar);
+          router.replace("/chat");
+          return;
+        }
+        localStorage.removeItem(FAMILY_INVITE_KEY);
         localStorage.setItem(PREVIEW_INVITE_KEY, "1");
+        router.replace("/");
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not join this trip.");
       }
-      router.replace("/");
     }
     setAuthLoading(false);
   }
@@ -336,7 +376,11 @@ export default function JoinPage() {
                   <p className="text-sm text-slate-400 mt-1">Head back to the app to see the plan.</p>
                 </div>
                 <button
-                  onClick={() => router.replace("/")}
+                  onClick={() => {
+                    localStorage.removeItem(PREVIEW_INVITE_KEY);
+                    localStorage.removeItem(FAMILY_INVITE_KEY);
+                    router.replace("/");
+                  }}
                   className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
                 >
                   Open TripFlow
@@ -351,6 +395,11 @@ export default function JoinPage() {
                   </h2>
                   <p className="text-sm text-slate-400 mt-1">
                     Signed in as <span className="font-semibold text-slate-700">{currentUser.email}</span>
+                  </p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    {inviteMode === "family"
+                      ? "This adds this account as a traveler on Shaun's Maui family trip."
+                      : "This opens a sample experience without joining Shaun's family trip."}
                   </p>
                 </div>
                 <div className="w-full">
@@ -371,6 +420,12 @@ export default function JoinPage() {
                     ))}
                   </div>
                 </div>
+                {error && (
+                  <div className="w-full bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-start gap-2 text-left">
+                    <span>⚠️</span>
+                    <p className="text-sm text-red-700">{error}</p>
+                  </div>
+                )}
                 <button
                   onClick={handleJoinAsLoggedIn}
                   disabled={joining}
