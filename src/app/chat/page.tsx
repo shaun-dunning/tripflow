@@ -51,13 +51,6 @@ const QUICK_ACTIONS = [
 const AVATAR_OPTIONS = ["🧔", "👩", "👦", "👧", "👵", "👴", "🧑", "👨", "👩‍🦱", "👨‍🦳", "🧒", "👶"];
 const ROLE_PRESETS = ["Trip Organizer", "Co-traveler", "Kid", "Guest", "Grandparent", "Traveler"];
 
-const FALLBACK_TRAVELERS: Traveler[] = [
-  { id: "preview-shaun", name: "Shaun", avatar: "🧔", avatar_url: null, role: "Trip Organizer", status: "active" },
-  { id: "preview-jess", name: "Jess", avatar: "👩", avatar_url: null, role: "Co-traveler", status: "active" },
-  { id: "preview-kids", name: "Kids", avatar: "👧", avatar_url: null, role: "Beach crew", status: "active" },
-  { id: "preview-grandma", name: "Grandma", avatar: "👵", avatar_url: null, role: "Guest", status: "invited" },
-];
-
 const FALLBACK_MESSAGES: Message[] = [
   {
     id: "preview-welcome",
@@ -68,8 +61,8 @@ const FALLBACK_MESSAGES: Message[] = [
   },
   {
     id: "preview-plan",
-    sender_name: "Shaun",
-    sender_avatar: "🧔",
+    sender_name: "TripFlow",
+    sender_avatar: "🌺",
     card_type: "plan",
     card_title: "Maui Trip Plan",
     card_sub: "7 days · Jun 5-11 · Ka'anapali, Maui - tap to open My Day",
@@ -227,11 +220,10 @@ export default function ChatPage() {
         );
         if (error) setLoadIssue(error.message);
         const liveTravelers = (travelerResult.data ?? []) as Traveler[];
-        const usePreviewFallback = isPreviewSession || liveTravelers.length === 0;
-        setTravelers(liveTravelers.length > 0 ? liveTravelers : FALLBACK_TRAVELERS);
+        setTravelers(liveTravelers);
 
         const liveMessages = (msgResult.data ?? []) as Message[];
-        setMessages(liveMessages.length > 0 ? liveMessages : usePreviewFallback ? FALLBACK_MESSAGES : []);
+        setMessages(liveMessages.length > 0 ? liveMessages : isPreviewSession ? FALLBACK_MESSAGES : []);
         if (tripResult.data) {
           setTripTitle(tripResult.data.title);
           setTripDateInfo(getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date));
