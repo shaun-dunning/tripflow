@@ -8,11 +8,11 @@ import { getTripDateInfo, getDayStatus, formatDateRange, type TripDateInfo } fro
 import { ResilientState } from "@/components/ResilientState";
 import {
   ARCHIVED_TRIPS_KEY,
-  DEFAULT_UPCOMING_TRIPS,
   INVITE_CODE,
   TRIP_ID,
   UPCOMING_TRIPS_KEY,
   getStoredTripSubtitle,
+  isDefaultUpcomingTrips,
   normalizeStoredTrip,
   type StoredTrip,
 } from "@/lib/tripConfig";
@@ -263,7 +263,18 @@ function normalizeArchivedTrip(value: unknown): ArchivedTrip | null {
   };
 }
 
-function readStoredList<T>(key: string, normalize: (value: unknown) => T | null, fallback: T[]): T[] {
+function isLegacyArchivedTrips(trips: ArchivedTrip[]): boolean {
+  return trips.length === INITIAL_ARCHIVED.length && trips.every((trip, index) => {
+    const sample = INITIAL_ARCHIVED[index];
+    return (
+      trip.title === sample.title &&
+      trip.destination === sample.destination &&
+      trip.dateRange === sample.dateRange
+    );
+  });
+}
+
+function readStoredList<T>(key: string, normalize: (value: unknown) => T | null, fallback: T[], isLegacyList?: (items: T[]) => boolean): T[] {
   if (typeof window === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(key);
@@ -271,6 +282,7 @@ function readStoredList<T>(key: string, normalize: (value: unknown) => T | null,
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return fallback;
     const normalized = parsed.map(normalize).filter((item): item is T => item !== null);
+    if (isLegacyList?.(normalized)) return fallback;
     return normalized.length > 0 ? normalized : fallback;
   } catch {
     return fallback;
@@ -365,10 +377,10 @@ export default function TripPage() {
   const tripPackingCount = tripPackingProgress.count;
 
   const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() =>
-    readStoredList(UPCOMING_TRIPS_KEY, normalizeUpcomingTrip, DEFAULT_UPCOMING_TRIPS)
+    readStoredList(UPCOMING_TRIPS_KEY, normalizeUpcomingTrip, [], isDefaultUpcomingTrips)
   );
   const [archivedTrips, setArchivedTrips] = useState<ArchivedTrip[]>(() =>
-    readStoredList(ARCHIVED_TRIPS_KEY, normalizeArchivedTrip, INITIAL_ARCHIVED)
+    readStoredList(ARCHIVED_TRIPS_KEY, normalizeArchivedTrip, [], isLegacyArchivedTrips)
   );
   const [showArchived, setShowArchived] = useState(false);
 

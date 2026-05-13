@@ -38,7 +38,7 @@ export default function TripsPage() {
   const { user } = useAuth();
   const [greeting] = useState(getGreeting);
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "traveler";
-  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(readStoredTrips);
+  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => readStoredTrips([]));
 
   // ── Live trip data ──────────────────────────────────────────────────────────
   const [tripTitle, setTripTitle] = useState("Maui Family Trip");
@@ -512,36 +512,43 @@ export default function TripsPage() {
           <span className="text-xs font-semibold text-slate-400">{upcomingTrips.length} planned</span>
         </div>
         <div className="flex flex-col gap-3">
-          {upcomingTrips.map((trip) => (
-            <button
-              key={trip.id}
-              onClick={() => openEditTrip(trip)}
-              className="bg-white rounded-2xl border border-dashed border-slate-200 overflow-hidden text-left w-full active:scale-[0.99] transition-transform"
-            >
-              <div className="relative h-28 w-full overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={trip.photo}
-                  alt={trip.photoAlt}
-                  className="w-full h-full object-cover opacity-75"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                <div className="absolute top-2.5 left-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
-                  Planning
-                </div>
-                <div className="absolute top-2.5 right-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  Edit ✏️
-                </div>
-                <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 flex items-end justify-between">
-                  <div>
-                    <p className="text-sm font-bold text-white leading-tight">{trip.title}</p>
-                    <p className="text-[11px] text-white/70 mt-0.5">{getStoredTripSubtitle(trip)}</p>
+          {upcomingTrips.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center">
+              <p className="text-sm font-bold text-slate-700">No future trips planned yet</p>
+              <p className="mt-1 text-xs text-slate-400">Create one when you are ready to sketch the next adventure.</p>
+            </div>
+          ) : (
+            upcomingTrips.map((trip) => (
+              <button
+                key={trip.id}
+                onClick={() => openEditTrip(trip)}
+                className="bg-white rounded-2xl border border-dashed border-slate-200 overflow-hidden text-left w-full active:scale-[0.99] transition-transform"
+              >
+                <div className="relative h-28 w-full overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={trip.photo}
+                    alt={trip.photoAlt}
+                    className="w-full h-full object-cover opacity-75"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                  <div className="absolute top-2.5 left-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide">
+                    Planning
                   </div>
-                  <span className="text-lg">{trip.emoji}</span>
+                  <div className="absolute top-2.5 right-3 bg-white/20 backdrop-blur-sm border border-white/30 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    Edit
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5 flex items-end justify-between">
+                    <div>
+                      <p className="text-sm font-bold text-white leading-tight">{trip.title}</p>
+                      <p className="text-[11px] text-white/70 mt-0.5">{getStoredTripSubtitle(trip)}</p>
+                    </div>
+                    <span className="text-lg">{trip.emoji}</span>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            ))
+          )}
         </div>
       </div>
 

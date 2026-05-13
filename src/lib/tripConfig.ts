@@ -90,7 +90,19 @@ export function normalizeStoredTrip(value: unknown, fallbackPhoto?: { url: strin
   };
 }
 
-export function readStoredTrips(fallback = DEFAULT_UPCOMING_TRIPS): StoredTrip[] {
+export function isDefaultUpcomingTrips(trips: StoredTrip[]): boolean {
+  return trips.length === DEFAULT_UPCOMING_TRIPS.length && trips.every((trip, index) => {
+    const sample = DEFAULT_UPCOMING_TRIPS[index];
+    return (
+      trip.title === sample.title &&
+      trip.destination === sample.destination &&
+      trip.startDate === sample.startDate &&
+      trip.nights === sample.nights
+    );
+  });
+}
+
+export function readStoredTrips(fallback: StoredTrip[] = []): StoredTrip[] {
   if (typeof window === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(UPCOMING_TRIPS_KEY);
@@ -98,6 +110,7 @@ export function readStoredTrips(fallback = DEFAULT_UPCOMING_TRIPS): StoredTrip[]
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return fallback;
     const normalized = parsed.map((item) => normalizeStoredTrip(item)).filter((item): item is StoredTrip => item !== null);
+    if (isDefaultUpcomingTrips(normalized)) return fallback;
     return normalized.length > 0 ? normalized : fallback;
   } catch {
     return fallback;
