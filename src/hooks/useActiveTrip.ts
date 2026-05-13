@@ -34,6 +34,16 @@ type CreateTripInput = {
   avatar?: string;
 };
 
+type ActiveTripSnapshot = {
+  userId: string;
+  status: ActiveTripStatus;
+  memberships: ActiveTripMembership[];
+  activeTrip: ActiveTrip | null;
+  error: string | null;
+};
+
+let cachedSnapshot: ActiveTripSnapshot | null = null;
+
 function normalizeTrip(value: unknown): ActiveTrip | null {
   if (!value || typeof value !== "object") return null;
   const trip = value as Partial<ActiveTrip>;
@@ -50,18 +60,25 @@ function normalizeTrip(value: unknown): ActiveTrip | null {
 }
 
 export function useActiveTrip(user: User | null) {
-  const [status, setStatus] = useState<ActiveTripStatus>("checking");
-  const [memberships, setMemberships] = useState<ActiveTripMembership[]>([]);
-  const [activeTrip, setActiveTrip] = useState<ActiveTrip | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const initialSnapshot = cachedSnapshot?.userId === user?.id ? cachedSnapshot : null;
+  const [status, setStatus] = useState<ActiveTripStatus>(initialSnapshot?.status ?? "checking");
+  const [memberships, setMemberships] = useState<ActiveTripMembership[]>(initialSnapshot?.memberships ?? []);
+  const [activeTrip, setActiveTrip] = useState<ActiveTrip | null>(initialSnapshot?.activeTrip ?? null);
+  const [error, setError] = useState<string | null>(initialSnapshot?.error ?? null);
+
+  const applySnapshot = useCallback((snapshot: ActiveTripSnapshot) => {
+    cachedSnapshot = snapshot;
+    setStatus(snapshot.status);
+    setMemberships(snapshot.memberships);
+    setActiveTrip(snapshot.activeTrip);
+    setError(snapshot.error);
+  }, []);
 
   const loadTrips = useCallback(async () => {
-    setError(null);
-
     if (typeof window !== "undefined" && localStorage.getItem(PREVIEW_INVITE_KEY) === "1") {
-      setStatus("preview");
-      setMemberships([]);
-      setActiveTrip(null);
+      if (user) {
+        applySnapshot({ userId: user.id, status: "preview", memberships: [], activeTrip: null, error: null });
+      }
       return;
     }
 
@@ -72,7 +89,13 @@ export function useActiveTrip(user: User | null) {
       return;
     }
 
-    setStatus("checking");
+    if (cachedSnapshot?.userId === user.id && cachedSnapshot.status !== "checking") {
+      applySnapshot(cachedSnapshot);
+    } else {
+      setStatus("checking");
+      setError(null);
+    }
+
     const { data, error: travelerError } = await supabase
       .from("travelers")
       .select("id, trip_id, role, status, trips(id, title, destination, start_date, end_date, invite_code, cover_photo)")
@@ -80,10 +103,13 @@ export function useActiveTrip(user: User | null) {
       .order("created_at", { ascending: true });
 
     if (travelerError) {
-      setError(travelerError.message);
-      setStatus("no-trip");
-      setMemberships([]);
-      setActiveTrip(null);
+      applySnapshot({
+        userId: user.id,
+        status: "no-trip",
+        memberships: [],
+        activeTrip: null,
+        error: travelerError.message,
+      });
       return;
     }
 
@@ -103,23 +129,28 @@ export function useActiveTrip(user: User | null) {
 
     if (rows.length === 0) {
       if (typeof window !== "undefined") localStorage.removeItem(ACTIVE_TRIP_KEY);
-      setMemberships([]);
-      setActiveTrip(null);
-      setStatus("no-trip");
+      applySnapshot({ userId: user.id, status: "no-trip", memberships: [], activeTrip: null, error: null });
       return;
     }
 
     const storedTripId = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_TRIP_KEY) : null;
     const selected = rows.find((row) => row.trip_id === storedTripId) ?? rows[0];
     if (typeof window !== "undefined") localStorage.setItem(ACTIVE_TRIP_KEY, selected.trip_id);
-    setMemberships(rows);
-    setActiveTrip(selected.trip);
-    setStatus("ready");
-  }, [user]);
+    applySnapshot({
+      userId: user.id,
+      status: "ready",
+      memberships: rows,
+      activeTrip: selected.trip,
+      error: null,
+    });
+  }, [applySnapshot, user]);
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
+      if (user && cachedSnapshot?.userId === user.id) {
+        applySnapshot(cachedSnapshot);
+      }
       await loadTrips();
       if (cancelled) return;
     }
@@ -127,14 +158,21 @@ export function useActiveTrip(user: User | null) {
     return () => {
       cancelled = true;
     };
-  }, [loadTrips]);
+  }, [applySnapshot, loadTrips, user]);
 
   const selectTrip = useCallback((tripId: string) => {
+    if (!user) return;
     const membership = memberships.find((row) => row.trip_id === tripId);
     if (!membership) return;
     localStorage.setItem(ACTIVE_TRIP_KEY, tripId);
-    setActiveTrip(membership.trip);
-  }, [memberships]);
+    applySnapshot({
+      userId: user.id,
+      status: "ready",
+      memberships,
+      activeTrip: membership.trip,
+      error,
+    });
+  }, [applySnapshot, error, memberships, user]);
 
   const createTrip = useCallback(async (input: CreateTripInput) => {
     if (!user) throw new Error("Sign in before creating a trip.");
