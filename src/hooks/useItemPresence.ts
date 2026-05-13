@@ -47,9 +47,10 @@ export function useItemPresence(itemId: string) {
   const [myId, setMyId] = useState<string>("me");
 
   useEffect(() => {
-    const id = getMyId();
-    setMyId(id);
-    setStore(readStore());
+    queueMicrotask(() => {
+      setMyId(getMyId());
+      setStore(readStore());
+    });
 
     function refresh() { setStore(readStore()); }
     subscribers.add(refresh);

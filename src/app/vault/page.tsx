@@ -29,17 +29,6 @@ const CATEGORIES = ["All", "Flights", "Hotel", "Car", "Activities", "Dining"];
 const CATEGORY_EMOJIS: Record<string, string> = {
   Flights: "✈️", Hotel: "🏨", Car: "🚙", Activities: "🎟️", Dining: "🍽️",
 };
-// ── Seeded on first load ───────────────────────────────────────────────────
-const SEED_DOCS: NewDoc[] = [
-  { category: "Flights", name: "LAX → SEA", provider: "American Airlines", confirmation: "LSKUAS", date: "Jun 5 · 8:05 AM", status: "confirmed", notes: "AA271 · Departs LAX · Arrives Seattle 10:56am", emoji: "✈️", file_type: "booking" },
-  { category: "Flights", name: "SEA → OGG", provider: "Alaska Airlines", confirmation: "AS9K2M", date: "Jun 5 · 12:45 PM", status: "confirmed", notes: "AS845 · Departs Seattle · Arrives Maui OGG 5:11pm", emoji: "✈️", file_type: "booking" },
-  { category: "Flights", name: "OGG → LAX", provider: "Alaska Airlines", confirmation: "AS1R7P", date: "Jun 11 · 10:30 AM", status: "confirmed", notes: "Return flight · AS844 · Arrives LAX 6:45pm", emoji: "✈️", file_type: "booking" },
-  { category: "Hotel", name: "Sheraton Maui Resort & Spa", provider: "Sheraton", confirmation: "SHR4892K", date: "Jun 5–11 · 6 nights", status: "confirmed", notes: "Ka'anapali Beach · Ocean view rooms · Check-in 3pm · Check-out noon", emoji: "🏨", file_type: "booking" },
-  { category: "Car", name: "Intermediate SUV", provider: "Alamo", confirmation: "ALM77291", date: "Jun 5 · Airport pickup", status: "confirmed", notes: "Pick up OGG arrivals level · Return Jun 11 by 9am", emoji: "🚙", file_type: "booking" },
-  { category: "Activities", name: "Haleakalā Sunrise", provider: "recreation.gov", confirmation: "HALE-2698", date: "Jun 10 · 2:30 AM departure", status: "confirmed", notes: "Timed entry reservation required · Summit 10,023 ft · Leave hotel at 2:30am", emoji: "🌋", file_type: "booking" },
-  { category: "Activities", name: "Old Lahaina Luau", provider: "Old Lahaina Luau", confirmation: "OLL-45821", date: "Jun 9 · 5:45 PM", status: "confirmed", notes: "4 tickets · Front of house seating · Lei greeting included", emoji: "🌺", file_type: "booking" },
-  { category: "Dining", name: "Mama's Fish House", provider: "OpenTable", confirmation: "OT-889231", date: "Jun 6 · 7:00 PM", status: "confirmed", notes: "Party of 4 · Oceanfront table requested · Dress code: resort casual", emoji: "🐟", file_type: "booking" },
-];
 
 // ── Add form shape ─────────────────────────────────────────────────────────
 type AddForm = {
@@ -397,20 +386,8 @@ export default function VaultPage() {
         .order("created_at", { ascending: true });
       if (error) { setError(error.message); setLoading(false); return; }
       if (!data || data.length === 0) {
-        const { data: seeded, error: seedError } = await supabase
-          .from("documents")
-          .insert(SEED_DOCS.map((d) => ({ ...d, trip_id: activeTrip.activeTripId })))
-          .select();
-        if (seedError) setError(seedError.message);
-        else if (seeded) {
-          setDocs(seeded as Doc[]);
-          const focusId = localStorage.getItem("tripflow-vault-focus-doc");
-          if (focusId) {
-            localStorage.removeItem("tripflow-vault-focus-doc");
-            const focused = (seeded as Doc[]).find((doc) => doc.id === focusId);
-            if (focused) setDetailDoc(focused);
-          }
-        }
+        setDocs([]);
+        localStorage.removeItem("tripflow-vault-focus-doc");
       } else {
         setDocs(data as Doc[]);
         const focusId = localStorage.getItem("tripflow-vault-focus-doc");
