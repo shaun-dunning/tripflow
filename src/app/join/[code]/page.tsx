@@ -6,6 +6,8 @@ import { supabase } from "@/lib/supabase";
 import {
   ACTIVE_TRIP_KEY,
   APP_PREVIEW_INVITE_CODES,
+  DEMO_INVITE_CODE,
+  DEMO_TRIP_ID,
   FAMILY_INVITE_KEY,
   INVITE_CODE,
   PREVIEW_INVITE_KEY,
@@ -37,6 +39,20 @@ const FALLBACK_TRIP: TripInfo = {
     { id: "fallback-family", name: "Family", avatar: "🌺", avatar_url: null },
   ],
 };
+const DEMO_FALLBACK_TRIP: TripInfo = {
+  id: DEMO_TRIP_ID,
+  title: "Maui Demo Trip",
+  destination: "Maui, Hawaii",
+  start_date: "2026-06-05",
+  end_date: "2026-06-11",
+  cover_photo: MAUI_FALLBACK,
+  travelers: [
+    { id: "demo-alex", name: "Alex", avatar: "🧑", avatar_url: null },
+    { id: "demo-jamie", name: "Jamie", avatar: "👩", avatar_url: null },
+    { id: "demo-riley", name: "Riley", avatar: "👧", avatar_url: null },
+    { id: "demo-casey", name: "Casey", avatar: "👦", avatar_url: null },
+  ],
+};
 const AVATARS = ["🌺", "🏄", "🌊", "☀️", "🧳", "🍍"];
 const ONBOARDING_STEPS = [
   { title: "See the plan", body: "Check each day, reservations, maps, and what is coming up next.", icon: "🗓️" },
@@ -44,7 +60,7 @@ const ONBOARDING_STEPS = [
   { title: "Arrive ready", body: "Use packing, docs, and leave-by guidance when the trip gets close.", icon: "✨" },
 ];
 
-type InviteMode = "family" | "preview";
+type InviteMode = "family" | "preview" | "demo";
 
 function formatDateRange(start: string, end: string) {
   const s = new Date(start + "T12:00:00");
@@ -57,6 +73,9 @@ function formatJoinError(err: unknown) {
   const message = err instanceof Error ? err.message : "Could not join this trip.";
   if (/row-level security|rls|policy/i.test(message)) {
     return "TripFlow could not add this account to the trip because Supabase is missing the traveler invite policy. Apply the membership policy SQL, then try again.";
+  }
+  if (/foreign key|violates.*constraint|not present/i.test(message)) {
+    return "The demo trip has not been installed in Supabase yet. Run supabase/demo-trip.sql in the SQL Editor, then try this link again.";
   }
   return message;
 }
@@ -140,6 +159,15 @@ async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null
     if (byId.data) return byId.data as TripInfo;
   }
 
+  if (inviteCode === DEMO_INVITE_CODE) {
+    const byId = await supabase
+      .from("trips")
+      .select(select)
+      .eq("id", DEMO_TRIP_ID)
+      .maybeSingle();
+    if (byId.data) return byId.data as TripInfo;
+  }
+
   return null;
 }
 
@@ -168,7 +196,8 @@ export default function JoinPage() {
     async function load() {
       const inviteCode = (code ?? INVITE_CODE).toUpperCase();
       const isPreviewInvite = APP_PREVIEW_INVITE_CODES.includes(inviteCode);
-      setInviteMode(isPreviewInvite ? "preview" : "family");
+      const isDemoInvite = inviteCode === DEMO_INVITE_CODE;
+      setInviteMode(isPreviewInvite ? "preview" : isDemoInvite ? "demo" : "family");
       if (isPreviewInvite) {
         localStorage.removeItem(FAMILY_INVITE_KEY);
         localStorage.setItem(PREVIEW_INVITE_KEY, "1");
@@ -179,11 +208,17 @@ export default function JoinPage() {
 
       const tripData = await loadTripByInviteCode(isPreviewInvite ? INVITE_CODE : inviteCode);
       if (!tripData && inviteCode !== INVITE_CODE && !isPreviewInvite) {
-        setNotFound(true);
-        return;
+        if (isDemoInvite) {
+          setNotFound(false);
+          setTrip(DEMO_FALLBACK_TRIP);
+          return;
+        } else {
+          setNotFound(true);
+          return;
+        }
       }
       setNotFound(false);
-      setTrip(tripData ?? FALLBACK_TRIP);
+      setTrip(tripData ?? (isDemoInvite ? DEMO_FALLBACK_TRIP : FALLBACK_TRIP));
     }
     void load();
   }, [code]);
@@ -197,7 +232,7 @@ export default function JoinPage() {
 
   // 3. If logged in + trip loaded → check membership
   useEffect(() => {
-    if (!currentUser || !trip || inviteMode !== "family") return;
+    if (!currentUser || !trip || inviteMode === "preview") return;
     supabase
       .from("travelers")
       .select("id")
@@ -218,7 +253,7 @@ export default function JoinPage() {
     setError(null);
     setJoining(true);
     try {
-      if (inviteMode === "family") {
+      if (inviteMode !== "preview") {
         localStorage.removeItem(PREVIEW_INVITE_KEY);
         await joinTrip(trip.id, currentUser, selectedAvatar);
         localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
@@ -259,7 +294,7 @@ export default function JoinPage() {
 
     if (user) {
       try {
-        if (inviteMode === "family") {
+        if (inviteMode !== "preview") {
           localStorage.removeItem(PREVIEW_INVITE_KEY);
           await joinTrip(trip.id, user, selectedAvatar);
           localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
@@ -302,6 +337,7 @@ export default function JoinPage() {
     );
   }
 
+  const isDemo = inviteMode === "demo";
   const visibleTravelers = trip.travelers.slice(0, 5);
   const extraCount = trip.travelers.length - visibleTravelers.length;
 
@@ -321,14 +357,16 @@ export default function JoinPage() {
 
         <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
           <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-1">
-            {inviteMode === "family" ? "🌺 You're invited" : "✨ Preview TripFlow"}
+            {inviteMode === "family" ? "🌺 You're invited" : isDemo ? "✨ Demo Trip" : "✨ Preview TripFlow"}
           </p>
           <h1 className="text-2xl font-black text-white leading-tight">
-            {inviteMode === "family" ? trip.title : "Try TripFlow"}
+            {inviteMode === "preview" ? "Try TripFlow" : trip.title}
           </h1>
           <p className="text-sm text-white/70 mt-1">
             {inviteMode === "family"
               ? `${formatDateRange(trip.start_date, trip.end_date)} · ${trip.destination}`
+              : isDemo
+              ? "A fully loaded sample trip with anonymized names, bookings, and group chat"
               : "A polished sample trip you can explore before joining a real group"}
           </p>
         </div>
@@ -357,10 +395,10 @@ export default function JoinPage() {
           )}
         </div>
         <div>
-          {inviteMode === "family" ? (
+          {inviteMode !== "preview" ? (
             <>
               <p className="text-sm font-bold text-slate-900">
-                {trip.travelers.length} traveler{trip.travelers.length !== 1 ? "s" : ""} going
+                {trip.travelers.length} {isDemo ? "sample " : ""}traveler{trip.travelers.length !== 1 ? "s" : ""} going
               </p>
               <p className="text-xs text-slate-400">
                 {visibleTravelers.map((t) => t.name).join(", ")}
@@ -392,7 +430,7 @@ export default function JoinPage() {
         {/* Already logged in */}
         {currentUser ? (
           <div className="flex flex-col items-center gap-4 pt-4 text-center">
-            {inviteMode === "family" && alreadyMember ? (
+            {inviteMode !== "preview" && alreadyMember ? (
               <>
                 <span className="text-4xl">✅</span>
                 <div>
@@ -416,7 +454,7 @@ export default function JoinPage() {
                 <span className="text-4xl">👋</span>
                 <div>
                   <h2 className="text-lg font-black text-slate-900">
-                    {inviteMode === "family" ? "Ready to join?" : "Ready to try it?"}
+                    {inviteMode === "preview" ? "Ready to try it?" : isDemo ? "Ready to open the demo?" : "Ready to join?"}
                   </h2>
                   <p className="text-sm text-slate-400 mt-1">
                     Signed in as <span className="font-semibold text-slate-700">{currentUser.email}</span>
@@ -424,6 +462,8 @@ export default function JoinPage() {
                   <p className="text-xs text-slate-400 mt-2">
                     {inviteMode === "family"
                       ? "This adds this account as a traveler on Shaun's Maui family trip."
+                      : isDemo
+                      ? "This adds this account to the anonymized Maui demo trip. Your changes stay separate from Shaun's real family trip."
                       : "This opens a sample experience without joining Shaun's family trip."}
                   </p>
                 </div>
@@ -456,7 +496,9 @@ export default function JoinPage() {
                   disabled={joining}
                   className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-50"
                 >
-                  {joining ? (inviteMode === "family" ? "Joining…" : "Opening…") : (inviteMode === "family" ? `Join ${trip.title}` : "Open TripFlow")}
+                  {joining
+                    ? (inviteMode === "preview" ? "Opening…" : "Joining…")
+                    : (inviteMode === "preview" ? "Open TripFlow" : isDemo ? "Open Demo Trip" : `Join ${trip.title}`)}
                 </button>
               </>
             )}
@@ -471,9 +513,13 @@ export default function JoinPage() {
               {mode === "signup"
                 ? inviteMode === "family"
                   ? "You'll be added to the trip automatically."
+                  : isDemo
+                  ? "Create an account to explore the anonymized demo trip."
                   : "Create an account to explore the sample experience."
                 : inviteMode === "family"
                   ? "Sign in and you'll be added to the trip."
+                  : isDemo
+                  ? "Sign in to open the anonymized Maui demo trip."
                   : "Sign in to preview TripFlow without joining the family trip."}
             </p>
 
@@ -580,8 +626,8 @@ export default function JoinPage() {
                 {authLoading
                   ? "Please wait…"
                   : mode === "signup"
-                  ? inviteMode === "family" ? `Join ${trip.title}` : "Create Account & Preview"
-                  : inviteMode === "family" ? "Sign in & Join Trip" : "Sign in & Preview"}
+                  ? inviteMode === "family" ? `Join ${trip.title}` : isDemo ? "Create Account & Open Demo" : "Create Account & Preview"
+                  : inviteMode === "family" ? "Sign in & Join Trip" : isDemo ? "Sign in & Open Demo" : "Sign in & Preview"}
               </button>
             </form>
           </>

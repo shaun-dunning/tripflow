@@ -54,9 +54,11 @@
 - [x] Stabilized production build by removing remote `next/font/google` dependency and using local/system font variables.
 - [x] Reduced expected weather API console noise when OpenWeather credentials are unavailable.
 - [x] Removed remaining Today-page Maui fixture fallbacks from active trips: days, empty agenda states, doc overlays, weather labels, countdown copy, and AI planner prompts now follow the selected trip.
+- [x] Added a separate anonymized Maui demo trip path: `/join/DEMO` now opens a full sample trip with fake travelers, bookings, agenda, docs, chat, and packing seed data instead of exposing the real family trip.
 
 ## Recommended Next
 - [ ] Manual demo QA pass — run invite join, tab navigation, Vault-linked reservations, Group cards, Packing sync fallback, and mobile layout checks before sharing broadly.
+- [ ] Run `supabase/demo-trip.sql` in Supabase SQL Editor before sharing `/join/DEMO`.
 - [ ] Smart pre-trip readiness dashboard — combine packing progress, document readiness, reservation confidence, weather warnings, and traveler join status into one "trip ready" score.
 - [ ] Reservation confirmation workflow — add "needs confirmation" states, reminders, and one-tap confirm from Vault/My Day.
 - [ ] True travel-time service — replace local Maui drive-time heuristics with geocoded locations and live/static duration estimates.

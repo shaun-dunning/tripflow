@@ -626,7 +626,7 @@ export default function ChatPage() {
               <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
                 <p className="text-xs font-black uppercase tracking-widest text-sky-700">Trying the app</p>
                 <p className="mt-1 text-sm leading-relaxed text-sky-800">
-                  For friends who should preview TripFlow without joining this trip, use <span className="font-mono font-bold">/join/TRIPFLOW</span>.
+                  For friends who should test a fully loaded anonymized trip, use <span className="font-mono font-bold">/join/DEMO</span>. For a lightweight read-only preview, use <span className="font-mono font-bold">/join/TRIPFLOW</span>.
                 </p>
               </div>
 
@@ -1102,7 +1102,7 @@ export default function ChatPage() {
             </button>
             <p className="mt-3 text-xs leading-relaxed text-slate-400">
               {hasFamilyInvite
-                ? "Use a preview link only when you want someone to try TripFlow without joining your family group."
+                ? "Use /join/DEMO when you want someone to try TripFlow without joining your family group."
                 : "Private trip details only appear after an invite has been accepted."}
             </p>
           </div>
