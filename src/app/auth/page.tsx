@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Lock, Mail, MapPinned, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { ArrowRight, Lock, Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
 
@@ -71,52 +71,30 @@ export default function AuthPage() {
     <div className="min-h-screen flex flex-col bg-white">
 
       {/* ── Hero ── */}
-      <div className="relative min-h-[44dvh] w-full overflow-hidden flex-none">
+      <div className="relative min-h-[40dvh] w-full overflow-hidden flex-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&h=720&fit=crop&q=85"
           alt="Maui beach"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/28 to-sky-950/10" />
-        <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/35 to-transparent" />
-        <div className="absolute top-5 left-5 right-5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/brand/daywave-icon-512.png"
-              alt="Daywave"
-              className="size-9 rounded-2xl shadow-lg shadow-black/20"
-            />
-            <span className="text-lg font-black text-white tracking-tight">daywave</span>
-          </div>
-          <div className="rounded-full bg-white/16 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md border border-white/20">
-            Maui ready
-          </div>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 px-6 pb-7">
-          <div className="mb-4 inline-flex items-center gap-1.5 rounded-full bg-white/16 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md border border-white/20">
-            <Sparkles className="size-3" />
-            Family travel, organized
-          </div>
-          <h1 className="max-w-[18rem] text-4xl font-black leading-[0.95] tracking-tight text-white">
-            Every plan, person, and reservation in flow.
-          </h1>
-          <p className="mt-3 max-w-[19rem] text-sm leading-relaxed text-white/72">
-            A calm command center for the days before, during, and after the trip.
+        <div className="absolute inset-0 bg-gradient-to-t from-[#061832]/92 via-[#061832]/34 to-[#061832]/10" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/30 to-transparent" />
+        <div className="absolute left-6 top-6">
+          <p className="font-serif text-2xl font-light leading-none text-white drop-shadow-sm">
+            daywave
           </p>
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            {[
-              { icon: ShieldCheck, label: "Docs" },
-              { icon: Users, label: "Group" },
-              { icon: MapPinned, label: "Today" },
-            ].map((item) => (
-              <div key={item.label} className="rounded-2xl border border-white/18 bg-white/13 px-3 py-2.5 text-white backdrop-blur-md">
-                <item.icon className="mb-1.5 size-4" />
-                <p className="text-[11px] font-bold leading-none">{item.label}</p>
-              </div>
-            ))}
-          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 px-6 pb-8">
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.22em] text-white/62">
+            Your trip, in flow
+          </p>
+          <h1 className="max-w-[18rem] text-[2.65rem] font-black leading-[0.94] text-white">
+            Plan each day beautifully.
+          </h1>
+          <p className="mt-3 max-w-[20rem] text-sm leading-relaxed text-white/74">
+            Reservations, people, plans, and day-of decisions in one calm place.
+          </p>
         </div>
       </div>
 
