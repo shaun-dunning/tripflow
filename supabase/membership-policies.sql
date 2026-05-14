@@ -69,6 +69,8 @@ declare
   new_trip_id uuid;
   new_invite_code text;
   creator_id uuid;
+  trip_day date;
+  day_number int := 1;
 begin
   creator_id := auth.uid();
   if creator_id is null then
@@ -112,6 +114,26 @@ begin
     'active',
     true
   );
+
+  trip_day := trip_start_date;
+  while trip_day <= trip_end_date loop
+    insert into public.trip_days (trip_id, day_number, date, label)
+    values (
+      new_trip_id,
+      day_number,
+      trip_day,
+      'Day ' || day_number ||
+        case
+          when trip_day = trip_start_date then ' · Arrival day'
+          when trip_day = trip_end_date then ' · Departure day'
+          else ' · Open day'
+        end
+    )
+    on conflict (trip_id, day_number) do nothing;
+
+    trip_day := trip_day + interval '1 day';
+    day_number := day_number + 1;
+  end loop;
 
   return query
   select t.id, t.title, t.destination, t.start_date, t.end_date, t.cover_photo, t.invite_code

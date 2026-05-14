@@ -44,10 +44,10 @@ type Sheet =
 const QUICK_ACTIONS = [
   { key: "poll",    label: "Group poll",     emoji: "🗳️", bg: "bg-rose-50",    border: "border-rose-200",    text: "text-rose-700"    },
   { key: "plan",    label: "Trip plan",      emoji: "📋", bg: "bg-sky-50",     border: "border-sky-200",     text: "text-sky-700"     },
-  { key: "weather", label: "Maui weather",   emoji: "🌺", bg: "bg-indigo-50",  border: "border-indigo-200",  text: "text-indigo-700"  },
+  { key: "weather", label: "Weather",        emoji: "☀️", bg: "bg-indigo-50",  border: "border-indigo-200",  text: "text-indigo-700"  },
   { key: "flight",  label: "Flight info",    emoji: "✈️", bg: "bg-amber-50",   border: "border-amber-200",   text: "text-amber-700"   },
-  { key: "meetup",  label: "Meet at resort", emoji: "🏨", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
-  { key: "luau",    label: "Luau night",     emoji: "🌟", bg: "bg-violet-50",  border: "border-violet-200",  text: "text-violet-700"  },
+  { key: "meetup",  label: "Meetup spot",    emoji: "📍", bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-700" },
+  { key: "idea",    label: "Trip idea",      emoji: "✨", bg: "bg-violet-50",  border: "border-violet-200",  text: "text-violet-700"  },
 ];
 
 const AVATAR_OPTIONS = ["🧔", "👩", "👦", "👧", "👵", "👴", "🧑", "👨", "👩‍🦱", "👨‍🦳", "🧒", "👶"];
@@ -472,16 +472,18 @@ export default function ChatPage() {
       user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "You";
     const avatar = myTraveler?.avatar ?? "🧔";
 
+    const destination = activeTrip.activeTrip?.destination ?? "the destination";
+    const tripName = activeTrip.activeTrip?.title ?? "Trip";
     const planCard = tripDateInfo?.status === "active"
-      ? { card_type: "plan", card_title: `Day ${tripDateInfo.currentDayNumber} Plan · ${tripDateInfo.currentDayNumber === 1 ? "Travel Day" : tripDateInfo.currentDayNumber === 2 ? "Beach + Snorkel" : "Today's Itinerary"}`, card_sub: "Tap to view full itinerary in My Day →", card_emoji: "📋" }
-      : { card_type: "plan", card_title: "Maui Trip Plan", card_sub: "7 days · Jun 5–11 · Ka'anapali, Maui — tap to open My Day →", card_emoji: "📋" };
+      ? { card_type: "plan", card_title: `Day ${tripDateInfo.currentDayNumber} Plan`, card_sub: "Tap to view the full itinerary in Today", card_emoji: "📋" }
+      : { card_type: "plan", card_title: `${tripName} Plan`, card_sub: `${destination} · tap to open Today`, card_emoji: "📋" };
 
     const payloads: Record<string, object> = {
       plan: planCard,
-      weather: { card_type: "weather", card_title: "Jun 5–11 Forecast · Maui", card_sub: "78–84°F, mix of sun + showers — perfect beach weather 🌺", card_emoji: "🌺" },
-      flight: { card_type: "reservation", card_title: "Flights confirmed ✈️", card_sub: "AA271 departs LAX 8:05am → SEA, then AS845 SEA → OGG 12:45pm", card_emoji: "✈️" },
-      meetup: { card_type: "location", card_title: "Meet at the Sheraton", card_sub: "Sheraton Maui Resort · Ka'anapali Beach · Check-in Jun 5 from 3pm", card_emoji: "🏨" },
-      luau: { card_type: "reservation", card_title: "Old Lahaina Luau · Jun 9", card_sub: "5:45 PM · 4 tickets · Lei greeting · Front of house seating 🌺", card_emoji: "🌟" },
+      weather: { card_type: "weather", card_title: `${destination} weather`, card_sub: "Check the latest forecast before locking plans.", card_emoji: "☀️" },
+      flight: { card_type: "reservation", card_title: "Flight info ✈️", card_sub: "Add flight reservations in Docs so everyone has the details.", card_emoji: "✈️" },
+      meetup: { card_type: "location", card_title: "Meetup spot", card_sub: "Share the address, timing, and arrival notes for the group.", card_emoji: "📍" },
+      idea: { card_type: "plan", card_title: "Trip idea", card_sub: "Drop an activity, meal, or free-time idea for the group to discuss.", card_emoji: "✨" },
     };
 
     const card = payloads[key];
@@ -624,7 +626,7 @@ export default function ChatPage() {
               <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
                 <p className="text-xs font-black uppercase tracking-widest text-sky-700">Trying the app</p>
                 <p className="mt-1 text-sm leading-relaxed text-sky-800">
-                  For friends who should preview TripFlow without joining this family trip, use <span className="font-mono font-bold">/join/TRIPFLOW</span>.
+                  For friends who should preview TripFlow without joining this trip, use <span className="font-mono font-bold">/join/TRIPFLOW</span>.
                 </p>
               </div>
 

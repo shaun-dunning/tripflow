@@ -990,11 +990,16 @@ export default function VaultPage() {
       ════════════════════════════════════════ */}
       <div className="relative h-52 w-full overflow-hidden flex-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop&q=85"
-          alt="Maui" className="absolute inset-0 w-full h-full object-cover" />
+        <img
+          src={activeTrip.activeTrip?.cover_photo ?? "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=800&h=500&fit=crop&q=85"}
+          alt={activeTrip.activeTrip?.destination ?? "Trip destination"}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
         <div className="absolute top-4 left-4">
-          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Maui Family Trip · Jun 5–11</p>
+          <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
+            {activeTrip.activeTrip?.title ?? "Trip"} · {activeTrip.activeTrip?.destination ?? "Travel"}
+          </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-5">
           <div className="flex items-end justify-between mb-3">
