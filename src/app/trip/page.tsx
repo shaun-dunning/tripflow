@@ -12,13 +12,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { useActiveTrip } from "@/hooks/useActiveTrip";
 import {
   ARCHIVED_TRIPS_KEY,
+  DEMO_TRIP_ID,
   UPCOMING_TRIPS_KEY,
   getStoredTripSubtitle,
   isDefaultUpcomingTrips,
   normalizeStoredTrip,
   type StoredTrip,
 } from "@/lib/tripConfig";
-const PACKING_TOTAL = 46;
+const PACKING_TOTAL = 23;
+const DEMO_PACKED_COUNT = 5;
+const PACKING_STORAGE_KEY = "tripflow-packing-v2-maui26";
+const LEGACY_PACKING_STORAGE_KEY = "tripflow-packing-maui26";
 
 type Traveler = {
   id: string;
@@ -342,10 +346,20 @@ function getDaysUntil(startDate: string): number | null {
 function getStoredPackingProgress(): { count: number; pct: number } {
   if (typeof window === "undefined") return { count: 0, pct: 0 };
   try {
-    const raw = localStorage.getItem("tripflow-packing-maui26");
-    if (!raw) return { count: 0, pct: 0 };
-    const ids = JSON.parse(raw) as string[];
-    const count = ids.length;
+    const raw = localStorage.getItem(PACKING_STORAGE_KEY);
+    if (raw) {
+      const items = JSON.parse(raw) as { packed?: boolean }[];
+      if (Array.isArray(items)) {
+        const total = items.length || PACKING_TOTAL;
+        const count = items.filter((item) => item.packed).length;
+        return { count, pct: Math.round((count / total) * 100) };
+      }
+    }
+
+    const legacyRaw = localStorage.getItem(LEGACY_PACKING_STORAGE_KEY);
+    if (!legacyRaw) return { count: 0, pct: 0 };
+    const ids = JSON.parse(legacyRaw) as string[];
+    const count = Array.isArray(ids) ? ids.length : 0;
     return { count, pct: Math.round((count / PACKING_TOTAL) * 100) };
   } catch {
     return { count: 0, pct: 0 };
@@ -369,7 +383,7 @@ export default function TripPage() {
   const [tripWeather, setTripWeather] = useState<TripWeatherDay[]>([]);
 
   // ── Trips lifecycle state ───────────────────────────────────────────────────
-  const [tripPackingProgress] = useState(getStoredPackingProgress);
+  const [tripPackingProgress, setTripPackingProgress] = useState(getStoredPackingProgress);
   const tripPackingPct = tripPackingProgress.pct;
   const tripPackingCount = tripPackingProgress.count;
 
@@ -399,6 +413,42 @@ export default function TripPage() {
   const [newStartDate, setNewStartDate] = useState("");
   const [newNights, setNewNights] = useState(7);
   const [newTravelersCount, setNewTravelersCount] = useState(2);
+
+  useEffect(() => {
+    async function loadPackingProgress() {
+      const localProgress = getStoredPackingProgress();
+      if (!activeTrip.activeTripId) {
+        setTripPackingProgress(localProgress);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("packing_items")
+          .select("packed")
+          .eq("trip_id", activeTrip.activeTripId);
+
+        if (error || !data?.length) {
+          setTripPackingProgress(activeTrip.activeTripId === DEMO_TRIP_ID
+            ? { count: DEMO_PACKED_COUNT, pct: Math.round((DEMO_PACKED_COUNT / PACKING_TOTAL) * 100) }
+            : localProgress);
+          return;
+        }
+
+        const count = data.filter((item) => item.packed).length;
+        setTripPackingProgress({ count, pct: Math.round((count / data.length) * 100) });
+      } catch {
+        setTripPackingProgress(activeTrip.activeTripId === DEMO_TRIP_ID
+          ? { count: DEMO_PACKED_COUNT, pct: Math.round((DEMO_PACKED_COUNT / PACKING_TOTAL) * 100) }
+          : localProgress);
+      }
+    }
+
+    void loadPackingProgress();
+    const onFocus = () => void loadPackingProgress();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [activeTrip.activeTripId]);
 
   function openEditTrip(t: UpcomingTrip) {
     const photos = getPhotosForDestination(t.destination);

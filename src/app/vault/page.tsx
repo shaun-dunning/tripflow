@@ -184,8 +184,14 @@ function getAirlineBrand(provider: string) {
 }
 
 function parseRoute(name: string) {
-  const parts = (name ?? "").split("→").map((s) => s.trim()).filter(Boolean);
-  return { origin: parts[0] ?? "", destination: parts[parts.length - 1] ?? "", hasRoute: parts.length >= 2 };
+  const routeOnly = (name ?? "").split("·")[0].trim();
+  const match = routeOnly.match(/\b([A-Z]{3})\b\s*(?:→|->|-)\s*\b([A-Z]{3})\b/);
+  return {
+    origin: match?.[1] ?? "",
+    destination: match?.[2] ?? "",
+    routeLabel: match ? `${match[1]} → ${match[2]}` : routeOnly,
+    hasRoute: Boolean(match),
+  };
 }
 
 function hotelPhoto(provider: string, name: string): string {
@@ -1132,14 +1138,15 @@ export default function VaultPage() {
         return (
           <div className="px-4 pt-4 pb-2">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Quick Access</p>
-            <div className="grid grid-cols-2 gap-2.5">
+            <div className="flex gap-2.5 overflow-x-auto no-scrollbar -mx-4 px-4 pb-1">
               {quickDocs.map((doc) => {
                 const brand = doc.category === "Flights" ? getAirlineBrand(doc.provider ?? "") : null;
+                const route = doc.category === "Flights" ? parseRoute(doc.name ?? "") : null;
                 const gradFrom = brand?.bg.split(" ")[0].replace("from-[","").replace("]","") ?? "";
                 const gradTo = brand?.bg.split(" ")[1].replace("to-[","").replace("]","") ?? "";
                 return (
                   <button key={doc.id} onClick={() => openDetail(doc)}
-                    className={`min-w-0 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border text-left active:scale-[0.97] transition-transform ${
+                    className={`min-w-[165px] max-w-[185px] flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border text-left active:scale-[0.97] transition-transform ${
                       doc.category === "Flights" ? "text-white border-transparent" : "bg-white border-slate-100 shadow-sm"
                     }`}
                     style={doc.category === "Flights" && gradFrom ? { background: `linear-gradient(135deg, ${gradFrom} 0%, ${gradTo} 100%)` } : {}}
@@ -1147,7 +1154,7 @@ export default function VaultPage() {
                     <span className="text-xl flex-none">{doc.category === "Flights" ? brand?.code ?? "✈️" : CATEGORY_EMOJIS[doc.category] ?? doc.emoji}</span>
                     <div className="min-w-0">
                       <p className={`text-[11px] font-bold truncate ${doc.category === "Flights" ? "text-white" : "text-slate-900"}`}>
-                        {doc.name.split("→").map(s => s.trim()).join(" → ")}
+                        {route?.routeLabel ?? doc.name}
                       </p>
                       <p className={`text-[9px] font-semibold mt-0.5 truncate ${doc.category === "Flights" ? "text-white/60" : "text-slate-400"}`}>
                         {doc.confirmation || doc.date}

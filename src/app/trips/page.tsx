@@ -12,6 +12,7 @@ import FirstTripSetup from "@/components/FirstTripSetup";
 import { useActiveTrip } from "@/hooks/useActiveTrip";
 import {
   DEMO_INVITE_CODE,
+  DEMO_TRIP_ID,
   UPCOMING_TRIPS_KEY,
   getStoredTripSubtitle,
   readStoredTrips,
@@ -116,14 +117,14 @@ export default function TripsPage() {
   }, [activeTrip.activeTripId]);
 
   useEffect(() => {
-    if (activeTrip.activeTrip?.invite_code === DEMO_INVITE_CODE) {
+    if (activeTrip.activeTripId === DEMO_TRIP_ID || activeTrip.activeTrip?.invite_code === DEMO_INVITE_CODE) {
       setUpcomingTrips((prev) => {
         const existing = new Set(prev.map((trip) => trip.title));
         const missing = DEMO_UPCOMING_TRIPS.filter((trip) => !existing.has(trip.title));
         return missing.length > 0 ? [...missing, ...prev] : prev;
       });
     }
-  }, [activeTrip.activeTrip?.invite_code]);
+  }, [activeTrip.activeTrip?.invite_code, activeTrip.activeTripId]);
 
   // Persist upcoming trips to localStorage whenever they change
   useEffect(() => {

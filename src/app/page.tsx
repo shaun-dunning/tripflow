@@ -12,6 +12,7 @@ import TripAccessGate from "@/components/TripAccessGate";
 import FirstTripSetup from "@/components/FirstTripSetup";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveTrip } from "@/hooks/useActiveTrip";
+import { DEMO_TRIP_ID } from "@/lib/tripConfig";
 
 function timeToMinutes(t: string): number {
   if (!t || t === "TBD" || t === "tbd") return -1; // TBD items sort to top of Morning
@@ -54,6 +55,30 @@ type DayData = {
   note: string;
   agenda: Item[];
 };
+
+const PACKING_TOTAL = 23;
+const DEMO_PACKED_COUNT = 5;
+const PACKING_STORAGE_KEY = "tripflow-packing-v2-maui26";
+const LEGACY_PACKING_STORAGE_KEY = "tripflow-packing-maui26";
+
+function readLocalPackingProgress(): { packed: number; total: number } {
+  if (typeof window === "undefined") return { packed: 0, total: PACKING_TOTAL };
+  try {
+    const raw = localStorage.getItem(PACKING_STORAGE_KEY);
+    if (raw) {
+      const items = JSON.parse(raw) as { packed?: boolean }[];
+      if (Array.isArray(items)) {
+        return { packed: items.filter((item) => item.packed).length, total: items.length || PACKING_TOTAL };
+      }
+    }
+
+    const legacyRaw = localStorage.getItem(LEGACY_PACKING_STORAGE_KEY);
+    const legacyIds = legacyRaw ? JSON.parse(legacyRaw) as string[] : [];
+    return { packed: Array.isArray(legacyIds) ? legacyIds.length : 0, total: PACKING_TOTAL };
+  } catch {
+    return { packed: 0, total: PACKING_TOTAL };
+  }
+}
 
 // ── Hero image picker: keyword-matched so the photo updates when themes change ──
 const THEME_PHOTOS: { keywords: string[]; url: string; alt: string }[] = [
@@ -502,7 +527,7 @@ export default function MyDayPage() {
   const [tripInfo, setTripInfo] = useState<{ status: "upcoming" | "active" | "completed"; daysUntilTrip: number } | null>(null);
 
   // Pre-trip readiness
-  const [packingProgress, setPackingProgress] = useState<{ packed: number; total: number }>({ packed: 0, total: 46 });
+  const [packingProgress, setPackingProgress] = useState<{ packed: number; total: number }>(() => readLocalPackingProgress());
   const [docReadiness, setDocReadiness] = useState<{ confirmed: number; total: number } | null>(null);
 
   // Loading / pull-to-refresh
@@ -545,19 +570,40 @@ export default function MyDayPage() {
     return () => clearInterval(clockTimer);
   }, []);
 
-  // Load packing progress from localStorage
+  // Load packing progress from the shared table when available, with local/demo fallback.
   useEffect(() => {
-    const loadPacking = () => {
+    const loadPacking = async () => {
+      const localProgress = readLocalPackingProgress();
       try {
-        const raw = localStorage.getItem("tripflow-packing-maui26");
-        const ids: string[] = raw ? JSON.parse(raw) : [];
-        setPackingProgress({ packed: ids.length, total: 46 });
-      } catch { /* ignore */ }
+        if (!activeTrip.activeTripId) {
+          setPackingProgress(localProgress);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("packing_items")
+          .select("packed")
+          .eq("trip_id", activeTrip.activeTripId);
+
+        if (error || !data?.length) {
+          setPackingProgress(activeTrip.activeTripId === DEMO_TRIP_ID
+            ? { packed: DEMO_PACKED_COUNT, total: PACKING_TOTAL }
+            : localProgress);
+          return;
+        }
+
+        setPackingProgress({ packed: data.filter((item) => item.packed).length, total: data.length });
+      } catch {
+        setPackingProgress(activeTrip.activeTripId === DEMO_TRIP_ID
+          ? { packed: DEMO_PACKED_COUNT, total: PACKING_TOTAL }
+          : localProgress);
+      }
     };
-    loadPacking();
-    window.addEventListener("focus", loadPacking);
-    return () => window.removeEventListener("focus", loadPacking);
-  }, []);
+    void loadPacking();
+    const onFocus = () => void loadPacking();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [activeTrip.activeTripId]);
 
   // Load wishlist from localStorage (also refresh when tab gains focus)
   useEffect(() => {
