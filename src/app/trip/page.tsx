@@ -82,6 +82,31 @@ type UpcomingTrip = StoredTrip;
 
 type PhotoOption = { url: string; alt: string };
 
+const DEMO_SIDE_TRIPS: UpcomingTrip[] = [
+  {
+    id: 9000,
+    title: "Labor Day · San Diego",
+    destination: "San Diego",
+    startDate: "2026-09-04",
+    nights: 3,
+    travelersCount: 2,
+    emoji: "🌴",
+    photo: "https://images.unsplash.com/photo-1535498730771-e735b998cd64?w=600&h=300&fit=crop&q=80",
+    photoAlt: "San Diego coastline",
+  },
+  {
+    id: 9001,
+    title: "Fall Weekend · Napa",
+    destination: "Napa Valley",
+    startDate: "2026-10-09",
+    nights: 3,
+    travelersCount: 2,
+    emoji: "🍷",
+    photo: "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Napa Valley vineyard",
+  },
+];
+
 // ── Destination photo library ──────────────────────────────────────────────
 const DESTINATION_PHOTOS: { keywords: string[]; photos: PhotoOption[] }[] = [
   {
@@ -575,6 +600,15 @@ export default function TripPage() {
       copyLink();
     }
   }
+
+  useEffect(() => {
+    if (activeTrip.activeTripId !== DEMO_TRIP_ID) return;
+    setUpcomingTrips((prev) => {
+      const existing = new Set(prev.map((trip) => trip.title));
+      const missing = DEMO_SIDE_TRIPS.filter((trip) => !existing.has(trip.title));
+      return missing.length > 0 ? [...missing, ...prev] : prev;
+    });
+  }, [activeTrip.activeTripId]);
 
   // Persist trip lifecycle data after lazy state has read client storage.
   useEffect(() => {
