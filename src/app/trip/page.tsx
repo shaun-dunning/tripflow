@@ -45,62 +45,11 @@ type Day = {
 type TripMeta = {
   title: string;
   subtitle: string;
+  destination: string;
   coverPhoto: string;
   startDate: string;
   endDate: string;
 };
-
-const TRIP: Day[] = [
-  {
-    id: 1, date: "Fri · Jun 5", label: "Day 1", theme: "Travel Day",
-    photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Airport terminal",
-    activities: [{ emoji: "✈️", label: "AA271 departs LAX" }, { emoji: "🏨", label: "Check in Sheraton" }, { emoji: "🍝", label: "Dinner near resort" }],
-    status: "upcoming", weather: "☁️", temp: "68°F",
-  },
-  {
-    id: 2, date: "Sat · Jun 6", label: "Day 2", theme: "Beach + Snorkel",
-    photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Ka'anapali beach",
-    activities: [{ emoji: "🏖️", label: "Ka'anapali Beach" }, { emoji: "🤿", label: "Molokini Crater" }, { emoji: "🐟", label: "Mama's Fish House" }],
-    status: "upcoming", weather: "⛅", temp: "82°F",
-  },
-  {
-    id: 3, date: "Sun · Jun 7", label: "Day 3", theme: "Road to Hana",
-    photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Road to Hana",
-    activities: [{ emoji: "🚗", label: "Scenic drive" }, { emoji: "🖤", label: "Black sand beach" }, { emoji: "🌿", label: "Hana Farms lunch" }],
-    status: "upcoming", weather: "🌦️", temp: "76°F",
-  },
-  {
-    id: 4, date: "Mon · Jun 8", label: "Day 4", theme: "Beach + Spa",
-    photo: "https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Spa and pool",
-    activities: [{ emoji: "💆", label: "Couples massage" }, { emoji: "🏊", label: "Pool day" }, { emoji: "🌅", label: "Humble Market dinner" }],
-    status: "upcoming", weather: "☀️", temp: "84°F",
-  },
-  {
-    id: 5, date: "Tue · Jun 9", label: "Day 5", theme: "Free Day",
-    photo: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Tropical island",
-    activities: [{ emoji: "🥭", label: "Upcountry Market" }, { emoji: "🛍️", label: "Paia Town" }, { emoji: "🌺", label: "Old Lahaina Luau" }],
-    status: "upcoming", weather: "☀️", temp: "83°F",
-  },
-  {
-    id: 6, date: "Wed · Jun 10", label: "Day 6", theme: "Haleakalā Sunrise",
-    photo: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Volcano sunrise",
-    activities: [{ emoji: "🌋", label: "Sunrise at summit" }, { emoji: "🥾", label: "Sliding Sands hike" }, { emoji: "🍺", label: "Maui Brewing Co." }],
-    status: "upcoming", weather: "🌤️", temp: "55°F",
-  },
-  {
-    id: 7, date: "Thu · Jun 11", label: "Day 7", theme: "Fly Home",
-    photo: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&h=300&fit=crop&q=80",
-    photoAlt: "Airport departure",
-    activities: [{ emoji: "🌅", label: "Last sunrise walk" }, { emoji: "🏊", label: "Final swim" }, { emoji: "✈️", label: "AS844 departs OGG" }],
-    status: "upcoming", weather: "☀️", temp: "81°F",
-  },
-];
 
 type TripWeatherDay = {
   date: string;
@@ -123,11 +72,7 @@ function wmoToEmoji(code: number): string {
   return "⛈️";
 }
 
-const TODAY_GLANCE = [
-  { emoji: "😴", title: "Nap / downtime", time: "3:00 PM" },
-  { emoji: "🤿", title: "Snorkeling – Molokini", time: "4:30 PM" },
-  { emoji: "🐟", title: "Dinner – Mama's Fish House", time: "7:00 PM" },
-];
+type TodayGlanceItem = { emoji: string; title: string; time: string };
 
 type UpcomingTrip = StoredTrip;
 
@@ -262,6 +207,32 @@ function getPhotosForDestination(destination: string): PhotoOption[] {
   return DEFAULT_PHOTOS;
 }
 
+function buildEmptyTripDays(startDate: string, endDate: string, destination: string): Day[] {
+  const start = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+  const totalDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+  const photo = getPhotosForDestination(destination)[0] ?? DEFAULT_PHOTOS[0];
+  const dateInfo = getTripDateInfo(startDate, endDate);
+
+  return Array.from({ length: totalDays }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    const dayNumber = index + 1;
+    return {
+      id: dayNumber,
+      date: date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+      label: `Day ${dayNumber}`,
+      theme: dayNumber === 1 ? "Arrival day" : dayNumber === totalDays ? "Departure day" : "Open day",
+      photo: photo.url,
+      photoAlt: photo.alt,
+      activities: [],
+      status: getDayStatus(dayNumber, dateInfo),
+      weather: "",
+      temp: "",
+    };
+  });
+}
+
 function normalizeUpcomingTrip(value: unknown): UpcomingTrip | null {
   const destination = value && typeof value === "object" && typeof (value as Partial<UpcomingTrip>).destination === "string"
     ? (value as Partial<UpcomingTrip>).destination ?? ""
@@ -387,8 +358,8 @@ export default function TripPage() {
   const activeTrip = useActiveTrip(user);
   const [selected, setSelected] = useState<number | null>(null);
   const [trip, setTrip] = useState<TripMeta | null>(null);
-  const [days, setDays] = useState<Day[]>(TRIP);
-  const [todayGlance, setTodayGlance] = useState(TODAY_GLANCE);
+  const [days, setDays] = useState<Day[]>([]);
+  const [todayGlance, setTodayGlance] = useState<TodayGlanceItem[]>([]);
   const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
   const [travelers, setTravelers] = useState<Traveler[]>([]);
   const [loadIssue, setLoadIssue] = useState<string | null>(null);
@@ -565,6 +536,12 @@ export default function TripPage() {
   }, [archivedTrips]);
 
   useEffect(() => {
+    const destination = activeTrip.activeTrip?.destination.toLowerCase() ?? "";
+    if (!destination.includes("maui") && !destination.includes("hawaii")) {
+      queueMicrotask(() => setTripWeather([]));
+      return;
+    }
+
     const url =
       "https://api.open-meteo.com/v1/forecast" +
       "?latitude=20.9282&longitude=-156.6942" +
@@ -594,7 +571,7 @@ export default function TripPage() {
         );
       })
       .catch(() => { /* fail silently — no weather strip shown */ });
-  }, []);
+  }, [activeTrip.activeTrip?.destination]);
 
   useEffect(() => {
     if (!activeTrip.activeTripId) return;
@@ -616,8 +593,9 @@ export default function TripPage() {
         setTripDateInfo(dateInfo);
         setTrip({
           title: tripData.title,
-          subtitle: `${formatDateRange(tripData.start_date, tripData.end_date)} · 4 travelers`,
-          coverPhoto: tripData.cover_photo,
+          subtitle: `${formatDateRange(tripData.start_date, tripData.end_date)} · ${tripData.destination}`,
+          destination: tripData.destination,
+          coverPhoto: tripData.cover_photo ?? getPhotosForDestination(tripData.destination)[0]?.url ?? DEFAULT_PHOTOS[0].url,
           startDate: tripData.start_date,
           endDate: tripData.end_date,
         });
@@ -643,35 +621,36 @@ export default function TripPage() {
           const dayNum = td.day_number;
           const status = getDayStatus(dayNum, dateInfo!);
 
-          // Use first 3 agenda items as activity pills, fall back to mock
-          const mockDay = TRIP.find((d) => d.id === dayNum);
+          // Use first 3 agenda items as activity pills.
           const activities: Activity[] = td.agenda_items?.length
             ? td.agenda_items
                 .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
                 .slice(0, 3)
                 .map((ai: { emoji: string; title: string }) => ({ emoji: ai.emoji, label: ai.title.split("–")[0].trim() }))
-            : (mockDay?.activities ?? []);
+            : [];
 
           // Parse date label e.g. "Arrival Day 🛬" → theme
           const labelParts = (td.label ?? "").split(" · ");
           const label = `Day ${dayNum}`;
-          const theme = labelParts.join(" · ") || mockDay?.theme || "";
+          const theme = labelParts.join(" · ") || (dayNum === 1 ? "Arrival day" : dayNum === dateInfo!.totalDays ? "Departure day" : "Open day");
 
           const dateFormatted = new Date(td.date + "T12:00:00").toLocaleDateString("en-US", {
             weekday: "short", month: "short", day: "numeric",
           });
+
+          const photo = getPhotosForDestination(tripData?.destination ?? "")[0] ?? DEFAULT_PHOTOS[0];
 
           return {
             id: dayNum,
             date: dateFormatted,
             label,
             theme,
-            photo: td.hero_photo ?? mockDay?.photo ?? "",
-            photoAlt: td.hero_alt ?? mockDay?.photoAlt ?? "",
+            photo: td.hero_photo ?? photo.url,
+            photoAlt: td.hero_alt ?? photo.alt,
             activities,
             status,
-            weather: td.weather_emoji ?? mockDay?.weather ?? "☀️",
-            temp: td.weather_temp ?? mockDay?.temp ?? "",
+            weather: td.weather_emoji ?? "",
+            temp: td.weather_temp ?? "",
           };
         });
         setDays(mapped);
@@ -689,7 +668,11 @@ export default function TripPage() {
               time: ai.time,
             }));
           if (upcoming.length) setTodayGlance(upcoming);
+          else setTodayGlance([]);
         }
+      } else if (tripData && dateInfo) {
+        setDays(buildEmptyTripDays(tripData.start_date, tripData.end_date, tripData.destination));
+        setTodayGlance([]);
       }
       } catch (err) {
         setLoadIssue(err instanceof Error ? err.message : "Trip details could not be refreshed.");
@@ -703,7 +686,8 @@ export default function TripPage() {
   const fallbackDaysUntilTrip = trip?.startDate ? getDaysUntil(trip.startDate) : null;
   const daysUntilTrip = tripDateInfo?.daysUntilTrip ?? fallbackDaysUntilTrip;
   const daysLeft = tripDateInfo?.daysLeft ?? days.filter((d) => d.status === "upcoming").length;
-  const progress = tripDateInfo?.progressPercent ?? Math.round(((today.id - 1) / days.length) * 100);
+  const totalDays = Math.max(days.length, tripDateInfo?.totalDays ?? 1);
+  const progress = tripDateInfo?.progressPercent ?? (today ? Math.round(((today.id - 1) / totalDays) * 100) : 0);
   const tripStatus = tripDateInfo?.status ?? "upcoming";
   const countdownLabel = tripStatus === "upcoming"
     ? `${daysUntilTrip ?? "—"} days away`
@@ -711,7 +695,7 @@ export default function TripPage() {
     ? "Trip complete"
     : `${daysLeft} days left`;
   const activeTripLabel = tripStatus === "upcoming"
-    ? `Upcoming · ${days.length} days`
+    ? `Upcoming · ${totalDays} days`
     : tripStatus === "completed"
     ? "Completed Trip"
     : `Active Trip · Day ${tripDateInfo?.currentDayNumber} of ${tripDateInfo?.totalDays}`;
@@ -1026,7 +1010,7 @@ export default function TripPage() {
             >
               <div className="px-5 py-5">
                 <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mb-1">🌺 You&apos;re invited</p>
-                <h2 className="text-xl font-black text-white mb-0.5">{trip?.title ?? "Maui Family Trip"}</h2>
+                <h2 className="text-xl font-black text-white mb-0.5">{trip?.title ?? activeTrip.activeTrip?.title ?? "Trip"}</h2>
                 <p className="text-xs text-white/60 mb-4">{trip?.subtitle ?? "Jun 5–11 · 4 travelers"}</p>
 
                 {/* Traveler strip */}
@@ -1112,8 +1096,8 @@ export default function TripPage() {
         <div className="relative h-56 w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop&q=85"
-            alt="Maui, Hawaii"
+            src={trip?.coverPhoto ?? getPhotosForDestination(trip?.destination ?? "")[0]?.url ?? DEFAULT_PHOTOS[0].url}
+            alt={trip?.destination ?? "Trip destination"}
             className="absolute inset-0 w-full h-full object-cover"
           />
           {/* Rich gradient — dark at bottom, hint of teal at top */}
@@ -1132,11 +1116,11 @@ export default function TripPage() {
             <div className="flex items-end justify-between">
               <div className="flex-1 min-w-0 pr-3">
                 <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-1">{activeTripLabel}</p>
-                <h2 className="text-2xl font-black text-white leading-tight">{trip?.title ?? "Maui Family Trip"}</h2>
+                <h2 className="text-2xl font-black text-white leading-tight">{trip?.title ?? activeTrip.activeTrip?.title ?? "Trip"}</h2>
                 <p className="text-sm text-white/70 mt-0.5">{trip?.subtitle ?? "Jun 5–11 · 4 travelers"}</p>
                 {tripWeather.length > 0 && (
                   <p className="text-sm font-semibold text-white/90 mt-1.5">
-                    {tripWeather[0].emoji} {tripWeather[0].high}°F in Maui right now
+                    {tripWeather[0].emoji} {tripWeather[0].high}°F in {trip?.destination ?? "your destination"} right now
                   </p>
                 )}
               </div>
@@ -1172,14 +1156,14 @@ export default function TripPage() {
           </div>
         </div>
 
-        {/* ── 7-day Maui forecast strip ── */}
+        {/* ── 7-day forecast strip ── */}
         {tripWeather.length > 0 && (
           <div
             className="px-3 pt-3 pb-1.5"
             style={{ background: "linear-gradient(180deg, #bae6fd 0%, #e0f2fe 100%)" }}
           >
             <p className="text-[9px] font-bold text-sky-700/60 uppercase tracking-widest mb-2 pl-0.5">
-              Maui · Next 7 Days
+              {trip?.destination ?? "Destination"} · Next 7 Days
             </p>
             <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
               {tripWeather.map((d) => (
@@ -1260,9 +1244,11 @@ export default function TripPage() {
                   {day.status === "past" && (
                     <div className="absolute top-2 left-2 bg-black/40 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">DONE</div>
                   )}
-                  <div className="absolute top-2 right-2 bg-black/30 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
-                    {day.weather} {day.temp}
-                  </div>
+                  {(day.weather || day.temp) && (
+                    <div className="absolute top-2 right-2 bg-black/30 backdrop-blur-sm text-white text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1">
+                      {day.weather} {day.temp}
+                    </div>
+                  )}
                   <div className="absolute bottom-0 left-0 right-0 px-3 pb-2 flex items-end justify-between">
                     <div>
                       <p className="text-[10px] font-semibold text-white/70 uppercase tracking-widest">{day.label} · {day.date}</p>
@@ -1274,11 +1260,17 @@ export default function TripPage() {
 
                 {/* Activity pills */}
                 <div className="bg-white px-3 py-2 flex items-center gap-1.5 flex-wrap">
-                  {day.activities.map((a, i) => (
-                    <span key={i} className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
-                      {a.emoji} {a.label}
+                  {day.activities.length > 0 ? (
+                    day.activities.map((a, i) => (
+                      <span key={i} className="flex items-center gap-1 text-xs text-slate-600 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
+                        {a.emoji} {a.label}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="flex items-center gap-1 text-xs text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
+                      ✨ Add plans for this day
                     </span>
-                  ))}
+                  )}
                 </div>
 
                 {/* Today at a Glance inline */}
@@ -1304,12 +1296,16 @@ export default function TripPage() {
                 {isExpanded && (
                   <div className="bg-slate-50 border-t border-slate-100 px-4 py-3 flex flex-col gap-2">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Full Day Plan</p>
-                    {day.activities.map((a, i) => (
-                      <div key={i} className="flex items-center gap-3 text-sm text-slate-700">
-                        <span className="text-base w-6 text-center">{a.emoji}</span>
-                        <span>{a.label}</span>
-                      </div>
-                    ))}
+                    {day.activities.length > 0 ? (
+                      day.activities.map((a, i) => (
+                        <div key={i} className="flex items-center gap-3 text-sm text-slate-700">
+                          <span className="text-base w-6 text-center">{a.emoji}</span>
+                          <span>{a.label}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-500">No plans yet. Add reservations in Docs or find ideas in Explore.</p>
+                    )}
                     {day.status === "today" && (
                       <Link href="/" className="mt-1 text-xs font-semibold text-sky-600">→ Open Today&apos;s full schedule</Link>
                     )}
