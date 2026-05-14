@@ -116,10 +116,14 @@ export default function TripsPage() {
   }, [activeTrip.activeTripId]);
 
   useEffect(() => {
-    if (activeTrip.activeTrip?.invite_code === DEMO_INVITE_CODE && upcomingTrips.length === 0) {
-      setUpcomingTrips(DEMO_UPCOMING_TRIPS);
+    if (activeTrip.activeTrip?.invite_code === DEMO_INVITE_CODE) {
+      setUpcomingTrips((prev) => {
+        const existing = new Set(prev.map((trip) => trip.title));
+        const missing = DEMO_UPCOMING_TRIPS.filter((trip) => !existing.has(trip.title));
+        return missing.length > 0 ? [...missing, ...prev] : prev;
+      });
     }
-  }, [activeTrip.activeTrip?.invite_code, upcomingTrips.length]);
+  }, [activeTrip.activeTrip?.invite_code]);
 
   // Persist upcoming trips to localStorage whenever they change
   useEffect(() => {

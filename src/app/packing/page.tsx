@@ -7,6 +7,7 @@ import { haptic } from "@/lib/haptic";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveTrip } from "@/hooks/useActiveTrip";
 import FirstTripSetup from "@/components/FirstTripSetup";
+import { DEMO_TRIP_ID } from "@/lib/tripConfig";
 
 // ---------------------------------------------------------------------------
 // Persistence uses Supabase when the shared `packing_items` table is available,
@@ -208,6 +209,13 @@ function buildDefaultItems(): PackItem[] {
   return items.map((i) => ({ ...i, packed: false, is_suggested: false }));
 }
 
+function buildDemoItems(): PackItem[] {
+  return buildDefaultItems().map((item) => ({
+    ...item,
+    packed: ["d1", "d4", "c1", "p1", "e1"].includes(item.id),
+  }));
+}
+
 // Common items pre-populated in the Add sheet per category
 const CATEGORY_PRESETS: Record<Category, string[]> = {
   Documents:    ["Passports", "Boarding passes", "Car rental confirmation", "Vaccination records"],
@@ -257,7 +265,7 @@ function itemToRow(item: PackItem, index: number, tripId: string): PackingRow {
 }
 
 async function loadSharedItems(tripId: string): Promise<{ items: PackItem[]; shared: boolean }> {
-  const localItems = loadLocalItems();
+  const localItems = tripId === DEMO_TRIP_ID ? buildDemoItems() : loadLocalItems();
   const { data, error } = await supabase
     .from("packing_items")
     .select("id, trip_id, name, category, assignee, packed, is_suggested, sort_order")

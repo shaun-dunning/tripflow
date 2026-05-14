@@ -1132,24 +1132,24 @@ export default function VaultPage() {
         return (
           <div className="px-4 pt-4 pb-2">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">Quick Access</p>
-            <div className="flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
+            <div className="grid grid-cols-2 gap-2.5">
               {quickDocs.map((doc) => {
                 const brand = doc.category === "Flights" ? getAirlineBrand(doc.provider ?? "") : null;
                 const gradFrom = brand?.bg.split(" ")[0].replace("from-[","").replace("]","") ?? "";
                 const gradTo = brand?.bg.split(" ")[1].replace("to-[","").replace("]","") ?? "";
                 return (
                   <button key={doc.id} onClick={() => openDetail(doc)}
-                    className={`flex-none flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border text-left active:scale-[0.97] transition-transform ${
+                    className={`min-w-0 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl border text-left active:scale-[0.97] transition-transform ${
                       doc.category === "Flights" ? "text-white border-transparent" : "bg-white border-slate-100 shadow-sm"
                     }`}
                     style={doc.category === "Flights" && gradFrom ? { background: `linear-gradient(135deg, ${gradFrom} 0%, ${gradTo} 100%)` } : {}}
                   >
                     <span className="text-xl flex-none">{doc.category === "Flights" ? brand?.code ?? "✈️" : CATEGORY_EMOJIS[doc.category] ?? doc.emoji}</span>
                     <div className="min-w-0">
-                      <p className={`text-[11px] font-bold truncate max-w-[90px] ${doc.category === "Flights" ? "text-white" : "text-slate-900"}`}>
+                      <p className={`text-[11px] font-bold truncate ${doc.category === "Flights" ? "text-white" : "text-slate-900"}`}>
                         {doc.name.split("→").map(s => s.trim()).join(" → ")}
                       </p>
-                      <p className={`text-[9px] font-semibold mt-0.5 truncate max-w-[90px] ${doc.category === "Flights" ? "text-white/60" : "text-slate-400"}`}>
+                      <p className={`text-[9px] font-semibold mt-0.5 truncate ${doc.category === "Flights" ? "text-white/60" : "text-slate-400"}`}>
                         {doc.confirmation || doc.date}
                       </p>
                     </div>
@@ -1186,7 +1186,7 @@ export default function VaultPage() {
                   return (
                     <button key={doc.id} onClick={() => openDetail(doc)}
                       className={`w-full text-left rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br ${brand.bg} active:scale-[0.98] transition-transform`}>
-                      <div className="px-5 pt-5 pb-3 flex items-center justify-between">
+                      <div className="px-5 pt-4 pb-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
                             <span className="text-white text-xs font-black">{brand.code}</span>
@@ -1196,18 +1196,18 @@ export default function VaultPage() {
                         <StatusPill status={doc.status} />
                       </div>
                       {hasRoute ? (
-                        <div className="px-5 pb-4 flex items-center gap-3">
-                          <div className="text-left">
-                            <p className="text-4xl font-black text-white tracking-tight leading-none font-mono">{origin}</p>
+                        <div className="px-5 pb-4 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+                          <div className="min-w-[4rem] text-left">
+                            <p className="text-3xl font-black text-white tracking-tight leading-none font-mono">{origin}</p>
                             <p className="text-[11px] text-white/60 font-medium mt-1 leading-tight">{originCity}</p>
                           </div>
-                          <div className="flex-1 flex items-center gap-1.5 mx-1 pb-3">
+                          <div className="flex items-center gap-1.5 pb-3 min-w-0">
                             <div className="flex-1 h-px bg-white/25" />
                             <span className="text-white/50 text-base">✈</span>
                             <div className="flex-1 h-px bg-white/25" />
                           </div>
-                          <div className="text-right">
-                            <p className="text-4xl font-black text-white tracking-tight leading-none font-mono">{destination}</p>
+                          <div className="min-w-[4rem] text-right">
+                            <p className="text-3xl font-black text-white tracking-tight leading-none font-mono">{destination}</p>
                             <p className="text-[11px] text-white/60 font-medium mt-1 leading-tight">{destCity}</p>
                           </div>
                         </div>
@@ -1215,15 +1215,15 @@ export default function VaultPage() {
                         <div className="px-5 pb-4"><p className="text-xl font-black text-white">{doc.name}</p></div>
                       )}
                       <div className="mx-4 border-t border-dashed border-white/20" />
-                      <div className="px-5 py-3 flex items-center justify-between">
+                      <div className="px-5 py-3 flex items-center justify-between gap-4">
                         <div>
                           <p className="text-[10px] text-white/50 font-semibold uppercase tracking-widest">Departure</p>
                           <p className="text-xs font-bold text-white mt-0.5">{doc.date || "—"}</p>
                         </div>
                         {doc.confirmation && (
-                          <div className="text-right">
+                          <div className="text-right min-w-0">
                             <p className="text-[10px] text-white/50 font-semibold uppercase tracking-widest">Confirmation</p>
-                            <p className="text-sm font-black text-white font-mono mt-0.5 tracking-wider">{doc.confirmation}</p>
+                            <p className="text-xs font-black text-white font-mono mt-0.5 tracking-wide truncate">{doc.confirmation}</p>
                           </div>
                         )}
                       </div>
