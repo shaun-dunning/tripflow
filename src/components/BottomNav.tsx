@@ -14,11 +14,6 @@ const tabs = [
   { href: "/chat", label: "Group", icon: MessageCircle, badge: 0 },
 ];
 
-function tabIndex(pathname: string): number {
-  const i = tabs.findIndex((t) => t.href === pathname);
-  return i === -1 ? 1 : i; // default to "Today" (index 1)
-}
-
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
@@ -26,18 +21,7 @@ export default function BottomNav() {
   function navigate(href: string) {
     if (href === pathname) return;
     navigator.vibrate?.(8);
-
-    const dir = tabIndex(href) > tabIndex(pathname) ? "forward" : "back";
-    document.documentElement.setAttribute("data-nav-dir", dir);
-
-    if (!("startViewTransition" in document)) {
-      startTransition(() => router.push(href));
-      return;
-    }
-
-    (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(
-      () => { startTransition(() => router.push(href)); }
-    );
+    startTransition(() => router.push(href));
   }
 
   return (
