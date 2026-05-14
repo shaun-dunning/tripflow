@@ -22,11 +22,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useItemPresence } from "@/hooks/useItemPresence";
+import { useTravelTime } from "@/lib/travelTime";
 
-// ── Family fixture for presence display ──────────────────────────────────────
-// Four slots representing the Maui family trip travelers.
-// Their "going" state lives only in the current user's localStorage —
-// real-time sync across devices would layer on top via Supabase Realtime.
+// ── Family fixture for presence display ─────────────────────────────────────────────
 const FAMILY_SLOTS = [
   { id: "slot-dad",   initial: "D", label: "Dad",   color: "bg-sky-500"     },
   { id: "slot-mom",   initial: "M", label: "Mom",   color: "bg-pink-400"    },
@@ -88,7 +86,7 @@ function formatClock(totalMins: number): string {
   return `${h12}:${String(m).padStart(2, "0")} ${mer}`;
 }
 
-// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ──────────
+// ── Maui place lookup (drive time + coords from Sheraton Ka'anapali) ────────────
 const SHERATON = { lat: 20.9236, lng: -156.6941 };
 
 type MauiPlace = { keywords: string[]; driveMin: number; lat: number; lng: number; estimated?: boolean };
@@ -125,11 +123,6 @@ function placeForText(text: string): MauiPlace | null {
   return MAUI_PLACES.find((p) => p.keywords.some((k) => lower.includes(k))) ?? null;
 }
 
-function explicitDriveMin(text: string): number | null {
-  const match = text.match(/(\d{1,3})\s*(?:min|minute|minutes)\s*(?:drive|away)?/i);
-  return match ? Number(match[1]) : null;
-}
-
 export function getMapsInfo(title: string): { driveMin: number; mapsUrl: string; lat: number; lng: number } | null {
   const match = placeForText(title);
   if (!match) return null;
@@ -144,49 +137,6 @@ export function getMapsInfo(title: string): { driveMin: number; mapsUrl: string;
 }
 
 export { SHERATON };
-
-function getTravelInfo(item: AgendaItem): { driveMin: number; mapsUrl: string; estimated: boolean } | null {
-  const text = `${item.title} ${item.notes ?? ""}`;
-  const matched = placeForText(text);
-  const explicit = explicitDriveMin(text);
-  const driveMin = explicit ?? matched?.driveMin;
-
-  if (matched) {
-    const origin = `${SHERATON.lat},${SHERATON.lng}`;
-    const dest = `${matched.lat},${matched.lng}`;
-    const isApple = typeof navigator !== "undefined" && /iphone|ipad|mac/i.test(navigator.userAgent);
-    return {
-      driveMin: driveMin ?? matched.driveMin,
-      mapsUrl: isApple
-        ? `maps://maps.apple.com/?saddr=${origin}&daddr=${dest}&dirflg=d`
-        : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${dest}&travelmode=driving`,
-      estimated: matched.estimated === true || explicit !== null,
-    };
-  }
-
-  if (item.reservation) {
-    const isApple = typeof navigator !== "undefined" && /iphone|ipad|mac/i.test(navigator.userAgent);
-    const origin = `${SHERATON.lat},${SHERATON.lng}`;
-    const destination = encodeURIComponent(`${item.title}, Maui`);
-    return {
-      driveMin: explicit ?? 20,
-      mapsUrl: isApple
-        ? `maps://maps.apple.com/?saddr=${origin}&daddr=${destination}&dirflg=d`
-        : `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`,
-      estimated: true,
-    };
-  }
-
-  if (explicit !== null) {
-    return {
-      driveMin: explicit,
-      mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${item.title}, Maui`)}`,
-      estimated: true,
-    };
-  }
-
-  return null;
-}
 
 function getDepartureInfo(item: AgendaItem, driveMin: number): { leaveBy: string; bufferMin: number } | null {
   const eventMins = timeToMinutes(item.time);
@@ -203,7 +153,7 @@ function getDepartureInfo(item: AgendaItem, driveMin: number): { leaveBy: string
   };
 }
 
-// ── Drag handle icon ──────────────────────────────────────────────────────────
+// ── Drag handle icon ───────────────────────────────────────────────────────────────────
 function DragHandle({ listeners, attributes }: { listeners?: object; attributes?: object }) {
   return (
     <div
@@ -219,9 +169,7 @@ function DragHandle({ listeners, attributes }: { listeners?: object; attributes?
   );
 }
 
-// ── Presence strip ────────────────────────────────────────────────────────────
-// Shows which family members are going to an activity and lets the current
-// device's user toggle their own attendance. State is localStorage-backed.
+// ── Presence strip ────────────────────────────────────────────────────────────────────
 function PresenceStrip({ itemId }: { itemId: string }) {
   const { attendees, iAmGoing, toggle } = useItemPresence(itemId);
 
@@ -259,7 +207,7 @@ function PresenceStrip({ itemId }: { itemId: string }) {
   );
 }
 
-// ── Item card (shared between sortable row and drag overlay) ─────────────────
+// ── Item card (shared between sortable row and drag overlay) ───────────────────────
 export function AgendaItemCard({
   item,
   isToday,
@@ -269,6 +217,7 @@ export function AgendaItemCard({
   showHandle = false,
   handleListeners,
   handleAttributes,
+  origin,
   onEdit,
   onToggle,
 }: {
@@ -280,9 +229,14 @@ export function AgendaItemCard({
   showHandle?: boolean;
   handleListeners?: object;
   handleAttributes?: object;
+  origin?: { lat: number; lng: number } | null;
   onEdit: (item: AgendaItem) => void;
   onToggle: (id: string) => void;
 }) {
+  const { info: travelInfo, loading: travelLoading } = useTravelTime(
+    item,
+    origin ?? null
+  );
   return (
     <div
       className={`flex flex-col bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${
@@ -329,18 +283,21 @@ export function AgendaItemCard({
           {item.notes && (
             <p className="text-xs text-slate-400 mt-0.5 leading-snug">{item.notes}</p>
           )}
-          {(() => {
-            const info = getTravelInfo(item);
-            if (!info) return null;
-            const travelLabel = info.driveMin === 0
+          {travelLoading && (
+            <div className="mt-1.5 flex items-center gap-1">
+              <span className="inline-block h-3 w-20 rounded-full bg-slate-100 animate-pulse" />
+            </div>
+          )}
+          {travelInfo && (() => {
+            const travelLabel = travelInfo.durationMin === 0
               ? "On-site"
-              : `${info.estimated ? "~" : ""}${info.driveMin} min drive`;
-            const departureLabel = info.estimated ? "Approx. leave by" : "Leave by";
-            const departure = getDepartureInfo(item, info.driveMin);
+              : `${travelInfo.estimated ? "~" : ""}${travelInfo.durationMin} min drive`;
+            const departureLabel = travelInfo.estimated ? "Approx. leave by" : "Leave by";
+            const departure = getDepartureInfo(item, travelInfo.durationMin);
             return (
               <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                 <a
-                  href={info.mapsUrl}
+                  href={travelInfo.mapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
@@ -355,7 +312,7 @@ export function AgendaItemCard({
                         ? "text-amber-700 bg-amber-50"
                         : "text-slate-600 bg-slate-100"
                     }`}
-                    title={`${info.estimated ? "Estimated: " : ""}${info.driveMin} min drive plus ${departure.bufferMin} min buffer`}
+                    title={`${travelInfo.estimated ? "Estimated: " : ""}${travelInfo.durationMin} min drive plus ${departure.bufferMin} min buffer`}
                   >
                     🚗 {departureLabel} {departure.leaveBy}
                   </span>
@@ -372,7 +329,7 @@ export function AgendaItemCard({
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                🗓 Confirm before trip
+                📅 Confirm before trip
               </span>
             );
           })()}
@@ -458,13 +415,14 @@ export function AgendaItemCard({
   );
 }
 
-// ── Sortable row wrapper ──────────────────────────────────────────────────────────────
+// ── Sortable row wrapper ────────────────────────────────────────────────────────────────────────────
 function SortableItem({
   item,
   isToday,
   isPast,
   isEditable,
   nextItem,
+  origin,
   onEdit,
   onToggle,
   wishlistSuggestion,
@@ -475,6 +433,7 @@ function SortableItem({
   isPast: boolean;
   isEditable: boolean;
   nextItem: AgendaItem | undefined;
+  origin?: { lat: number; lng: number } | null;
   onEdit: (item: AgendaItem) => void;
   onToggle: (id: string) => void;
   wishlistSuggestion: { emoji: string; name: string; note: string; fromWishlist?: boolean } | null;
@@ -510,6 +469,7 @@ function SortableItem({
         showHandle={isEditable}
         handleListeners={listeners}
         handleAttributes={attributes}
+        origin={origin}
         onEdit={onEdit}
         onToggle={onToggle}
       />
@@ -575,7 +535,7 @@ function SortableItem({
   );
 }
 
-// ── SortableAgendaSections ──────────────────────────────────────────────────────────────────
+// ── SortableAgendaSections ──────────────────────────────────────────────────────────────────────────────────────
 // The main exported component: wraps all sections in a single DndContext so
 // items can also be dragged *between* sections.
 
@@ -638,6 +598,7 @@ export function SortableAgendaSections({
   isPast,
   isEditable,
   wishlist,
+  origin,
   onReorder,
   onEdit,
   onToggle,
@@ -649,6 +610,8 @@ export function SortableAgendaSections({
   isPast: boolean;
   isEditable: boolean;
   wishlist: WishlistEntry[];
+  /** Hotel / lodging coords for drive-time calculations. Defaults to Sheraton Ka'anapali. */
+  origin?: { lat: number; lng: number } | null;
   onReorder: (newSections: Section[]) => void;
   onEdit: (item: AgendaItem) => void;
   onToggle: (id: string) => void;
@@ -808,6 +771,7 @@ export function SortableAgendaSections({
                       isPast={isPast}
                       isEditable={isEditable}
                       nextItem={nextItem}
+                      origin={origin}
                       onEdit={onEdit}
                       onToggle={onToggle}
                       wishlistSuggestion={suggestion}
@@ -843,6 +807,7 @@ export function SortableAgendaSections({
               isToday={isToday}
               isPast={isPast}
               isEditable={isEditable}
+              origin={origin}
               onEdit={() => {}}
               onToggle={() => {}}
             />
