@@ -11,7 +11,9 @@ import {
   FAMILY_INVITE_KEY,
   INVITE_CODE,
   PREVIEW_INVITE_KEY,
+  START_OWN_TRIP_KEY,
   TRIP_ID,
+  buildInviteUrl,
 } from "@/lib/tripConfig";
 import type { User } from "@supabase/supabase-js";
 
@@ -55,9 +57,9 @@ const DEMO_FALLBACK_TRIP: TripInfo = {
 };
 const AVATARS = ["🌺", "🏄", "🌊", "☀️", "🧳", "🍍"];
 const ONBOARDING_STEPS = [
-  { title: "See the plan", body: "Check each day, reservations, maps, and what is coming up next.", icon: "🗓️" },
-  { title: "Join the group", body: "Chat, vote on plans, and keep everyone moving together.", icon: "💬" },
-  { title: "Arrive ready", body: "Use packing, docs, and leave-by guidance when the trip gets close.", icon: "✨" },
+  { title: "Plans", body: "See each day in order.", icon: "🗓️" },
+  { title: "Docs", body: "Find bookings fast.", icon: "📋" },
+  { title: "Group", body: "Keep everyone aligned.", icon: "💬" },
 ];
 
 type InviteMode = "family" | "preview" | "demo";
@@ -179,6 +181,7 @@ export default function JoinPage() {
   const [password, setPassword] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
 
   // 1. Load trip info
   useEffect(() => {
@@ -216,6 +219,11 @@ export default function JoinPage() {
     supabase.auth.getUser().then(({ data }) => {
       if (data.user) setCurrentUser(data.user);
     });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setCurrentUser(session?.user ?? null);
+    });
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   // 3. If logged in + trip loaded → check membership
@@ -262,6 +270,7 @@ export default function JoinPage() {
     e.preventDefault();
     if (!trip) return;
     setError(null);
+    setConfirmEmail(null);
     setAuthLoading(true);
 
     let user: User | null = null;
@@ -270,13 +279,22 @@ export default function JoinPage() {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { full_name: name } },
+        options: {
+          data: { full_name: name },
+          emailRedirectTo: buildInviteUrl(inviteCode),
+        },
       });
       if (error) {
         setError(formatAuthError(error.message));
         if (/email rate limit exceeded|user already registered|already been registered|already exists/i.test(error.message)) {
           setMode("signin");
         }
+        setAuthLoading(false);
+        return;
+      }
+      if (!data.session) {
+        setConfirmEmail(email);
+        setMode("signin");
         setAuthLoading(false);
         return;
       }
@@ -305,6 +323,14 @@ export default function JoinPage() {
       }
     }
     setAuthLoading(false);
+  }
+
+  function startOwnTrip() {
+    localStorage.removeItem(PREVIEW_INVITE_KEY);
+    localStorage.removeItem(FAMILY_INVITE_KEY);
+    localStorage.removeItem(ACTIVE_TRIP_KEY);
+    localStorage.setItem(START_OWN_TRIP_KEY, "1");
+    router.replace("/");
   }
 
   // ── Not found ──────────────────────────────────────────────────────────────
@@ -341,27 +367,37 @@ export default function JoinPage() {
     <div className="min-h-screen flex flex-col bg-white">
 
       {/* ── Hero ── */}
-      <div className="relative h-64 w-full overflow-hidden flex-none">
+      <div className="relative min-h-[38dvh] w-full overflow-hidden flex-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={trip.cover_photo ?? MAUI_FALLBACK}
           alt={trip.destination}
           className="absolute inset-0 w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#061832]/92 via-[#061832]/38 to-[#061832]/12" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/30 to-transparent" />
+
+        <div className="absolute left-6 top-6 flex items-center gap-2.5">
+          <p className="font-serif text-2xl font-light leading-none text-white drop-shadow-sm">daywave</p>
+          {isDemo && (
+            <span className="rounded-full border border-white/18 bg-white/12 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-white/68 backdrop-blur-md">
+              Sample trip
+            </span>
+          )}
+        </div>
 
         <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
-          <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-1">
-            {inviteMode === "family" ? "🌺 You're invited" : isDemo ? "✨ Demo Trip" : "✨ Preview Daywave"}
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.22em] text-white/62">
+            {inviteMode === "family" ? "You're invited" : isDemo ? "Try the rhythm" : "Preview Daywave"}
           </p>
-          <h1 className="text-2xl font-black text-white leading-tight">
-            {inviteMode === "preview" ? "Try Daywave" : trip.title}
+          <h1 className="max-w-[19rem] text-[2.35rem] font-black leading-[0.95] text-white">
+            {inviteMode === "preview" ? "Plan each day beautifully." : isDemo ? "Explore a sample trip." : trip.title}
           </h1>
-          <p className="text-sm text-white/70 mt-1">
+          <p className="mt-3 max-w-[20rem] text-sm leading-relaxed text-white/74">
             {inviteMode === "family"
               ? `${formatDateRange(trip.start_date, trip.end_date)} · ${trip.destination}`
               : isDemo
-              ? "A fully loaded sample trip with anonymized names, bookings, and group chat"
+              ? "A fully loaded Maui itinerary with sample bookings, chat, packing, and day-of flow."
               : "A polished sample trip you can explore before joining a real group"}
           </p>
         </div>
@@ -396,7 +432,7 @@ export default function JoinPage() {
                 {trip.travelers.length} {isDemo ? "sample " : ""}traveler{trip.travelers.length !== 1 ? "s" : ""} going
               </p>
               <p className="text-xs text-slate-400">
-                {visibleTravelers.map((t) => t.name).join(", ")}
+                {isDemo ? "Anonymized demo crew" : visibleTravelers.map((t) => t.name).join(", ")}
                 {extraCount > 0 ? ` +${extraCount} more` : ""}
               </p>
             </>
@@ -443,6 +479,14 @@ export default function JoinPage() {
                 >
                   Open Daywave
                 </button>
+                {isDemo && (
+                  <button
+                    onClick={startOwnTrip}
+                    className="w-full rounded-2xl border border-slate-200 bg-white py-4 text-sm font-bold text-slate-700"
+                  >
+                    Start my own trip
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -495,6 +539,14 @@ export default function JoinPage() {
                     ? (inviteMode === "preview" ? "Opening…" : "Joining…")
                     : (inviteMode === "preview" ? "Open Daywave" : isDemo ? "Open Demo Trip" : `Join ${trip.title}`)}
                 </button>
+                {isDemo && (
+                  <button
+                    onClick={startOwnTrip}
+                    className="w-full rounded-2xl border border-slate-200 bg-white py-4 text-sm font-bold text-slate-700"
+                  >
+                    Start my own trip instead
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -502,21 +554,30 @@ export default function JoinPage() {
           /* Auth form */
           <>
             <h2 className="text-xl font-black text-slate-900 mb-1">
-              {mode === "signup" ? "Create your account" : "Welcome back"}
+              {mode === "signup" ? (isDemo ? "Create your demo account" : "Create your account") : "Welcome back"}
             </h2>
             <p className="text-sm text-slate-400 mb-6">
               {mode === "signup"
                 ? inviteMode === "family"
                   ? "You'll be added to the trip automatically."
                   : isDemo
-                  ? "Create an account to explore the anonymized demo trip."
+                  ? "Confirm your email, then Daywave will bring you back here to open the sample trip."
                   : "Create an account to explore the sample experience."
                 : inviteMode === "family"
                   ? "Sign in and you'll be added to the trip."
                   : isDemo
-                  ? "Sign in to open the anonymized Maui demo trip."
+                  ? "Sign in to continue into the sample Maui trip."
                   : "Sign in to preview Daywave without joining the family trip."}
             </p>
+
+            {confirmEmail && (
+              <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-widest text-amber-700">Check your email</p>
+                <p className="mt-1 text-sm leading-relaxed text-amber-900">
+                  We sent a confirmation link to <span className="font-bold">{confirmEmail}</span>. Open that email to finish creating your Daywave account, then sign in here to open the sample trip.
+                </p>
+              </div>
+            )}
 
             {/* Mode toggle */}
             <div className="flex bg-slate-100 rounded-2xl p-1 mb-6">
@@ -624,6 +685,15 @@ export default function JoinPage() {
                   ? inviteMode === "family" ? `Join ${trip.title}` : isDemo ? "Create Account & Open Demo" : "Create Account & Preview"
                   : inviteMode === "family" ? "Sign in & Join Trip" : isDemo ? "Sign in & Open Demo" : "Sign in & Preview"}
               </button>
+              {isDemo && (
+                <button
+                  type="button"
+                  onClick={startOwnTrip}
+                  className="text-center text-sm font-bold text-slate-500 py-2"
+                >
+                  I’m ready to start my own trip
+                </button>
+              )}
             </form>
           </>
         )}

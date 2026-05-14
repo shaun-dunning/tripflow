@@ -6,6 +6,7 @@ export const APP_PREVIEW_INVITE_CODES = ["DAYWAVE", "TRYDAYWAVE"];
 export const PREVIEW_INVITE_KEY = "daywave-preview-invite";
 export const FAMILY_INVITE_KEY = "daywave-family-invite";
 export const ACTIVE_TRIP_KEY = "daywave-active-trip-id";
+export const START_OWN_TRIP_KEY = "daywave-start-own-trip";
 export const DAYWAVE_URL = "https://daywave.app";
 
 export const UPCOMING_TRIPS_KEY = "daywave-upcoming-trips";

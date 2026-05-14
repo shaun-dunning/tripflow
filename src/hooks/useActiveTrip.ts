@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ACTIVE_TRIP_KEY, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
+import { ACTIVE_TRIP_KEY, PREVIEW_INVITE_KEY, START_OWN_TRIP_KEY } from "@/lib/tripConfig";
 import type { User } from "@supabase/supabase-js";
 
 export type ActiveTrip = {
@@ -133,6 +133,12 @@ export function useActiveTrip(user: User | null) {
       return;
     }
 
+    if (typeof window !== "undefined" && localStorage.getItem(START_OWN_TRIP_KEY) === "1") {
+      localStorage.removeItem(ACTIVE_TRIP_KEY);
+      applySnapshot({ userId: user.id, status: "no-trip", memberships: rows, activeTrip: null, error: null });
+      return;
+    }
+
     const storedTripId = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_TRIP_KEY) : null;
     const selected = rows.find((row) => row.trip_id === storedTripId) ?? rows[0];
     if (typeof window !== "undefined") localStorage.setItem(ACTIVE_TRIP_KEY, selected.trip_id);
@@ -191,6 +197,7 @@ export function useActiveTrip(user: User | null) {
     const createdTrip = Array.isArray(trip) ? trip[0] : trip;
     if (!createdTrip) throw new Error("Trip could not be created.");
 
+    localStorage.removeItem(START_OWN_TRIP_KEY);
     localStorage.setItem(ACTIVE_TRIP_KEY, createdTrip.id);
     await loadTrips();
     return createdTrip as ActiveTrip;
