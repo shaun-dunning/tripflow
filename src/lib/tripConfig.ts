@@ -2,13 +2,13 @@ export const TRIP_ID = "a1b2c3d4-0000-0000-0000-000000000001";
 export const INVITE_CODE = "MAUI26";
 export const DEMO_TRIP_ID = "b2c3d4e5-1111-2222-3333-444444444444";
 export const DEMO_INVITE_CODE = "DEMO";
-export const APP_PREVIEW_INVITE_CODES = ["TRIPFLOW", "TRYTRIPFLOW"];
-export const PREVIEW_INVITE_KEY = "tripflow-preview-invite";
-export const FAMILY_INVITE_KEY = "tripflow-family-invite";
-export const ACTIVE_TRIP_KEY = "tripflow-active-trip-id";
+export const APP_PREVIEW_INVITE_CODES = ["DAYWAVE", "TRYDAYWAVE"];
+export const PREVIEW_INVITE_KEY = "daywave-preview-invite";
+export const FAMILY_INVITE_KEY = "daywave-family-invite";
+export const ACTIVE_TRIP_KEY = "daywave-active-trip-id";
 
-export const UPCOMING_TRIPS_KEY = "tripflow-upcoming-trips";
-export const ARCHIVED_TRIPS_KEY = "tripflow-archived-trips";
+export const UPCOMING_TRIPS_KEY = "daywave-upcoming-trips";
+export const ARCHIVED_TRIPS_KEY = "daywave-archived-trips";
 
 export type StoredTrip = {
   id: number;

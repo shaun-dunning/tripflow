@@ -58,8 +58,8 @@ type DayData = {
 
 const PACKING_TOTAL = 23;
 const DEMO_PACKED_COUNT = 5;
-const PACKING_STORAGE_KEY = "tripflow-packing-v2-maui26";
-const LEGACY_PACKING_STORAGE_KEY = "tripflow-packing-maui26";
+const PACKING_STORAGE_KEY = "daywave-packing-v2-maui26";
+const LEGACY_PACKING_STORAGE_KEY = "daywave-packing-maui26";
 
 function readLocalPackingProgress(): { packed: number; total: number } {
   if (typeof window === "undefined") return { packed: 0, total: PACKING_TOTAL };
@@ -494,7 +494,7 @@ const NEW_ID_PREFIX = "optimistic-";
 
 function getStoredDayIndex(): number {
   if (typeof window === "undefined") return 0;
-  const saved = localStorage.getItem("tripflow-dayIndex");
+  const saved = localStorage.getItem("daywave-dayIndex");
   if (saved === null) return 0;
   const idx = parseInt(saved, 10);
   return !isNaN(idx) && idx >= 0 ? idx : 0;
@@ -617,9 +617,9 @@ export default function MyDayPage() {
   useEffect(() => {
     if (days.length === 0) return;
     // Consume a pending item passed from the Explore tab
-    const bridgeStr = localStorage.getItem("tripflow-explore-add");
+    const bridgeStr = localStorage.getItem("daywave-explore-add");
     if (bridgeStr) {
-      localStorage.removeItem("tripflow-explore-add");
+      localStorage.removeItem("daywave-explore-add");
       try {
         const bridged = JSON.parse(bridgeStr) as {
           dayIndex: number; id: string; title: string; emoji: string;
@@ -651,7 +651,7 @@ export default function MyDayPage() {
 
   // Persist dayIndex whenever it changes
   useEffect(() => {
-    localStorage.setItem("tripflow-dayIndex", String(dayIndex));
+    localStorage.setItem("daywave-dayIndex", String(dayIndex));
   }, [dayIndex]);
 
   useEffect(() => {
@@ -928,7 +928,7 @@ export default function MyDayPage() {
         )
       );
     };
-    window.addEventListener("tripflow:explore-add", handleExploreAdd);
+    window.addEventListener("daywave:explore-add", handleExploreAdd);
 
     // Pull-to-refresh touch handlers
     const PULL_THRESHOLD = 64; // px of damped pull before release triggers refresh
@@ -971,7 +971,7 @@ export default function MyDayPage() {
 
     return () => {
       window.removeEventListener("focus", handleFocus);
-      window.removeEventListener("tripflow:explore-add", handleExploreAdd);
+      window.removeEventListener("daywave:explore-add", handleExploreAdd);
       document.removeEventListener("touchstart", handleTouchStart);
       document.removeEventListener("touchmove", handleTouchMove);
       document.removeEventListener("touchend", handleTouchEnd);
@@ -1052,7 +1052,7 @@ export default function MyDayPage() {
   // ── Sheet open/close ─────────────────────────────────────────────────────
   function openEdit(item: Item) {
     if (item.sourceDocId) {
-      localStorage.setItem("tripflow-vault-focus-doc", item.sourceDocId);
+      localStorage.setItem("daywave-vault-focus-doc", item.sourceDocId);
       router.push("/vault");
       return;
     }
@@ -1381,7 +1381,7 @@ export default function MyDayPage() {
       <TripAccessGate
         mode="preview"
         title="Today is private to the trip"
-        message="Preview profiles can browse TripFlow, but live itineraries stay private until they join or create a trip."
+        message="Preview profiles can browse Daywave, but live itineraries stay private until they join or create a trip."
         detail={activeTrip.error}
       />
     );
@@ -2221,7 +2221,7 @@ export default function MyDayPage() {
         {loadIssue && !loading && (
           <ResilientState
             title="Using saved itinerary"
-            message="TripFlow couldn't refresh the latest shared trip data, so the page is staying usable with the itinerary already on this device."
+            message="Daywave couldn't refresh the latest shared trip data, so the page is staying usable with the itinerary already on this device."
             detail={loadIssue}
             actionLabel="Try again"
             onAction={() => { setLoading(true); void fetchDataRef.current?.(); }}

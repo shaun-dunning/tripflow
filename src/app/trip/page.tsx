@@ -21,8 +21,8 @@ import {
 } from "@/lib/tripConfig";
 const PACKING_TOTAL = 23;
 const DEMO_PACKED_COUNT = 5;
-const PACKING_STORAGE_KEY = "tripflow-packing-v2-maui26";
-const LEGACY_PACKING_STORAGE_KEY = "tripflow-packing-maui26";
+const PACKING_STORAGE_KEY = "daywave-packing-v2-maui26";
+const LEGACY_PACKING_STORAGE_KEY = "daywave-packing-maui26";
 
 type Traveler = {
   id: string;
@@ -593,7 +593,7 @@ export default function TripPage() {
     if (navigator.share) {
       await navigator.share({
         title: `Join our ${trip?.title ?? "trip"} 🌺`,
-        text: "Hey! Join our family trip on TripFlow.",
+        text: "Hey! Join our family trip on Daywave.",
         url: link,
       });
     } else {
@@ -806,7 +806,7 @@ export default function TripPage() {
       <TripAccessGate
         mode="preview"
         title="Trip details are private"
-        message="Preview profiles can browse TripFlow, but live trip details stay private until they join or create a trip."
+        message="Preview profiles can browse Daywave, but live trip details stay private until they join or create a trip."
         detail={activeTrip.error}
       />
     );

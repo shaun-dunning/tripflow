@@ -40,7 +40,7 @@ export default function TripAccessGate({
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-slate-500">
           {message ?? (isPreview
-            ? "This profile is previewing TripFlow without joining Shaun's family trip."
+            ? "This profile is previewing Daywave without joining Shaun's family trip."
             : "You are signed in, but this profile is not a traveler on the Maui family trip yet.")}
         </p>
         {detail && (

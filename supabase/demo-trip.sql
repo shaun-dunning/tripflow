@@ -1,5 +1,5 @@
 -- ============================================================
--- TripFlow anonymized demo trip
+-- Daywave anonymized demo trip
 -- Paste into Supabase SQL Editor after membership-policies.sql.
 --
 -- This creates a separate, shareable Maui demo at /join/DEMO.
@@ -154,9 +154,9 @@ insert into public.messages (trip_id, sender_name, sender_avatar, sender_user_id
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Jamie', '👩', null, false, 'Beach morning first, snorkel later? That feels easiest for everyone.', null, null, null, null, '2026-06-06 09:02:00+00'),
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Alex',  '🧑', null, true,  'Yes. Breakfast, beach, downtime, then the sail at 4:30.', null, null, null, null, '2026-06-06 09:08:00+00'),
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Riley', '👧', null, false, 'Can we get shave ice after the beach?', null, null, null, null, '2026-06-06 09:09:00+00'),
-  ('b2c3d4e5-1111-2222-3333-444444444444', 'TripFlow', '🌺', null, false, null, 'reservation', 'Sunset seafood dinner', 'Tonight · 7:15 PM · Party of 4', '🐟', '2026-06-06 10:41:00+00'),
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Daywave', '🌺', null, false, null, 'reservation', 'Sunset seafood dinner', 'Tonight · 7:15 PM · Party of 4', '🐟', '2026-06-06 10:41:00+00'),
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Casey', '👦', null, false, 'I vote yes on shave ice.', null, null, null, null, '2026-06-06 10:45:00+00'),
-  ('b2c3d4e5-1111-2222-3333-444444444444', 'TripFlow', '🌺', null, false, null, 'itinerary', 'Today''s plan', 'Beach 10:00 AM · Snorkel 4:30 PM · Dinner 7:15 PM', '📋', '2026-06-06 13:05:00+00');
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Daywave', '🌺', null, false, null, 'itinerary', 'Today''s plan', 'Beach 10:00 AM · Snorkel 4:30 PM · Dinner 7:15 PM', '📋', '2026-06-06 13:05:00+00');
 
 do $$
 begin

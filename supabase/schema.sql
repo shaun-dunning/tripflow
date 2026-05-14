@@ -1,5 +1,5 @@
 -- ============================================================
--- TripFlow Database Schema
+-- Daywave Database Schema
 -- Paste this entire file into Supabase → SQL Editor → Run
 -- ============================================================
 

@@ -72,10 +72,10 @@ function formatDateRange(start: string, end: string) {
 function formatJoinError(err: unknown) {
   const message = err instanceof Error ? err.message : "Could not join this trip.";
   if (/row-level security|rls|policy/i.test(message)) {
-    return "TripFlow could not add this account to the trip because Supabase is missing the join-by-invite SQL function. Run the latest membership SQL, then try again.";
+    return "Daywave could not add this account to the trip because Supabase is missing the join-by-invite SQL function. Run the latest membership SQL, then try again.";
   }
   if (/function .*join_trip_by_invite|could not find.*join_trip_by_invite|schema cache/i.test(message)) {
-    return "TripFlow needs the latest join-by-invite SQL function. Run the SQL I provided, wait a few seconds, then try again.";
+    return "Daywave needs the latest join-by-invite SQL function. Run the SQL I provided, wait a few seconds, then try again.";
   }
   if (/foreign key|violates.*constraint|not present/i.test(message)) {
     return "The demo trip has not been installed in Supabase yet. Run supabase/demo-trip.sql in the SQL Editor, then try this link again.";
@@ -352,10 +352,10 @@ export default function JoinPage() {
 
         <div className="absolute bottom-0 left-0 right-0 px-6 pb-6">
           <p className="text-xs font-bold text-white/60 uppercase tracking-widest mb-1">
-            {inviteMode === "family" ? "🌺 You're invited" : isDemo ? "✨ Demo Trip" : "✨ Preview TripFlow"}
+            {inviteMode === "family" ? "🌺 You're invited" : isDemo ? "✨ Demo Trip" : "✨ Preview Daywave"}
           </p>
           <h1 className="text-2xl font-black text-white leading-tight">
-            {inviteMode === "preview" ? "Try TripFlow" : trip.title}
+            {inviteMode === "preview" ? "Try Daywave" : trip.title}
           </h1>
           <p className="text-sm text-white/70 mt-1">
             {inviteMode === "family"
@@ -441,7 +441,7 @@ export default function JoinPage() {
                   }}
                   className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
                 >
-                  Open TripFlow
+                  Open Daywave
                 </button>
               </>
             ) : (
@@ -493,7 +493,7 @@ export default function JoinPage() {
                 >
                   {joining
                     ? (inviteMode === "preview" ? "Opening…" : "Joining…")
-                    : (inviteMode === "preview" ? "Open TripFlow" : isDemo ? "Open Demo Trip" : `Join ${trip.title}`)}
+                    : (inviteMode === "preview" ? "Open Daywave" : isDemo ? "Open Demo Trip" : `Join ${trip.title}`)}
                 </button>
               </>
             )}
@@ -515,7 +515,7 @@ export default function JoinPage() {
                   ? "Sign in and you'll be added to the trip."
                   : isDemo
                   ? "Sign in to open the anonymized Maui demo trip."
-                  : "Sign in to preview TripFlow without joining the family trip."}
+                  : "Sign in to preview Daywave without joining the family trip."}
             </p>
 
             {/* Mode toggle */}
@@ -629,10 +629,16 @@ export default function JoinPage() {
         )}
       </div>
 
-      {/* TripFlow branding */}
-      <div className="text-center pb-8">
-        <p className="text-xs text-slate-300 font-medium">
-          🌺 TripFlow · Family Travel, Together
+      {/* Daywave branding */}
+      <div className="flex flex-col items-center pb-8">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/daywave-wordmark-light.png"
+          alt="daywave"
+          className="h-8 w-auto opacity-45"
+        />
+        <p className="mt-1 text-[11px] font-medium text-slate-300">
+          A better way to move through your trip
         </p>
       </div>
     </div>

@@ -56,14 +56,14 @@ const ROLE_PRESETS = ["Trip Organizer", "Co-traveler", "Kid", "Guest", "Grandpar
 const FALLBACK_MESSAGES: Message[] = [
   {
     id: "preview-welcome",
-    sender_name: "TripFlow",
+    sender_name: "Daywave",
     sender_avatar: "🌺",
     text: "Welcome to the Maui group. Share plans, quick polls, photos, and day-of updates here.",
     created_at: new Date().toISOString(),
   },
   {
     id: "preview-plan",
-    sender_name: "TripFlow",
+    sender_name: "Daywave",
     sender_avatar: "🌺",
     card_type: "plan",
     card_title: "Maui Trip Plan",
@@ -233,7 +233,7 @@ export default function ChatPage() {
         if (!activeTrip.isReady || !activeTrip.activeTripId) {
           setTravelers([]);
           setMessages(previewSession ? FALLBACK_MESSAGES : []);
-          setTripTitle(previewSession ? "TripFlow Preview" : "Private Group");
+          setTripTitle(previewSession ? "Daywave Preview" : "Private Group");
           setTripDateInfo(null);
           setLoading(false);
           return;
@@ -448,7 +448,7 @@ export default function ChatPage() {
     if (navigator.share) {
       await navigator.share({
         title: "Join our Maui Trip 🌺",
-        text: "Hey! Join our family trip to Maui on TripFlow.",
+        text: "Hey! Join our family trip to Maui on Daywave.",
         url: link,
       });
     } else {
@@ -626,7 +626,7 @@ export default function ChatPage() {
               <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
                 <p className="text-xs font-black uppercase tracking-widest text-sky-700">Trying the app</p>
                 <p className="mt-1 text-sm leading-relaxed text-sky-800">
-                  For friends who should test a fully loaded anonymized trip, use <span className="font-mono font-bold">/join/DEMO</span>. For a lightweight read-only preview, use <span className="font-mono font-bold">/join/TRIPFLOW</span>.
+                  For friends who should test a fully loaded anonymized trip, use <span className="font-mono font-bold">/join/DEMO</span>. For a lightweight read-only preview, use <span className="font-mono font-bold">/join/DAYWAVE</span>.
                 </p>
               </div>
 
@@ -1102,7 +1102,7 @@ export default function ChatPage() {
             </button>
             <p className="mt-3 text-xs leading-relaxed text-slate-400">
               {hasFamilyInvite
-                ? "Use /join/DEMO when you want someone to try TripFlow without joining your family group."
+                ? "Use /join/DEMO when you want someone to try Daywave without joining your family group."
                 : "Private trip details only appear after an invite has been accepted."}
             </p>
           </div>

@@ -1,12 +1,12 @@
 /**
- * IndexedDB wrapper for TripFlow offline caching.
+ * IndexedDB wrapper for Daywave offline caching.
  *
  * Stores:
  *   agenda_cache  — key: "<tripId>-<dayNum>", value: { items, cachedAt }
  *   sync_queue    — autoincrement; pending mutations to flush when online
  */
 
-const DB_NAME = "tripflow";
+const DB_NAME = "daywave";
 const DB_VERSION = 1;
 
 export type SyncOp =

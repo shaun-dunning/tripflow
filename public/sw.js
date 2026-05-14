@@ -1,8 +1,8 @@
-/* TripFlow Service Worker — offline-first caching */
+/* Daywave Service Worker — offline-first caching */
 const CACHE_VER = "v2";
-const SHELL_CACHE  = `tripflow-shell-${CACHE_VER}`;
-const IMAGE_CACHE  = `tripflow-images-${CACHE_VER}`;
-const API_CACHE    = `tripflow-api-${CACHE_VER}`;
+const SHELL_CACHE  = `daywave-shell-${CACHE_VER}`;
+const IMAGE_CACHE  = `daywave-images-${CACHE_VER}`;
+const API_CACHE    = `daywave-api-${CACHE_VER}`;
 
 // Static Next.js app-shell paths to pre-cache at install time
 const PRECACHE_URLS = ["/", "/trip", "/explore", "/vault", "/chat", "/packing"];

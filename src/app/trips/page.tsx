@@ -245,7 +245,7 @@ export default function TripsPage() {
       <TripAccessGate
         mode="preview"
         title="Trips are private"
-        message="Preview profiles can explore TripFlow, but live trip lists stay private until they join or create a trip."
+        message="Preview profiles can explore Daywave, but live trip lists stay private until they join or create a trip."
         detail={activeTrip.error}
       />
     );

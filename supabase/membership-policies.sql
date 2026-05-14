@@ -1,4 +1,4 @@
--- TripFlow membership and trip privacy policies.
+-- Daywave membership and trip privacy policies.
 -- Run this in Supabase SQL Editor after the base schema is installed.
 
 -- Helper avoids recursive RLS checks when policies need to know whether the
@@ -96,7 +96,7 @@ begin
   insert into public.messages (trip_id, sender_name, sender_avatar, sender_user_id, is_me, text)
   values (
     target_trip_id,
-    'TripFlow',
+    'Daywave',
     '🌺',
     null,
     false,

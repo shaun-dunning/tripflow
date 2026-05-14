@@ -49,7 +49,7 @@ export default function AuthPage() {
           setMode("signin");
         }
       } else if (data.session) {
-        setSuccess("Account created. Opening TripFlow...");
+        setSuccess("Account created. Opening Daywave...");
         router.replace("/");
       } else {
         setSuccess("Account created. Check your email to confirm it, then sign in.");
@@ -81,11 +81,14 @@ export default function AuthPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/28 to-sky-950/10" />
         <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-black/35 to-transparent" />
         <div className="absolute top-5 left-5 right-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="size-9 rounded-2xl bg-white/18 backdrop-blur-md border border-white/25 flex items-center justify-center text-white">
-              <MapPinned className="size-4" />
-            </div>
-            <span className="text-lg font-black text-white tracking-tight">TripFlow</span>
+          <div className="flex items-center gap-2.5">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/daywave-icon-512.png"
+              alt="Daywave"
+              className="size-9 rounded-2xl shadow-lg shadow-black/20"
+            />
+            <span className="text-lg font-black text-white tracking-tight">daywave</span>
           </div>
           <div className="rounded-full bg-white/16 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md border border-white/20">
             Maui ready

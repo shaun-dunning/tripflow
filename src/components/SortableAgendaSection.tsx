@@ -381,7 +381,7 @@ export function AgendaItemCard({
               href="/vault"
               onClick={(e) => {
                 e.stopPropagation();
-                localStorage.setItem("tripflow-vault-focus-doc", item.sourceDocId ?? "");
+                localStorage.setItem("daywave-vault-focus-doc", item.sourceDocId ?? "");
               }}
               className="inline-flex items-center gap-1 mt-1.5 ml-1 text-[10px] font-bold text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full hover:bg-violet-100 transition-colors"
             >

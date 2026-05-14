@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const STORE_KEY = "tf-item-presence-v1";
+const STORE_KEY = "daywave-item-presence-v1";
 
 // Module-level subscriber set so all mounted cards re-render on any toggle
 // (avoids a context while giving cross-component reactivity within the tab).
@@ -24,10 +24,10 @@ function writeStore(store: Record<string, string[]>) {
 // Returns the stable per-device "me" ID (generated once, persisted).
 function getMyId(): string {
   if (typeof window === "undefined") return "me";
-  let id = localStorage.getItem("tf-presence-my-id");
+  let id = localStorage.getItem("daywave-presence-my-id");
   if (!id) {
     id = typeof crypto !== "undefined" ? crypto.randomUUID() : `me-${Date.now()}`;
-    localStorage.setItem("tf-presence-my-id", id);
+    localStorage.setItem("daywave-presence-my-id", id);
   }
   return id;
 }

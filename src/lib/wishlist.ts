@@ -1,4 +1,4 @@
-const WISHLIST_KEY = "tripflow-wishlist-maui26";
+const WISHLIST_KEY = "daywave-wishlist-maui26";
 
 export type WishlistEntry = {
   placeId: number;

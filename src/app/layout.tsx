@@ -12,18 +12,30 @@ export const viewport: Viewport = {
   userScalable: false,
   // Lets content render behind the notch / Dynamic Island / home indicator
   viewportFit: "cover",
-  // Matches the app's sky-blue accent; tints the browser chrome / status bar
-  themeColor: "#0ea5e9",
+  // Matches the Daywave navy; tints the browser chrome / status bar
+  themeColor: "#061832",
 };
 
 // ── App metadata ─────────────────────────────────────────────────────────────
 export const metadata: Metadata = {
-  title: "TripFlow",
-  description: "Your family travel command center",
+  title: "Daywave",
+  description: "A better way to move through your trip",
+  metadataBase: new URL("https://daywave.app"),
+  icons: {
+    icon: "/brand/daywave-icon-512.png",
+    apple: "/brand/daywave-apple-icon.png",
+  },
+  openGraph: {
+    title: "Daywave",
+    description: "A better way to move through your trip",
+    url: "https://daywave.app",
+    siteName: "Daywave",
+    images: [{ url: "/brand/daywave-wordmark-dark.png", width: 2172, height: 724, alt: "daywave" }],
+  },
   // Apple PWA — enables full-screen mode when launched from home screen
   appleWebApp: {
     capable: true,
-    title: "TripFlow",
+    title: "Daywave",
     // "default" keeps the standard status bar so we don't need to
     // pad content away from the top edge manually
     statusBarStyle: "default",

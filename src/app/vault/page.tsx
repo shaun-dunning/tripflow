@@ -393,12 +393,12 @@ export default function VaultPage() {
       if (error) { setError(error.message); setLoading(false); return; }
       if (!data || data.length === 0) {
         setDocs([]);
-        localStorage.removeItem("tripflow-vault-focus-doc");
+        localStorage.removeItem("daywave-vault-focus-doc");
       } else {
         setDocs(data as Doc[]);
-        const focusId = localStorage.getItem("tripflow-vault-focus-doc");
+        const focusId = localStorage.getItem("daywave-vault-focus-doc");
         if (focusId) {
-          localStorage.removeItem("tripflow-vault-focus-doc");
+          localStorage.removeItem("daywave-vault-focus-doc");
           const focused = (data as Doc[]).find((doc) => doc.id === focusId);
           if (focused) setDetailDoc(focused);
         }
@@ -595,7 +595,7 @@ export default function VaultPage() {
     <TripAccessGate
       mode="preview"
       title="Docs are private to the trip"
-      message="Preview profiles can explore TripFlow, but live reservations stay private until they join or create a trip."
+      message="Preview profiles can explore Daywave, but live reservations stay private until they join or create a trip."
       detail={activeTrip.error}
     />
   );

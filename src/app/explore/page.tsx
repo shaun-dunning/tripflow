@@ -1016,7 +1016,7 @@ export default function ExplorePage() {
     }
 
     // Write the target day to localStorage so My Day restores it on fresh mount.
-    localStorage.setItem("tripflow-dayIndex", String(dayNum - 1));
+    localStorage.setItem("daywave-dayIndex", String(dayNum - 1));
 
     // Use a full page reload instead of router.push so My Day always mounts fresh,
     // re-runs fetchData, and picks up the newly inserted Supabase item.
@@ -1244,15 +1244,18 @@ export default function ExplorePage() {
           {/* Header */}
           <div
             className="flex items-center justify-between px-5 pt-5 pb-4 flex-none"
-            style={{ background: "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)" }}
+            style={{ background: "linear-gradient(135deg, #061832 0%, #12385f 62%, #2f8f96 100%)" }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-xl">
-                🌺
-              </div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/brand/daywave-icon-512.png"
+                alt="Daywave"
+                className="h-10 w-10 rounded-2xl shadow-lg shadow-black/20"
+              />
               <div>
-                <h2 className="text-base font-black text-white">Maui Trip AI</h2>
-                <p className="text-xs text-white/70 mt-0.5">Your personal Maui guide</p>
+                <h2 className="text-base font-black text-white">Daywave AI</h2>
+                <p className="text-xs text-white/70 mt-0.5">Your day-of Maui guide</p>
               </div>
             </div>
             <button
@@ -2131,7 +2134,7 @@ export default function ExplorePage() {
             ✨
           </div>
           <div className="flex-1 text-left min-w-0">
-            <p className="text-sm font-bold text-slate-900 leading-tight">Ask Maui Trip AI</p>
+            <p className="text-sm font-bold text-slate-900 leading-tight">Ask Daywave AI</p>
             <p className="text-[11px] text-slate-500 truncate">What should we do this afternoon?</p>
           </div>
           <span className="text-slate-400 text-sm">→</span>

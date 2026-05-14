@@ -13,7 +13,7 @@ import { DEMO_TRIP_ID } from "@/lib/tripConfig";
 // Persistence uses Supabase when the shared `packing_items` table is available,
 // with localStorage as a graceful fallback for offline/dev sessions.
 // ---------------------------------------------------------------------------
-const LS_KEY = "tripflow-packing-v2-maui26";
+const LS_KEY = "daywave-packing-v2-maui26";
 
 // ---------------------------------------------------------------------------
 // Types
