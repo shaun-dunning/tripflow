@@ -1,4 +1,4 @@
-# Daywave – Agent Task List
+# TripFlow – Agent Task List
                                                                                                                         
   ## Critical
   - [x] Finish merging and push prior changes. Double check that items pushed are removed from this TODO list.
@@ -42,8 +42,8 @@
 - [x] Hardened trip source-of-truth: centralized trip IDs/storage keys, aligned schema fields used by invite/group flows, and kept `/trip` + `/trips` on the same stored trip shape.
 - [x] Tightened reservation-to-agenda sync: Vault-sourced reservations now show as linked agenda items, open back to Vault, and avoid behaving like normal editable agenda rows.
 - [x] Broadened Vault-to-My Day sync so dated Flights, Hotel, Car, Activities, and Dining docs can appear as linked agenda items without duplicates.
-- [x] Fixed invite links: family invite `/join/MAUI26` now falls back safely if Supabase invite_code is missing, while preview invites like `/join/DAYWAVE` let friends try the app without joining the family trip.
-- [x] Polished shared-join flow: new travelers get added to the group and Daywave posts a lightweight join message.
+- [x] Fixed invite links: family invite `/join/MAUI26` now falls back safely if Supabase invite_code is missing, while preview invites like `/join/TRIPFLOW` let friends try the app without joining the family trip.
+- [x] Polished shared-join flow: new travelers get added to the group and TripFlow posts a lightweight join message.
 - [x] Completed cross-page microcopy sweep for trip lifecycle labels, local-save copy, and estimated leave-by wording.
 - [x] Simplified Explore hero: shorter headline, removed recommendation chips, raised search, reduced visual clutter.
 - [x] Generalized My Day travel guidance so all reservations with times get leave-by guidance, including future unknown venues with estimated fallback.
@@ -59,8 +59,8 @@
 ## Recommended Next
 - [ ] Manual demo QA pass — run invite join, tab navigation, Vault-linked reservations, Group cards, Packing sync fallback, and mobile layout checks before sharing broadly.
 - [ ] Run `supabase/demo-trip.sql` in Supabase SQL Editor before sharing `/join/DEMO`.
-- [ ] Smart pre-trip readiness dashboard — combine packing progress, document readiness, reservation confidence, weather warnings, and traveler join status into one "trip ready" score.
-- [ ] Reservation confirmation workflow — add "needs confirmation" states, reminders, and one-tap confirm from Vault/My Day.
+- [x] Smart pre-trip readiness dashboard — combine packing progress, document readiness, reservation confidence, weather warnings, and traveler join status into one "trip ready" score.
+- [x] Reservation confirmation workflow — add "needs confirmation" states, reminders, and one-tap confirm from Vault/My Day.
 - [ ] True travel-time service — replace local Maui drive-time heuristics with geocoded locations and live/static duration estimates.
 - [ ] Finish multi-trip data model pass — move remaining future-trip planning cards and trip-specific suggestions from local/demo data to persisted active-trip records.
 - [ ] Share/invite analytics or audit trail — lightweight joined/invited indicators so the organizer can see who has accepted and who has not.
