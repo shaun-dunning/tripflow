@@ -2318,10 +2318,10 @@ export default function ExplorePage() {
       {!showAI && (
         <button
           onClick={() => setShowAI(true)}
-          className="fixed bottom-24 right-4 z-40 flex items-center gap-2 pl-3 pr-4 py-2.5 rounded-full shadow-lg bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 active:scale-95 transition-all"
-          style={{ boxShadow: "0 4px 20px rgba(99,102,241,0.45)" }}
+          className="fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-[#061832] to-[#2f8f96] py-2 pl-2 pr-4 shadow-lg transition-all active:scale-95"
+          style={{ boxShadow: "0 8px 26px rgba(6,24,50,0.28)" }}
         >
-          <span className="text-base leading-none">✨</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[13px] leading-none shadow-sm">✨</span>
           <span className="text-sm font-bold text-white">Ask AI</span>
         </button>
       )}

@@ -2121,9 +2121,9 @@ export default function MyDayPage() {
             countdownPrimary = minsIntoNow === 0 ? "Now" : minsIntoNow < 60 ? `${minsIntoNow} min in` : `${Math.floor(minsIntoNow / 60)}h in`;
             countdownSecondary = item.time && item.time !== "TBD" ? `Started ${item.time}` : null;
           } else if (status === "tbd") {
-            statusLabel = "Up Next";
-            countdownPrimary = "Whenever";
-            countdownSecondary = "No set time";
+            statusLabel = "Next unscheduled";
+            countdownPrimary = "No time";
+            countdownSecondary = "Tap to add a time or move it later";
           } else {
             // upcoming
             statusLabel = isUrgent ? "Leaving Soon" : isWarning ? "Coming Up" : "Up Next";
@@ -2135,16 +2135,18 @@ export default function MyDayPage() {
 
           // Color theme by status
           const theme = status === "now"
-            ? { bg: "bg-gradient-to-br from-emerald-500 to-emerald-600", shadow: "shadow-emerald-200", muted: "text-emerald-100", dot: "bg-emerald-200", dotPing: "bg-emerald-300" }
+            ? { bg: "bg-gradient-to-br from-emerald-500 to-emerald-600", shadow: "shadow-emerald-200", muted: "text-emerald-100", dot: "bg-emerald-200", dotPing: "bg-emerald-300", text: "text-white", iconBg: "bg-white/15" }
             : isUrgent
-            ? { bg: "bg-gradient-to-br from-red-500 to-red-600", shadow: "shadow-red-200", muted: "text-red-100", dot: "bg-red-200", dotPing: "bg-red-300" }
+            ? { bg: "bg-gradient-to-br from-red-500 to-red-600", shadow: "shadow-red-200", muted: "text-red-100", dot: "bg-red-200", dotPing: "bg-red-300", text: "text-white", iconBg: "bg-white/15" }
             : isWarning
-            ? { bg: "bg-gradient-to-br from-amber-500 to-orange-500", shadow: "shadow-amber-200", muted: "text-amber-100", dot: "bg-amber-200", dotPing: "bg-amber-300" }
-            : { bg: "bg-gradient-to-br from-sky-600 to-sky-700", shadow: "shadow-sky-200", muted: "text-sky-100", dot: "bg-sky-200", dotPing: "bg-sky-300" };
+            ? { bg: "bg-gradient-to-br from-amber-500 to-orange-500", shadow: "shadow-amber-200", muted: "text-amber-100", dot: "bg-amber-200", dotPing: "bg-amber-300", text: "text-white", iconBg: "bg-white/15" }
+            : status === "tbd"
+            ? { bg: "bg-white border border-sky-100", shadow: "shadow-sky-100", muted: "text-slate-500", dot: "bg-sky-500", dotPing: "bg-sky-300", text: "text-slate-900", iconBg: "bg-sky-50" }
+            : { bg: "bg-gradient-to-br from-[#061832] to-[#2f8f96]", shadow: "shadow-sky-200", muted: "text-sky-100", dot: "bg-sky-200", dotPing: "bg-sky-300", text: "text-white", iconBg: "bg-white/15" };
 
           return (
             <div className="sticky top-2 z-30 -mx-1 px-1">
-              <div className={`${theme.bg} ${theme.shadow} text-white rounded-2xl shadow-lg overflow-hidden`}>
+              <div className={`${theme.bg} ${theme.shadow} ${theme.text} rounded-2xl shadow-lg overflow-hidden`}>
                 {/* Top row: status + tap area */}
                 <button
                   onClick={() => openEdit(item)}
@@ -2152,7 +2154,7 @@ export default function MyDayPage() {
                 >
                   <div className="px-4 pt-3 pb-3 flex items-center gap-3">
                     {/* Big emoji */}
-                    <div className="w-14 h-14 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center flex-none">
+                    <div className={`w-14 h-14 rounded-2xl ${theme.iconBg} backdrop-blur-sm flex items-center justify-center flex-none`}>
                       <span className="text-3xl">{item.emoji}</span>
                     </div>
                     {/* Middle */}
@@ -2184,9 +2186,9 @@ export default function MyDayPage() {
                         <div className={`text-[10px] ${theme.muted} mb-1 font-semibold`}>
                           {dayProgress.done} of {dayProgress.total} done today
                         </div>
-                        <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                        <div className={`h-1.5 rounded-full overflow-hidden ${status === "tbd" ? "bg-slate-100" : "bg-white/20"}`}>
                           <div
-                            className="h-full bg-white rounded-full transition-all duration-500"
+                            className={`h-full rounded-full transition-all duration-500 ${status === "tbd" ? "bg-sky-500" : "bg-white"}`}
                             style={{ width: `${(dayProgress.done / dayProgress.total) * 100}%` }}
                           />
                         </div>
@@ -2195,7 +2197,11 @@ export default function MyDayPage() {
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); toggle(item.id); }}
-                    className="bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all flex-none"
+                    className={`text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all flex-none ${
+                      status === "tbd"
+                        ? "bg-slate-900 text-white"
+                        : "bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white"
+                    }`}
                   >
                     <span className="text-sm leading-none">✓</span>
                     Done

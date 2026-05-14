@@ -6,9 +6,22 @@ export const APP_PREVIEW_INVITE_CODES = ["DAYWAVE", "TRYDAYWAVE"];
 export const PREVIEW_INVITE_KEY = "daywave-preview-invite";
 export const FAMILY_INVITE_KEY = "daywave-family-invite";
 export const ACTIVE_TRIP_KEY = "daywave-active-trip-id";
+export const DAYWAVE_URL = "https://daywave.app";
 
 export const UPCOMING_TRIPS_KEY = "daywave-upcoming-trips";
 export const ARCHIVED_TRIPS_KEY = "daywave-archived-trips";
+
+export function getDaywaveOrigin(): string {
+  if (typeof window === "undefined") return DAYWAVE_URL;
+  const origin = window.location.origin;
+  if (origin.includes("localhost") || origin.includes("127.0.0.1")) return origin;
+  return DAYWAVE_URL;
+}
+
+export function buildInviteUrl(code?: string | null): string {
+  const origin = getDaywaveOrigin();
+  return code ? `${origin}/join/${code}` : origin;
+}
 
 export type StoredTrip = {
   id: number;

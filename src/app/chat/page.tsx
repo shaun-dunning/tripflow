@@ -8,7 +8,7 @@ import { useActiveTrip } from "@/hooks/useActiveTrip";
 import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
 import FirstTripSetup from "@/components/FirstTripSetup";
-import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
+import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY, buildInviteUrl } from "@/lib/tripConfig";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Message = {
@@ -434,7 +434,7 @@ export default function ChatPage() {
 
   function getInviteLink() {
     const code = activeTrip.activeTrip?.invite_code;
-    return code ? `${window.location.origin}/join/${code}` : window.location.origin;
+    return buildInviteUrl(code);
   }
 
   async function copyInviteLink() {
@@ -603,24 +603,30 @@ export default function ChatPage() {
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-9 h-1 bg-slate-200 rounded-full" />
             </div>
-            <div className="px-6 pt-3 pb-10">
-              <h3 className="text-lg font-black text-slate-900 mb-1">Invite to Trip</h3>
-              <p className="text-sm text-slate-400 mb-5">
-                Share this link only with people you want to add to this trip.
-              </p>
-
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3 mb-4">
-                <span className="text-base">🔗</span>
-                <p className="flex-1 text-xs text-slate-600 font-mono truncate">
-                  {typeof window !== "undefined" ? getInviteLink() : `…/join/${activeTrip.activeTrip?.invite_code ?? "CODE"}`}
-                </p>
+            <div className="px-4 pt-3 pb-10">
+              <div className="mb-4 overflow-hidden rounded-3xl bg-[#061832] text-white shadow-lg">
+                <div className="relative px-5 py-5">
+                  <div className="absolute -right-12 -top-16 h-36 w-36 rounded-full bg-[#65b9bc]/25 blur-3xl" />
+                  <div className="absolute -bottom-14 left-4 h-28 w-28 rounded-full bg-[#d7aa63]/20 blur-3xl" />
+                  <p className="relative text-[10px] font-black uppercase tracking-widest text-white/45">Invite your crew</p>
+                  <h3 className="relative mt-1 text-xl font-black leading-tight">{activeTrip.activeTrip?.title ?? tripTitle}</h3>
+                  <p className="relative mt-1 text-sm leading-relaxed text-white/62">
+                    Share a private Daywave link with people you want on this trip.
+                  </p>
+                </div>
               </div>
 
-              <div className="flex items-center justify-center gap-2 mb-5">
-                <span className="text-xs text-slate-400">Or share the code</span>
-                <span className="text-base font-black text-slate-900 tracking-widest bg-slate-100 px-3 py-1 rounded-xl">
-                  {activeTrip.activeTrip?.invite_code ?? "CODE"}
-                </span>
+              <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Invite link</span>
+                  <span className="text-[10px] font-bold text-slate-400">{activeTrip.activeTrip?.invite_code ?? "CODE"}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-white text-sm shadow-sm">🔗</span>
+                  <p className="flex-1 truncate font-mono text-xs text-slate-600">
+                    {getInviteLink()}
+                  </p>
+                </div>
               </div>
 
               <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">

@@ -14,6 +14,7 @@ import {
   ARCHIVED_TRIPS_KEY,
   DEMO_TRIP_ID,
   UPCOMING_TRIPS_KEY,
+  buildInviteUrl,
   getStoredTripSubtitle,
   isDefaultUpcomingTrips,
   normalizeStoredTrip,
@@ -578,8 +579,7 @@ export default function TripPage() {
 
   function getInviteLink() {
     const code = activeTrip.activeTrip?.invite_code ?? "";
-    if (typeof window === "undefined") return code ? `/join/${code}` : "/join";
-    return code ? `${window.location.origin}/join/${code}` : window.location.origin;
+    return buildInviteUrl(code);
   }
 
   async function copyLink() {
@@ -1177,7 +1177,7 @@ export default function TripPage() {
       <div className="rounded-3xl overflow-hidden shadow-xl border border-sky-100">
 
         {/* ── Cover photo ── */}
-        <div className="relative h-56 w-full">
+        <div className="relative h-52 w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={trip?.coverPhoto ?? getPhotosForDestination(trip?.destination ?? "")[0]?.url ?? DEFAULT_PHOTOS[0].url}
@@ -1202,11 +1202,6 @@ export default function TripPage() {
                 <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-1">{activeTripLabel}</p>
                 <h2 className="text-2xl font-black text-white leading-tight">{trip?.title ?? activeTrip.activeTrip?.title ?? "Trip"}</h2>
                 <p className="text-sm text-white/70 mt-0.5">{trip?.subtitle ?? "Jun 5–11 · 4 travelers"}</p>
-                {tripWeather.length > 0 && (
-                  <p className="text-sm font-semibold text-white/90 mt-1.5">
-                    {tripWeather[0].emoji} {tripWeather[0].high}°F in {trip?.destination ?? "your destination"} right now
-                  </p>
-                )}
               </div>
               <button
                 onClick={() => setShowShareSheet(true)}
@@ -1242,18 +1237,22 @@ export default function TripPage() {
 
         {/* ── 7-day forecast strip ── */}
         {tripWeather.length > 0 && (
-          <div
-            className="px-3 pt-3 pb-1.5"
-            style={{ background: "linear-gradient(180deg, #bae6fd 0%, #e0f2fe 100%)" }}
-          >
-            <p className="text-[9px] font-bold text-sky-700/60 uppercase tracking-widest mb-2 pl-0.5">
-              {trip?.destination ?? "Destination"} · Next 7 Days
-            </p>
+          <div className="border-t border-slate-100 bg-white px-3.5 pt-3 pb-2">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                7-day outlook
+              </p>
+              {tripWeather[0] && (
+                <p className="text-[11px] font-semibold text-slate-500">
+                  {tripWeather[0].emoji} {tripWeather[0].high}° today
+                </p>
+              )}
+            </div>
             <div className="flex gap-1.5 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
               {tripWeather.map((d) => (
                 <div
                   key={d.date}
-                  className="flex-none flex flex-col items-center gap-0.5 bg-white/70 backdrop-blur-sm rounded-xl px-2.5 py-2 min-w-[50px]"
+                  className="flex-none flex min-w-[50px] flex-col items-center gap-0.5 rounded-xl bg-slate-50 px-2.5 py-2 ring-1 ring-slate-100"
                 >
                   <span className="text-[10px] font-bold text-slate-500 leading-none">{d.dayLabel}</span>
                   <span className="text-lg leading-none my-0.5">{d.emoji}</span>
