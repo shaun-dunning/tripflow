@@ -42,6 +42,7 @@ type Item = {
 
 type DayData = {
   dayNum: number;
+  isoDate: string;
   date: string;
   theme: string;
   hero: string;
@@ -104,9 +105,9 @@ const THEME_PHOTOS: { keywords: string[]; url: string; alt: string }[] = [
 ];
 
 const FALLBACK_HEROES = [
-  { url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop&q=85", alt: "Maui beach" },
-  { url: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=800&h=500&fit=crop&q=85", alt: "Tropical island" },
-  { url: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=85", alt: "Maui scenery" },
+  { url: "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=800&h=500&fit=crop&q=85", alt: "Plane window view" },
+  { url: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?w=800&h=500&fit=crop&q=85", alt: "Scenic travel landscape" },
+  { url: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&h=500&fit=crop&q=85", alt: "Mountain and lake view" },
 ];
 
 function getHeroForTheme(theme: string, dayNum: number): { url: string; alt: string } {
@@ -117,7 +118,100 @@ function getHeroForTheme(theme: string, dayNum: number): { url: string; alt: str
   return FALLBACK_HEROES[(dayNum - 1) % FALLBACK_HEROES.length];
 }
 
-const DAYS: DayData[] = [
+function formatTripDayDate(isoDate: string): string {
+  const d = new Date(`${isoDate}T12:00:00`);
+  return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }).replace(",", " ·");
+}
+
+function stripDayLabel(label: string | null | undefined, dayNum: number): string {
+  if (!label) return dayNum === 1 ? "Arrival Day" : "Open Day";
+  const parts = label.split(" · ");
+  return parts.length > 1 ? parts.slice(1).join(" · ") : label;
+}
+
+function getDayStatus(dayNum: number, tripStatus: "upcoming" | "active" | "completed", currentDayNumber: number): DayData["status"] {
+  if (tripStatus === "completed") return "past";
+  if (tripStatus === "upcoming") return "upcoming";
+  if (dayNum < currentDayNumber) return "past";
+  if (dayNum === currentDayNumber) return "today";
+  return "upcoming";
+}
+
+type TripDayRow = {
+  id: string;
+  day_number: number;
+  date: string;
+  label: string | null;
+  hero_photo: string | null;
+  hero_alt: string | null;
+  weather_emoji: string | null;
+  weather_temp: string | null;
+  weather_label: string | null;
+  trip_note: string | null;
+};
+
+function buildGeneratedDays(
+  startDate: string,
+  endDate: string,
+  tripStatus: "upcoming" | "active" | "completed",
+  currentDayNumber: number,
+): DayData[] {
+  const start = new Date(`${startDate}T12:00:00`);
+  const end = new Date(`${endDate}T12:00:00`);
+  const days: DayData[] = [];
+  for (let d = new Date(start), dayNum = 1; d <= end; d.setDate(d.getDate() + 1), dayNum += 1) {
+    const isoDate = d.toISOString().slice(0, 10);
+    const theme = dayNum === 1 ? "Arrival Day" : isoDate === endDate ? "Departure Day" : "Open Day";
+    const hero = getHeroForTheme(theme, dayNum);
+    days.push({
+      dayNum,
+      isoDate,
+      date: formatTripDayDate(isoDate),
+      theme,
+      hero: hero.url,
+      heroAlt: hero.alt,
+      weatherEmoji: "",
+      temp: "",
+      condition: "",
+      status: getDayStatus(dayNum, tripStatus, currentDayNumber),
+      note: "",
+      agenda: [],
+    });
+  }
+  return days;
+}
+
+function buildDaysFromRows(
+  rows: TripDayRow[],
+  startDate: string,
+  endDate: string,
+  tripStatus: "upcoming" | "active" | "completed",
+  currentDayNumber: number,
+): DayData[] {
+  if (rows.length === 0) return buildGeneratedDays(startDate, endDate, tripStatus, currentDayNumber);
+  return [...rows]
+    .sort((a, b) => a.day_number - b.day_number)
+    .map((row) => {
+      const theme = stripDayLabel(row.label, row.day_number);
+      const hero = row.hero_photo ? { url: row.hero_photo, alt: row.hero_alt ?? theme } : getHeroForTheme(theme, row.day_number);
+      return {
+        dayNum: row.day_number,
+        isoDate: row.date,
+        date: formatTripDayDate(row.date),
+        theme,
+        hero: hero.url,
+        heroAlt: hero.alt,
+        weatherEmoji: row.weather_emoji ?? "",
+        temp: row.weather_temp ?? "",
+        condition: row.weather_label ?? "",
+        status: getDayStatus(row.day_number, tripStatus, currentDayNumber),
+        note: row.trip_note ?? "",
+        agenda: [],
+      };
+    });
+}
+
+const DAYS = [
   {
     dayNum: 1, date: "Fri · Jun 5", theme: "Travel Day",
     hero: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=500&fit=crop&q=85",
@@ -281,8 +375,6 @@ type LiveWeather = {
   forecast?: ForecastDay[];
 };
 
-// ISO date for each trip day (Jun 5 = day 1)
-const TRIP_START_ISO = "2026-06-05";
 const AGENDA_DOC_CATEGORIES = new Set(["Flights", "Hotel", "Car", "Activities", "Dining"]);
 const DOC_CATEGORY_EMOJI: Record<string, string> = {
   Flights: "✈️",
@@ -292,26 +384,23 @@ const DOC_CATEGORY_EMOJI: Record<string, string> = {
   Dining: "🍽️",
 };
 
-function getDayISO(dayNum: number): string {
-  const d = new Date(TRIP_START_ISO + "T12:00:00");
-  d.setDate(d.getDate() + dayNum - 1);
-  return d.toISOString().slice(0, 10);
-}
-
 // Parse a doc's stored date string (e.g. "Jun 8 · 5:30 PM") into
 // { dayIndex: 0-based trip day, time: "5:30 PM" } so it can be
 // merged into the My Day agenda.
-function parseDocForAgenda(dateStr: string): { dayIndex: number; time: string } | null {
+function parseDocForAgenda(dateStr: string, days: DayData[]): { dayIndex: number; time: string } | null {
   const MONTHS: Record<string, number> = {
     Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
     Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
   };
   const m = dateStr.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d+)/);
   if (!m) return null;
-  const docDate = new Date(2026, MONTHS[m[1]], parseInt(m[2]), 12);
-  const tripStart = new Date(TRIP_START_ISO + "T12:00:00");
-  const dayIndex = Math.round((docDate.getTime() - tripStart.getTime()) / 86_400_000);
-  if (dayIndex < 0 || dayIndex > 13) return null; // outside a 2-week window
+  const month = MONTHS[m[1]];
+  const dayOfMonth = parseInt(m[2], 10);
+  const dayIndex = days.findIndex((day) => {
+    const d = new Date(`${day.isoDate}T12:00:00`);
+    return d.getMonth() === month && d.getDate() === dayOfMonth;
+  });
+  if (dayIndex < 0) return null;
   const tMatch = dateStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
   const time = tMatch ? `${tMatch[1]}:${tMatch[2]} ${tMatch[3].toUpperCase()}` : "TBD";
   return { dayIndex, time };
@@ -362,7 +451,7 @@ function getWeatherAlert(w: WeatherForAlert | null, agenda: Item[], isToday: boo
   if (!isRainy && w.high >= 78 && w.high <= 87) {
     return {
       emoji: "🌺", type: "info",
-      title: "Perfect Maui day",
+      title: "Perfect trip day",
       body: `${w.high}° and ${w.condition.toLowerCase()} — ideal for everything on your list.`,
     };
   }
@@ -377,7 +466,7 @@ function getStoredDayIndex(): number {
   const saved = localStorage.getItem("tripflow-dayIndex");
   if (saved === null) return 0;
   const idx = parseInt(saved, 10);
-  return !isNaN(idx) && idx >= 0 && idx < DAYS.length ? idx : 0;
+  return !isNaN(idx) && idx >= 0 ? idx : 0;
 }
 
 export default function MyDayPage() {
@@ -390,7 +479,9 @@ export default function MyDayPage() {
   const [todayDayIndex, setTodayDayIndex] = useState(0);
   const [dayIndex, setDayIndex] = useState(getStoredDayIndex);
   const savedDayRestored = useRef(dayIndex !== 0);
-  const [agendas, setAgendas] = useState(() => DAYS.map((d) => d.agenda));
+  const [days, setDays] = useState<DayData[]>([]);
+  const [agendas, setAgendas] = useState<Item[][]>([]);
+  const daysLengthRef = useRef(0);
   // Move-to-day sheet
   const [showMoveSheet, setShowMoveSheet] = useState(false);
   const [crewMembers, setCrewMembers] = useState<{ name: string; avatar: string; avatar_url: string | null }[]>([]);
@@ -472,6 +563,7 @@ export default function MyDayPage() {
 
   // Pick up any item bridged from Explore and inject it immediately.
   useEffect(() => {
+    if (days.length === 0) return;
     // Consume a pending item passed from the Explore tab
     const bridgeStr = localStorage.getItem("tripflow-explore-add");
     if (bridgeStr) {
@@ -481,7 +573,7 @@ export default function MyDayPage() {
           dayIndex: number; id: string; title: string; emoji: string;
           time: string; notes: string; done: boolean; reservation: boolean; fromSupabase: boolean;
         };
-        if (bridged.dayIndex >= 0 && bridged.dayIndex < DAYS.length) {
+        if (bridged.dayIndex >= 0 && bridged.dayIndex < days.length) {
           queueMicrotask(() => {
             setAgendas((prev) =>
               prev.map((agenda, i) =>
@@ -503,12 +595,16 @@ export default function MyDayPage() {
         }
       } catch { /* ignore bad data */ }
     }
-  }, []);
+  }, [days.length]);
 
   // Persist dayIndex whenever it changes
   useEffect(() => {
     localStorage.setItem("tripflow-dayIndex", String(dayIndex));
   }, [dayIndex]);
+
+  useEffect(() => {
+    daysLengthRef.current = days.length;
+  }, [days.length]);
 
   // Consume an item pushed from the Explore tab via shared layout context.
   // This fires any time pendingItem changes — works even when My Day is
@@ -516,7 +612,7 @@ export default function MyDayPage() {
   useEffect(() => {
     if (!pendingItem) return;
     const { dayIndex: targetDay, ...item } = pendingItem;
-    if (targetDay >= 0 && targetDay < DAYS.length) {
+    if (targetDay >= 0 && targetDay < days.length) {
       queueMicrotask(() => {
         setDayIndex(targetDay);
         setAgendas((prev) =>
@@ -538,28 +634,40 @@ export default function MyDayPage() {
       });
     }
     setPendingItem(null); // clear so it doesn't fire again
-  }, [pendingItem, setPendingItem]);
+  }, [days.length, pendingItem, setPendingItem]);
 
   useEffect(() => {
-    if (!activeTrip.activeTripId) return;
+    if (!activeTrip.activeTripId || !activeTrip.activeTrip) return;
 
-    fetch("/api/weather")
-      .then((r) => r.json())
-      .then((data) => setWeather(data))
-      .catch(() => setWeatherIssue(true));
+    const selectedTrip = activeTrip.activeTrip;
+    const hasMauiWeather = selectedTrip.destination.toLowerCase().includes("maui");
+    if (hasMauiWeather) {
+      fetch("/api/weather")
+        .then((r) => r.json())
+        .then((data) => setWeather(data))
+        .catch(() => setWeatherIssue(true));
+    } else {
+      setWeather(null);
+      setWeatherIssue(false);
+    }
 
     async function fetchData() {
+      setLoading(true);
       setLoadIssue(null);
       try {
         const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult] = await Promise.all([
-          supabase.from("trips").select("start_date, end_date").eq("id", activeTrip.activeTripId).maybeSingle(),
+          supabase.from("trips").select("title, destination, start_date, end_date, cover_photo").eq("id", activeTrip.activeTripId).maybeSingle(),
           supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", activeTrip.activeTripId).order("created_at"),
           supabase
             .from("agenda_items")
             .select("*, trip_days!inner(trip_id)")
             .eq("trip_days.trip_id", activeTrip.activeTripId)
             .order("sort_order", { ascending: true }),
-          supabase.from("trip_days").select("id, day_number, label").eq("trip_id", activeTrip.activeTripId),
+          supabase
+            .from("trip_days")
+            .select("id, day_number, date, label, hero_photo, hero_alt, weather_emoji, weather_temp, weather_label, trip_note")
+            .eq("trip_id", activeTrip.activeTripId)
+            .order("day_number"),
           supabase.from("documents")
             .select("id, category, name, emoji, date, notes, confirmation, provider, status")
             .eq("trip_id", activeTrip.activeTripId),
@@ -578,13 +686,24 @@ export default function MyDayPage() {
           setDocReadiness({ confirmed, total: docsResult.data.length });
         }
 
+        let loadedDays: DayData[] = [];
         if (tripResult.data) {
           const info = getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date);
           setTripInfo({ status: info.status, daysUntilTrip: info.daysUntilTrip });
-          const idx = Math.max(0, Math.min(info.currentDayNumber - 1, DAYS.length - 1));
+          loadedDays = buildDaysFromRows(
+            (tripDaysResult.data ?? []) as TripDayRow[],
+            tripResult.data.start_date,
+            tripResult.data.end_date,
+            info.status,
+            info.currentDayNumber,
+          );
+          setDays(loadedDays);
+
+          const idx = Math.max(0, Math.min(info.currentDayNumber - 1, Math.max(loadedDays.length - 1, 0)));
           setTodayDayIndex(idx);
           // Only auto-jump to today if user hasn't manually selected a day
           if (!savedDayRestored.current) setDayIndex(idx);
+          else if (loadedDays.length && dayIndex >= loadedDays.length) setDayIndex(loadedDays.length - 1);
         }
 
         if (travelersResult.data?.length) {
@@ -625,7 +744,7 @@ export default function MyDayPage() {
         (docsResult.data ?? [])
           .filter((d) => AGENDA_DOC_CATEGORIES.has(d.category))
           .forEach((doc) => {
-            const parsed = parseDocForAgenda(doc.date ?? "");
+            const parsed = parseDocForAgenda(doc.date ?? "", loadedDays);
             if (!parsed) return;
             const notesParts = [
               doc.confirmation ? `Confirmation: ${doc.confirmation}` : "",
@@ -649,8 +768,8 @@ export default function MyDayPage() {
             });
           });
 
-        // Build fresh agendas: start with mock data as fallback,
-        // replace each day with Supabase items where they exist.
+        // Build fresh agendas from live trip days only. Empty days stay empty
+        // so new trips never inherit demo itinerary data.
         // Using a direct value (not functional form) to guarantee React
         // sees the new reference and re-renders.
         const toMins = (t: string) => {
@@ -664,7 +783,7 @@ export default function MyDayPage() {
           return h * 60 + m;
         };
 
-        const fresh: Item[][] = DAYS.map((d) => [...d.agenda]);
+        const fresh: Item[][] = loadedDays.map(() => []);
 
         // Layer 1 — Supabase agenda_items replace mock data day-by-day
         (tripDaysResult.data ?? []).forEach((td) => {
@@ -735,7 +854,7 @@ export default function MyDayPage() {
         dayIndex: number; id: string; title: string; emoji: string;
         time: string; notes: string; done: boolean; reservation: boolean;
       };
-      if (item.dayIndex < 0 || item.dayIndex >= DAYS.length) return;
+      if (item.dayIndex < 0 || item.dayIndex >= daysLengthRef.current) return;
       setDayIndex(item.dayIndex);
       setAgendas((prev) =>
         prev.map((agenda, i) =>
@@ -805,10 +924,32 @@ export default function MyDayPage() {
       document.removeEventListener("touchmove", handleTouchMove);
       document.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [activeTrip.activeTripId]);
+  }, [activeTrip.activeTrip, activeTrip.activeTripId]);
 
-  const day = DAYS[dayIndex];
-  const items = agendas[dayIndex];
+  const placeholderDays = activeTrip.activeTrip
+    ? buildGeneratedDays(
+        activeTrip.activeTrip.start_date,
+        activeTrip.activeTrip.end_date,
+        tripInfo?.status ?? "upcoming",
+        1,
+      )
+    : [];
+  const displayDays = days.length > 0 ? days : placeholderDays;
+  const day = displayDays[dayIndex] ?? displayDays[0] ?? {
+    dayNum: 1,
+    isoDate: new Date().toISOString().slice(0, 10),
+    date: "Today",
+    theme: "Open Day",
+    hero: FALLBACK_HEROES[0].url,
+    heroAlt: FALLBACK_HEROES[0].alt,
+    weatherEmoji: "",
+    temp: "",
+    condition: "",
+    status: "upcoming" as const,
+    note: "",
+    agenda: [],
+  };
+  const items = agendas[dayIndex] ?? [];
   const sections = getSections(items);
   const isToday = dayIndex === todayDayIndex;
   const isPast = dayIndex < todayDayIndex;
@@ -999,7 +1140,7 @@ export default function MyDayPage() {
     if (!sheetItem) return;
     const targetDayId = dayIdMap[targetDayNum];
     if (!targetDayId) return;
-    const targetDayIndex = DAYS.findIndex((d) => d.dayNum === targetDayNum);
+    const targetDayIndex = displayDays.findIndex((d) => d.dayNum === targetDayNum);
     if (targetDayIndex < 0) return;
 
     // Optimistic: remove from current day, add to target day
@@ -1076,7 +1217,7 @@ export default function MyDayPage() {
 
     const prompt = `Here's our Day ${day.dayNum} agenda (${day.date} · ${currentTheme}):\n` +
       agendaPayload.map((it) => `• ${it.emoji} ${it.time}: ${it.title}${it.notes ? ` — ${it.notes}` : ""}`).join("\n") +
-      "\n\nIdentify free time gaps and suggest 2–3 activities that fit naturally into our schedule. Be specific to Maui and our family context.";
+      `\n\nIdentify free time gaps and suggest 2–3 activities that fit naturally into our schedule. Be specific to ${activeTrip.activeTrip?.destination ?? "this destination"} and this trip context.`;
 
     try {
       const res = await fetch("/api/assistant", {
@@ -1404,7 +1545,7 @@ export default function MyDayPage() {
             </div>
             <div className="px-4 pt-3 flex flex-col gap-2 max-h-[55vh] overflow-y-auto"
               style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
-              {DAYS.map((d) => {
+              {displayDays.map((d) => {
                 const isCurrent = d.dayNum === day.dayNum;
                 const label = dayLabels[d.dayNum] ?? d.theme;
                 return (
@@ -1556,8 +1697,8 @@ export default function MyDayPage() {
                     <div className="w-0.5 h-4 bg-slate-200 mt-1" />
                   </div>
                   <div className="pt-1">
-                    <p className="text-xs font-bold text-slate-700">Sheraton Maui Resort</p>
-                    <p className="text-[10px] text-slate-400">Your home base · Ka&apos;anapali</p>
+                    <p className="text-xs font-bold text-slate-700">Start from lodging</p>
+                    <p className="text-[10px] text-slate-400">Your trip home base</p>
                   </div>
                 </div>
 
@@ -1635,7 +1776,7 @@ export default function MyDayPage() {
         <div className="absolute top-0 left-0 right-0 px-4 pt-3 flex items-center justify-between">
           <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">My Day</span>
           <span className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">
-            Day {day.dayNum} of {DAYS.length}
+            Day {day.dayNum} of {displayDays.length}
           </span>
         </div>
 
@@ -1648,7 +1789,7 @@ export default function MyDayPage() {
           </button>
         )}
 
-        {dayIndex < DAYS.length - 1 && (
+        {dayIndex < displayDays.length - 1 && (
           <button
             onClick={() => { setDayIndex((i) => i + 1); setEditingTheme(false); }}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-black/25 backdrop-blur-sm border border-white/20 text-white text-lg font-bold hover:bg-black/40 transition-all"
@@ -1658,7 +1799,7 @@ export default function MyDayPage() {
         )}
 
         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
-          {DAYS.map((d, i) => (
+          {displayDays.map((d, i) => (
             <button
               key={i}
               onClick={() => { setDayIndex(i); setEditingTheme(false); }}
@@ -1679,7 +1820,7 @@ export default function MyDayPage() {
 
         {(() => {
           // Per-day weather: use live current for today, forecast entry for other days
-          const dayISO = getDayISO(day.dayNum);
+          const dayISO = day.isoDate;
           const forecastEntry = weather?.forecast?.find((f) => f.date === dayISO) ?? null;
           const viewWeather = forecastEntry ?? (isToday && weather ? {
             high: weather.high, low: weather.low,
@@ -1689,6 +1830,7 @@ export default function MyDayPage() {
           const displayTemp = isToday && weather ? `${weather.temp}°F` : (viewWeather ? `${viewWeather.high}°F` : day.temp);
           const displayEmoji = viewWeather?.emoji ?? day.weatherEmoji;
           const displayCond = viewWeather?.condition ?? day.condition;
+          const hasWeather = Boolean(displayTemp || displayEmoji || displayCond);
 
           return (
             <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
@@ -1729,23 +1871,25 @@ export default function MyDayPage() {
                 </div>
 
                 {/* Weather pill — richer with Hi/Lo */}
-                <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-3 py-2 border border-white/20 text-left">
-                  <span className="text-2xl leading-none">{displayEmoji}</span>
-                  <div>
-                    <div className="flex items-baseline gap-1">
-                      <p className="text-base font-black text-white leading-none">{displayTemp}</p>
-                      {weather?.source === "live" && isToday && (
-                        <span className="text-[9px] text-white/50 font-semibold">live</span>
+                {hasWeather && (
+                  <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-3 py-2 border border-white/20 text-left">
+                    {displayEmoji && <span className="text-2xl leading-none">{displayEmoji}</span>}
+                    <div>
+                      <div className="flex items-baseline gap-1">
+                        {displayTemp && <p className="text-base font-black text-white leading-none">{displayTemp}</p>}
+                        {weather?.source === "live" && isToday && (
+                          <span className="text-[9px] text-white/50 font-semibold">live</span>
+                        )}
+                      </div>
+                      {displayCond && <p className="text-[10px] text-white/70 mt-0.5 leading-none">{displayCond}</p>}
+                      {viewWeather && (
+                        <p className="text-[9px] text-white/50 mt-0.5 leading-none">
+                          {viewWeather.precipChance > 0 ? `🌧 ${viewWeather.precipChance}% · ` : ""}H:{viewWeather.high}° L:{viewWeather.low}°
+                        </p>
                       )}
                     </div>
-                    <p className="text-[10px] text-white/70 mt-0.5 leading-none">{displayCond}</p>
-                    {viewWeather && (
-                      <p className="text-[9px] text-white/50 mt-0.5 leading-none">
-                        {viewWeather.precipChance > 0 ? `🌧 ${viewWeather.precipChance}% · ` : ""}H:{viewWeather.high}° L:{viewWeather.low}°
-                      </p>
-                    )}
                   </div>
-                </div>
+                )}
               </div>
             </div>
           );
@@ -1800,15 +1944,19 @@ export default function MyDayPage() {
             <div className="relative flex-none w-11 h-11 rounded-xl overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=120&h=120&fit=crop&q=80"
-                alt="Maui"
+                src={activeTrip.activeTrip?.cover_photo ?? day.hero}
+                alt={activeTrip.activeTrip?.destination ?? "Trip"}
                 className="w-full h-full object-cover"
               />
             </div>
             {/* Text */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 leading-tight">✈ Maui, Hawaii</p>
-              <p className="text-xs text-slate-400 leading-tight mt-0.5">Jun 5–11 · 4 travelers</p>
+              <p className="text-sm font-semibold text-slate-800 leading-tight">✈ {activeTrip.activeTrip?.destination ?? "Upcoming trip"}</p>
+              <p className="text-xs text-slate-400 leading-tight mt-0.5">
+                {activeTrip.activeTrip
+                  ? `${formatTripDayDate(activeTrip.activeTrip.start_date)} – ${formatTripDayDate(activeTrip.activeTrip.end_date)} · ${crewMembers.length || "0"} travelers`
+                  : "Trip details"}
+              </p>
             </div>
             {/* Pill */}
             <div className="flex-none flex flex-col items-center bg-sky-50 border border-sky-100 rounded-xl px-3 py-1.5">
@@ -1820,7 +1968,7 @@ export default function MyDayPage() {
 
         {/* ── Smart weather alert (all days, uses per-day forecast) ── */}
         {!isPast && (() => {
-          const dayISO = getDayISO(day.dayNum);
+          const dayISO = day.isoDate;
           const forecastEntry = weather?.forecast?.find((f) => f.date === dayISO) ?? null;
           const alertWeather: WeatherForAlert | null = forecastEntry ?? (isToday && weather
             ? { condition: weather.condition, high: weather.high, precipChance: 0 }
@@ -2090,9 +2238,9 @@ export default function MyDayPage() {
         {/* ── Empty state (no items after loading) ── */}
         {!loading && sections.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
-            <div className="text-5xl mb-4">🌴</div>
+            <div className="text-5xl mb-4">✨</div>
             <p className="text-base font-bold text-slate-800 mb-1">Nothing planned yet</p>
-            <p className="text-sm text-slate-400 mb-6">Tap below to discover beaches,<br />restaurants and activities nearby</p>
+            <p className="text-sm text-slate-400 mb-6">Add the first plan for this day,<br />or browse ideas nearby.</p>
             <button
               onClick={() => router.push("/explore")}
               className="bg-sky-500 text-white text-sm font-bold px-6 py-3 rounded-2xl shadow-md hover:bg-sky-600 active:scale-95 transition-all"
@@ -2130,7 +2278,7 @@ export default function MyDayPage() {
             </div>
             <div className="flex-1 min-w-0 text-left">
               <p className="font-bold text-sm">Plan my day with AI</p>
-              <p className="text-xs text-white/70 mt-0.5">Find free gaps · get Maui-specific suggestions</p>
+              <p className="text-xs text-white/70 mt-0.5">Find free gaps · get trip-specific suggestions</p>
             </div>
             <span className="text-white/60 text-lg flex-none">→</span>
           </button>

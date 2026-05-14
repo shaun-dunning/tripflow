@@ -53,13 +53,14 @@
 - [x] Added Supabase-backed packing items with localStorage fallback and a confirmation sheet for reset.
 - [x] Stabilized production build by removing remote `next/font/google` dependency and using local/system font variables.
 - [x] Reduced expected weather API console noise when OpenWeather credentials are unavailable.
+- [x] Removed remaining Today-page Maui fixture fallbacks from active trips: days, empty agenda states, doc overlays, weather labels, countdown copy, and AI planner prompts now follow the selected trip.
 
 ## Recommended Next
 - [ ] Manual demo QA pass — run invite join, tab navigation, Vault-linked reservations, Group cards, Packing sync fallback, and mobile layout checks before sharing broadly.
 - [ ] Smart pre-trip readiness dashboard — combine packing progress, document readiness, reservation confidence, weather warnings, and traveler join status into one "trip ready" score.
 - [ ] Reservation confirmation workflow — add "needs confirmation" states, reminders, and one-tap confirm from Vault/My Day.
 - [ ] True travel-time service — replace local Maui drive-time heuristics with geocoded locations and live/static duration estimates.
-- [ ] New trip creation/data model pass — move future trips from localStorage-only planning cards toward persisted multi-trip records.
+- [ ] Finish multi-trip data model pass — move remaining future-trip planning cards and trip-specific suggestions from local/demo data to persisted active-trip records.
 - [ ] Share/invite analytics or audit trail — lightweight joined/invited indicators so the organizer can see who has accepted and who has not.
 
       
