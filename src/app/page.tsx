@@ -323,22 +323,28 @@ function getSections(agenda: Item[]) {
       key: "morning", label: "Morning", emoji: "🌅", range: "Until noon",
       color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", dot: "bg-amber-400",
       defaultTime: "9:00 AM",
-      items: agenda.filter((i) => timeToMinutes(i.time) < timeToMinutes("12:00 PM")),
+      items: agenda
+        .filter((i) => timeToMinutes(i.time) < timeToMinutes("12:00 PM"))
+        .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)),
     },
     {
       key: "afternoon", label: "Afternoon", emoji: "☀️", range: "12 – 5pm",
       color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-200", dot: "bg-sky-400",
       defaultTime: "2:00 PM",
-      items: agenda.filter((i) => {
-        const m = timeToMinutes(i.time);
-        return m >= timeToMinutes("12:00 PM") && m < timeToMinutes("5:00 PM");
-      }),
+      items: agenda
+        .filter((i) => {
+          const m = timeToMinutes(i.time);
+          return m >= timeToMinutes("12:00 PM") && m < timeToMinutes("5:00 PM");
+        })
+        .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)),
     },
     {
       key: "evening", label: "Evening", emoji: "🌙", range: "5pm onwards",
       color: "text-indigo-600", bg: "bg-indigo-50", border: "border-indigo-200", dot: "bg-indigo-400",
       defaultTime: "7:00 PM",
-      items: agenda.filter((i) => timeToMinutes(i.time) >= timeToMinutes("5:00 PM")),
+      items: agenda
+        .filter((i) => timeToMinutes(i.time) >= timeToMinutes("5:00 PM"))
+        .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time)),
     },
   ].filter((s) => s.items.length > 0);
 }

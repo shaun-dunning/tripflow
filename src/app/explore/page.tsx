@@ -204,7 +204,7 @@ const PLACES: Place[] = [
     id: 15, name: "Black Rock Cliff Dive Ceremony", category: "Activity", neighborhood: "Ka'anapali",
     tags: ["activity", "free", "evening", "kids"],
     distance: "0.1 mi", drive: "Walk", price: "$", kidFriendly: true, rating: 4.8,
-    photo: "https://images.unsplash.com/photo-1566895291281-ea63efd4bdab?w=600&h=300&fit=crop&q=80",
+    photo: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=300&fit=crop&q=80",
     photoAlt: "Kaanapali beach at golden hour sunset",
     blurb: "Nightly torch-lighting and cliff dive ceremony at Black Rock (Pu'u Keka'a), right at your hotel beach.",
     address: "Ka'anapali, Maui",
@@ -668,7 +668,7 @@ const BEST_OF: Collection[] = [
   {
     id: "families",
     title: "Best for Families",
-    emoji: "👨‍👩‍👧",
+    emoji: "🧒",
     subtitle: "Kid-approved picks",
     photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=400&h=240&fit=crop&q=80",
     accentFrom: "#0ea5e9",

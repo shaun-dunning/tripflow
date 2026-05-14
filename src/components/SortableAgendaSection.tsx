@@ -289,7 +289,7 @@ export function AgendaItemCard({
         isDragging
           ? "opacity-50 border-sky-300 shadow-lg"
           : item.done
-          ? "opacity-50 border-slate-100"
+          ? "border-slate-100 bg-slate-50/60"
           : "border-slate-100 hover:border-slate-200 hover:shadow-md"
       } ${item.reservation && !isDragging ? (() => {
           const notesLower = (item.notes ?? "").toLowerCase();
@@ -321,7 +321,7 @@ export function AgendaItemCard({
         <div className="flex-1 min-w-0 py-3 pr-2">
           <p
             className={`font-semibold text-sm ${
-              item.done ? "line-through text-slate-400" : "text-slate-900"
+              item.done ? "line-through text-slate-500" : "text-slate-900"
             }`}
           >
             {item.title}

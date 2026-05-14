@@ -11,6 +11,7 @@ import TripAccessGate from "@/components/TripAccessGate";
 import FirstTripSetup from "@/components/FirstTripSetup";
 import { useActiveTrip } from "@/hooks/useActiveTrip";
 import {
+  DEMO_INVITE_CODE,
   UPCOMING_TRIPS_KEY,
   getStoredTripSubtitle,
   readStoredTrips,
@@ -20,6 +21,20 @@ import {
 type AgendaItem = { emoji: string; title: string; time: string };
 
 type UpcomingTrip = StoredTrip;
+
+const DEMO_UPCOMING_TRIPS: UpcomingTrip[] = [
+  {
+    id: 9001,
+    title: "Fall Weekend · Napa",
+    destination: "Napa Valley",
+    startDate: "2026-10-09",
+    nights: 3,
+    travelersCount: 2,
+    emoji: "🍷",
+    photo: "https://images.unsplash.com/photo-1506377247377-2a5b3b417ebb?w=600&h=300&fit=crop&q=80",
+    photoAlt: "Napa Valley vineyard",
+  },
+];
 
 // Fallback when Supabase agenda isn't available yet
 const FALLBACK_TODAY: AgendaItem[] = [
@@ -99,6 +114,12 @@ export default function TripsPage() {
 
     loadTrip();
   }, [activeTrip.activeTripId]);
+
+  useEffect(() => {
+    if (activeTrip.activeTrip?.invite_code === DEMO_INVITE_CODE && upcomingTrips.length === 0) {
+      setUpcomingTrips(DEMO_UPCOMING_TRIPS);
+    }
+  }, [activeTrip.activeTrip?.invite_code, upcomingTrips.length]);
 
   // Persist upcoming trips to localStorage whenever they change
   useEffect(() => {

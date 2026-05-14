@@ -100,10 +100,9 @@ insert into public.trip_days (id, trip_id, day_number, date, label, hero_photo, 
    'Check out, return the car, and leave enough airport buffer for bags and snacks.');
 
 insert into public.agenda_items (trip_day_id, time, title, subtitle, emoji, done, is_reservation, reservation_label, sort_order) values
-  ('b2c3d4e5-1111-2222-3333-000000000201', '8:15 AM',  'Flight to Maui',                 'Sample Airlines · arrives 12:05 PM', '✈️', true,  true,  'DEMO', 10),
-  ('b2c3d4e5-1111-2222-3333-000000000201', '1:00 PM',  'Pick up rental car',             'Kahului airport · mid-size SUV',     '🚙', true,  true,  'DEMO', 20),
-  ('b2c3d4e5-1111-2222-3333-000000000201', '3:00 PM',  'Check in at resort',             'Ocean-view room · bags with bell desk if early', '🏨', true, true, 'DEMO', 30),
-  ('b2c3d4e5-1111-2222-3333-000000000201', '6:30 PM',  'Casual dinner near resort',      'Low-key arrival night',              '🍜', false, false, null, 40),
+  ('b2c3d4e5-1111-2222-3333-000000000201', '1:00 PM',  'Pick up Hertz rental car',       'Kahului airport · Jeep Wrangler',    '🚙', false, true,  'DEMO', 20),
+  ('b2c3d4e5-1111-2222-3333-000000000201', '3:00 PM',  'Check in at Maui Ocean Resort',  'Ocean-view room · bags with bell desk if early', '🏨', false, true, 'DEMO', 30),
+  ('b2c3d4e5-1111-2222-3333-000000000201', '6:30 PM',  'Dinner at Monkeypod Kitchen',    'Casual arrival night · reservation held', '🍜', false, true, 'DEMO', 40),
 
   ('b2c3d4e5-1111-2222-3333-000000000202', '8:30 AM',  'Breakfast at the resort',        'Fuel up before the beach',           '🍳', true,  false, null, 10),
   ('b2c3d4e5-1111-2222-3333-000000000202', '10:00 AM', 'Wailea Beach morning',           'Umbrella, towels, reef-safe sunscreen', '🏖️', true, false, null, 20),
@@ -115,6 +114,7 @@ insert into public.agenda_items (trip_day_id, time, title, subtitle, emoji, done
   ('b2c3d4e5-1111-2222-3333-000000000203', '7:00 AM',  'Depart for Road to Hana',        'Leave early for lighter traffic',    '🚗', false, false, null, 20),
   ('b2c3d4e5-1111-2222-3333-000000000203', '9:30 AM',  'Waterfall stop',                 'Easy walk · good photo break',       '💧', false, false, null, 30),
   ('b2c3d4e5-1111-2222-3333-000000000203', '12:00 PM', 'Lunch at food trucks',           'Flexible stop depending on timing',  '🌮', false, false, null, 40),
+  ('b2c3d4e5-1111-2222-3333-000000000203', '2:30 PM',  'Black sand beach reservation',   'Timed parking window · state park pass', '🖤', false, true, 'DEMO', 50),
 
   ('b2c3d4e5-1111-2222-3333-000000000204', '9:00 AM',  'Slow breakfast',                 'No alarm day',                       '🥐', false, false, null, 10),
   ('b2c3d4e5-1111-2222-3333-000000000204', '11:00 AM', 'Pool cabana',                    'Reserved · shaded seats',            '🏊', false, true,  'DEMO', 20),
@@ -123,27 +123,32 @@ insert into public.agenda_items (trip_day_id, time, title, subtitle, emoji, done
 
   ('b2c3d4e5-1111-2222-3333-000000000205', '8:00 AM',  'Upcountry market',               'Breakfast, fruit, local gifts',      '🥭', false, false, null, 10),
   ('b2c3d4e5-1111-2222-3333-000000000205', '11:30 AM', 'Scenic overlook',                'Short stop before lunch',            '📸', false, false, null, 20),
-  ('b2c3d4e5-1111-2222-3333-000000000205', '2:30 PM',  'Resort downtime',                'Pool or nap',                        '😴', false, false, null, 30),
+  ('b2c3d4e5-1111-2222-3333-000000000205', '1:00 PM',  'Ocean Vodka farm tour',          'Adults tour · kids can grab snacks', '🍍', false, true, 'DEMO', 30),
+  ('b2c3d4e5-1111-2222-3333-000000000205', '3:30 PM',  'Resort downtime',                'Pool or nap',                        '😴', false, false, null, 40),
 
   ('b2c3d4e5-1111-2222-3333-000000000206', '9:00 AM',  'Beach walk',                     'Coffee first, then coast path',      '🚶', false, false, null, 10),
   ('b2c3d4e5-1111-2222-3333-000000000206', '11:30 AM', 'Lunch near the beach',           'Keep it casual',                     '🍽️', false, false, null, 20),
   ('b2c3d4e5-1111-2222-3333-000000000206', '5:30 PM',  'Sunset photos',                  'Meet by the lawn',                   '📷', false, false, null, 30),
-  ('b2c3d4e5-1111-2222-3333-000000000206', '7:30 PM',  'Last-night dinner',              'Reservation · confirm same day',     '🍹', false, true,  'DEMO', 40),
+  ('b2c3d4e5-1111-2222-3333-000000000206', '6:15 PM',  'Black Rock cliff dive ceremony', 'Walk over before sunset',            '🔥', false, false, null, 40),
+  ('b2c3d4e5-1111-2222-3333-000000000206', '7:30 PM',  'Old Lahaina Luau',               'Reservation · arrive 30 min early',  '🌺', false, true,  'DEMO', 50),
 
   ('b2c3d4e5-1111-2222-3333-000000000207', '8:00 AM',  'Pack bags',                      'Check drawers and chargers',         '🧳', false, false, null, 10),
   ('b2c3d4e5-1111-2222-3333-000000000207', '11:00 AM', 'Check out',                      'Leave bags at bell desk',            '🏨', false, true,  'DEMO', 20),
   ('b2c3d4e5-1111-2222-3333-000000000207', '1:30 PM',  'Return rental car',              'Allow extra airport buffer',         '🚙', false, true,  'DEMO', 30),
-  ('b2c3d4e5-1111-2222-3333-000000000207', '4:10 PM',  'Flight home',                    'Sample Airlines · confirmation hidden', '✈️', false, true, 'DEMO', 40);
+  ('b2c3d4e5-1111-2222-3333-000000000207', '4:10 PM',  'Hawaiian Airlines flight home',  'OGG → SFO · confirmation in Docs',  '✈️', false, true, 'DEMO', 40);
 
 insert into public.documents (trip_id, category, name, provider, confirmation, date, status, notes, emoji, file_type) values
-  ('b2c3d4e5-1111-2222-3333-444444444444', 'Flights',    'SFO → OGG · Sample Airlines',        'Sample Airlines',      'DEMO-FLT-1042', 'Jun 5 · 8:15 AM',    'completed', 'Demo seats 12A–D · no real passenger data',        '✈️', 'pdf'),
-  ('b2c3d4e5-1111-2222-3333-444444444444', 'Flights',    'OGG → SFO · Sample Airlines',        'Sample Airlines',      'DEMO-FLT-2042', 'Jun 11 · 4:10 PM',   'confirmed', 'Demo confirmation only · airport buffer recommended', '✈️', 'pdf'),
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Flights',    'SFO → OGG · Hawaiian Airlines',      'Hawaiian Airlines',    'HA-DEMO-1042',  'Jun 5 · 8:15 AM',    'confirmed', 'Demo seats 12A–D · no real passenger data',        '✈️', 'pdf'),
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Flights',    'OGG → SFO · Hawaiian Airlines',      'Hawaiian Airlines',    'HA-DEMO-2042',  'Jun 11 · 4:10 PM',   'confirmed', 'Demo confirmation only · airport buffer recommended', '✈️', 'pdf'),
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Hotel',      'Maui Ocean Resort',                  'Demo Hotel Group',     'DEMO-HOTEL-88', 'Jun 5 – 11 · 6 nights', 'confirmed', 'Ocean-view room · anonymized booking record',       '🏨', 'booking'),
-  ('b2c3d4e5-1111-2222-3333-444444444444', 'Car',        'Mid-size SUV rental',                 'Demo Car Rental',      'DEMO-CAR-19',   'Jun 5 – 11',         'confirmed', 'Pick up and return at OGG · fake reservation',       '🚙', 'booking'),
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Car',        'Jeep Wrangler rental',                'Hertz',                'HZ-DEMO-19',    'Jun 5 – 11',         'confirmed', 'Pick up and return at OGG · fake reservation',       '🚙', 'booking'),
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Activities', 'Molokini snorkel sail',               'Demo Ocean Tours',     'DEMO-SAIL-73',  'Jun 6 · 4:30 PM',    'confirmed', '4 sample tickets · gear included',                  '🤿', 'pdf'),
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Activities', 'Road to Hana private tour',           'Demo Island Guides',   'DEMO-HANA-51',  'Jun 7 · 7:00 AM',    'confirmed', 'Pickup details anonymized · lunch included',         '🚗', 'booking'),
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Activities', 'Waiʻānapanapa parking pass',          'Hawaii State Parks',   'HI-DEMO-22',    'Jun 7 · 2:30 PM',    'confirmed', 'Timed entry window · sample pass only',             '🖤', 'booking'),
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Activities', 'Ocean Vodka farm tour',               'Ocean Vodka',          'OV-DEMO-45',    'Jun 9 · 1:00 PM',    'confirmed', 'Tour reservation · anonymized booking',             '🍍', 'booking'),
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Dining',     'Sunset seafood dinner',               'Demo Seafood House',   'DEMO-DINE-66',  'Jun 6 · 7:15 PM',    'confirmed', 'Party of 4 · sample reservation',                   '🐟', 'screenshot'),
-  ('b2c3d4e5-1111-2222-3333-444444444444', 'Dining',     'Last-night dinner',                   'Demo Beach Kitchen',   'DEMO-DINE-77',  'Jun 10 · 7:30 PM',   'pending',   'Confirm patio table same day',                      '🍹', 'booking');
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Dining',     'Monkeypod Kitchen Wailea',            'OpenTable',            'OT-DEMO-88',    'Jun 5 · 6:30 PM',    'confirmed', 'Arrival-night dinner · fake booking',               '🍜', 'booking'),
+  ('b2c3d4e5-1111-2222-3333-444444444444', 'Dining',     'Old Lahaina Luau',                    'Old Lahaina Luau',     'OLL-DEMO-77',   'Jun 10 · 7:30 PM',   'pending',   'Confirm seating same day',                           '🌺', 'booking');
 
 insert into public.messages (trip_id, sender_name, sender_avatar, sender_user_id, is_me, text, card_type, card_title, card_sub, card_emoji, created_at) values
   ('b2c3d4e5-1111-2222-3333-444444444444', 'Jamie', '👩', null, false, 'Beach morning first, snorkel later? That feels easiest for everyone.', null, null, null, null, '2026-06-06 09:02:00+00'),
