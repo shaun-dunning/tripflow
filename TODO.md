@@ -62,8 +62,8 @@
 - [x] Smart pre-trip readiness dashboard — combine packing progress, document readiness, reservation confidence, weather warnings, and traveler join status into one "trip ready" score.
 - [x] Reservation confirmation workflow — add "needs confirmation" states, reminders, and one-tap confirm from Vault/My Day.
 - [x] True travel-time service — replace local Maui drive-time heuristics with geocoded locations and live/static duration estimates.
-- [ ] Finish multi-trip data model pass — move remaining future-trip planning cards and trip-specific suggestions from local/demo data to persisted active-trip records.
-- [ ] Share/invite analytics or audit trail — lightweight joined/invited indicators so the organizer can see who has accepted and who has not.
+- [x] Finish multi-trip data model pass — move remaining future-trip planning cards and trip-specific suggestions from local/demo data to persisted active-trip records.
+- [x] Share/invite analytics or audit trail — lightweight joined/invited indicators so the organizer can see who has accepted and who has not.
 
       
 ## Future Milestone – iOS App (Capacitor)

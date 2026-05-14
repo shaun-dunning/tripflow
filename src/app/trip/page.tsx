@@ -1445,33 +1445,52 @@ export default function TripPage() {
             </div>
           </div>
 
-          {/* Avatar strip */}
+          {/* Avatar strip with invite status */}
           {travelers.length > 0 ? (
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="flex -space-x-2">
-                {travelers.slice(0, 6).map((t) => (
-                  <div
-                    key={t.id}
-                    className="w-9 h-9 rounded-full bg-slate-700 border-2 border-white/20 flex items-center justify-center text-lg flex-none shadow-sm"
-                  >
-                    {t.avatar_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={t.avatar_url} alt={t.name} className="w-full h-full rounded-full object-cover" />
-                    ) : (
-                      t.avatar
+            <div className="mb-4">
+              <div className="flex items-start gap-3">
+                <div className="flex -space-x-2">
+                  {travelers.slice(0, 6).map((t) => (
+                    <div key={t.id} className="relative w-9 h-9 flex-none shadow-sm">
+                      <div className="w-9 h-9 rounded-full bg-slate-700 border-2 border-white/20 flex items-center justify-center text-lg overflow-hidden">
+                        {t.avatar_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={t.avatar_url} alt={t.name} className="w-full h-full object-cover" />
+                        ) : (
+                          t.avatar
+                        )}
+                      </div>
+                      {/* Joined = emerald, pending = amber */}
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#0f172a] ${t.status === "active" ? "bg-emerald-400" : "bg-amber-400"}`} />
+                    </div>
+                  ))}
+                  {travelers.length < 5 && (
+                    <div className="w-9 h-9 rounded-full border-2 border-dashed border-white/30 flex items-center justify-center text-white/40 flex-none">
+                      <span className="text-base font-light">+</span>
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs text-white/70">
+                    {travelers.map((t) => t.name.split(" ")[0]).slice(0, 3).join(", ")}
+                    {travelers.length > 3 ? ` +${travelers.length - 3}` : ""}
+                  </p>
+                  <div className="flex items-center gap-2.5 mt-1">
+                    {travelers.filter((t) => t.status === "active").length > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                        {travelers.filter((t) => t.status === "active").length} joined
+                      </span>
+                    )}
+                    {travelers.filter((t) => t.status !== "active").length > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-amber-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-300 inline-block" />
+                        {travelers.filter((t) => t.status !== "active").length} pending
+                      </span>
                     )}
                   </div>
-                ))}
-                {travelers.length < 5 && (
-                  <div className="w-9 h-9 rounded-full border-2 border-dashed border-white/30 flex items-center justify-center text-white/40 flex-none">
-                    <span className="text-base font-light">+</span>
-                  </div>
-                )}
+                </div>
               </div>
-              <p className="text-xs text-white/60">
-                {travelers.map((t) => t.name.split(" ")[0]).slice(0, 3).join(", ")}
-                {travelers.length > 3 ? ` +${travelers.length - 3}` : ""}
-              </p>
             </div>
           ) : (
             <p className="text-xs text-white/50 mb-4">Share a link — they can join instantly.</p>
@@ -1669,6 +1688,64 @@ export default function TripPage() {
                 )}
               </div>
             )}
+
+            {/* ── My Other Trips (Supabase-synced memberships) ─────── */}
+            {(() => {
+              const otherTrips = activeTrip.memberships.filter((m) => m.trip_id !== activeTrip.activeTripId);
+              if (otherTrips.length === 0) return null;
+              return (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="w-2 h-2 rounded-full bg-indigo-400" />
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">My Other Trips</p>
+                    <span className="text-[10px] text-slate-300 font-semibold">{otherTrips.length}</span>
+                  </div>
+                  <div className="flex flex-col gap-2.5">
+                    {otherTrips.map((m) => {
+                      const dateInfo = getTripDateInfo(m.trip.start_date, m.trip.end_date);
+                      const photos = getPhotosForDestination(m.trip.destination);
+                      const photoUrl = m.trip.cover_photo ?? photos[0]?.url ?? DEFAULT_PHOTOS[0].url;
+                      const daysAway = getDaysUntil(m.trip.start_date);
+                      return (
+                        <button
+                          key={m.trip_id}
+                          onClick={() => activeTrip.selectTrip(m.trip_id)}
+                          className="bg-white rounded-2xl border border-indigo-50 shadow-sm overflow-hidden text-left w-full active:scale-[0.99] transition-transform"
+                        >
+                          <div className="flex items-stretch overflow-hidden">
+                            <div className="relative w-24 flex-none">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={photoUrl}
+                                alt={m.trip.destination}
+                                className={`w-full h-full object-cover ${dateInfo.status === "completed" ? "grayscale opacity-70" : ""}`}
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
+                            </div>
+                            <div className="flex-1 px-3 py-2.5 min-w-0">
+                              <p className="text-sm font-bold text-slate-900 leading-tight truncate">{m.trip.title}</p>
+                              <p className="text-[11px] text-slate-400 truncate">{m.trip.destination}</p>
+                              {dateInfo.status === "upcoming" && daysAway !== null && (
+                                <p className="text-[10px] text-indigo-500 font-semibold mt-0.5">in {daysAway} days</p>
+                              )}
+                              {dateInfo.status === "active" && (
+                                <p className="text-[10px] text-emerald-500 font-semibold mt-0.5">Active · Day {dateInfo.currentDayNumber}</p>
+                              )}
+                              {dateInfo.status === "completed" && (
+                                <p className="text-[10px] text-slate-400 font-semibold mt-0.5">Completed</p>
+                              )}
+                            </div>
+                            <div className="pr-3 flex items-center flex-none">
+                              <span className="text-[10px] font-bold text-indigo-500">Switch →</span>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* ── Archived ──────────────────────────────────────────── */}
             <div>
