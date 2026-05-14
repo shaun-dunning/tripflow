@@ -6,6 +6,16 @@ import { ArrowRight, Lock, Mail, MapPinned, ShieldCheck, Sparkles, Users } from 
 import { supabase } from "@/lib/supabase";
 import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
 
+function formatAuthError(message: string) {
+  if (/email rate limit exceeded/i.test(message)) {
+    return "Supabase has temporarily paused new account emails for this project. Wait a few minutes, then try again, or sign in with an account you already created.";
+  }
+  if (/user already registered|already been registered|already exists/i.test(message)) {
+    return "That email already has an account. Switch to Sign In and use the same password.";
+  }
+  return message;
+}
+
 export default function AuthPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -34,7 +44,10 @@ export default function AuthPage() {
         options: { data: { full_name: name } },
       });
       if (error) {
-        setError(error.message);
+        setError(formatAuthError(error.message));
+        if (/email rate limit exceeded|user already registered|already been registered|already exists/i.test(error.message)) {
+          setMode("signin");
+        }
       } else if (data.session) {
         setSuccess("Account created. Opening TripFlow...");
         router.replace("/");
@@ -45,7 +58,7 @@ export default function AuthPage() {
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
-        setError(error.message);
+        setError(formatAuthError(error.message));
       } else {
         router.replace("/");
       }

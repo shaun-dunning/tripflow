@@ -83,6 +83,16 @@ function formatJoinError(err: unknown) {
   return message;
 }
 
+function formatAuthError(message: string) {
+  if (/email rate limit exceeded/i.test(message)) {
+    return "Supabase has temporarily paused new account emails for this project. Wait a few minutes, then try again, or use Sign In with an account you already created.";
+  }
+  if (/user already registered|already been registered|already exists/i.test(message)) {
+    return "That email already has an account. Switch to Sign In and use the same password.";
+  }
+  return message;
+}
+
 async function joinTripByInvite(inviteCode: string, tripId: string, user: User, avatar = "🧑") {
   const name =
     user.user_metadata?.full_name?.split(" ")[0] ??
@@ -262,11 +272,18 @@ export default function JoinPage() {
         password,
         options: { data: { full_name: name } },
       });
-      if (error) { setError(error.message); setAuthLoading(false); return; }
+      if (error) {
+        setError(formatAuthError(error.message));
+        if (/email rate limit exceeded|user already registered|already been registered|already exists/i.test(error.message)) {
+          setMode("signin");
+        }
+        setAuthLoading(false);
+        return;
+      }
       user = data.user ?? null;
     } else {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) { setError(error.message); setAuthLoading(false); return; }
+      if (error) { setError(formatAuthError(error.message)); setAuthLoading(false); return; }
       user = data.user ?? null;
     }
 
