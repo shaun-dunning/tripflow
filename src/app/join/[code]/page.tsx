@@ -72,7 +72,10 @@ function formatDateRange(start: string, end: string) {
 function formatJoinError(err: unknown) {
   const message = err instanceof Error ? err.message : "Could not join this trip.";
   if (/row-level security|rls|policy/i.test(message)) {
-    return "TripFlow could not add this account to the trip because Supabase is missing the traveler invite policy. Apply the membership policy SQL, then try again.";
+    return "TripFlow could not add this account to the trip because Supabase is missing the join-by-invite SQL function. Run the latest membership SQL, then try again.";
+  }
+  if (/function .*join_trip_by_invite|could not find.*join_trip_by_invite|schema cache/i.test(message)) {
+    return "TripFlow needs the latest join-by-invite SQL function. Run the SQL I provided, wait a few seconds, then try again.";
   }
   if (/foreign key|violates.*constraint|not present/i.test(message)) {
     return "The demo trip has not been installed in Supabase yet. Run supabase/demo-trip.sql in the SQL Editor, then try this link again.";
@@ -80,37 +83,20 @@ function formatJoinError(err: unknown) {
   return message;
 }
 
-async function joinTrip(tripId: string, user: User, avatar = "🧑") {
-  // Don't double-add
-  const { data: existing, error: existingError } = await supabase
-    .from("travelers")
-    .select("id")
-    .eq("trip_id", tripId)
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (existingError) {
-    throw new Error(`Could not check trip membership: ${existingError.message}`);
-  }
-  if (existing) return;
-
+async function joinTripByInvite(inviteCode: string, tripId: string, user: User, avatar = "🧑") {
   const name =
     user.user_metadata?.full_name?.split(" ")[0] ??
     user.email?.split("@")[0] ??
     "Traveler";
 
-  const { error: insertError } = await supabase.from("travelers").insert({
-    trip_id: tripId,
-    name,
-    avatar,
-    role: "Co-traveler",
-    status: "active",
-    is_me: false,
-    user_id: user.id,
+  const { error: joinError } = await supabase.rpc("join_trip_by_invite", {
+    target_invite_code: inviteCode,
+    traveler_name: name,
+    traveler_avatar: avatar,
   });
 
-  if (insertError) {
-    throw new Error(`Could not add you to this trip: ${insertError.message}`);
+  if (joinError) {
+    throw new Error(`Could not add you to this trip: ${joinError.message}`);
   }
 
   const { data: confirmed, error: confirmError } = await supabase
@@ -123,14 +109,6 @@ async function joinTrip(tripId: string, user: User, avatar = "🧑") {
   if (confirmError || !confirmed) {
     throw new Error(confirmError?.message ?? "Trip membership could not be confirmed.");
   }
-
-  const { error: messageError } = await supabase.from("messages").insert({
-    trip_id: tripId,
-    sender_name: "TripFlow",
-    sender_avatar: "🌺",
-    text: `${name} joined the trip.`,
-  });
-  if (messageError) console.warn("Join announcement failed:", messageError.message);
 }
 
 async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null> {
@@ -174,6 +152,7 @@ async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null
 export default function JoinPage() {
   const { code } = useParams<{ code: string }>();
   const router = useRouter();
+  const inviteCode = (code ?? INVITE_CODE).toUpperCase();
 
   const [trip, setTrip] = useState<TripInfo | null>(null);
   const [inviteMode, setInviteMode] = useState<InviteMode>("family");
@@ -194,7 +173,6 @@ export default function JoinPage() {
   // 1. Load trip info
   useEffect(() => {
     async function load() {
-      const inviteCode = (code ?? INVITE_CODE).toUpperCase();
       const isPreviewInvite = APP_PREVIEW_INVITE_CODES.includes(inviteCode);
       const isDemoInvite = inviteCode === DEMO_INVITE_CODE;
       setInviteMode(isPreviewInvite ? "preview" : isDemoInvite ? "demo" : "family");
@@ -221,7 +199,7 @@ export default function JoinPage() {
       setTrip(tripData ?? (isDemoInvite ? DEMO_FALLBACK_TRIP : FALLBACK_TRIP));
     }
     void load();
-  }, [code]);
+  }, [inviteCode]);
 
   // 2. Check if already logged in
   useEffect(() => {
@@ -255,7 +233,7 @@ export default function JoinPage() {
     try {
       if (inviteMode !== "preview") {
         localStorage.removeItem(PREVIEW_INVITE_KEY);
-        await joinTrip(trip.id, currentUser, selectedAvatar);
+        await joinTripByInvite(inviteCode, trip.id, currentUser, selectedAvatar);
         localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
         localStorage.removeItem(FAMILY_INVITE_KEY);
         router.replace("/chat");
@@ -296,7 +274,7 @@ export default function JoinPage() {
       try {
         if (inviteMode !== "preview") {
           localStorage.removeItem(PREVIEW_INVITE_KEY);
-          await joinTrip(trip.id, user, selectedAvatar);
+          await joinTripByInvite(inviteCode, trip.id, user, selectedAvatar);
           localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
           localStorage.removeItem(FAMILY_INVITE_KEY);
           router.replace("/chat");

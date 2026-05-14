@@ -43,6 +43,72 @@ $$;
 
 grant execute on function public.get_trip_invite(text) to anon, authenticated;
 
+create or replace function public.join_trip_by_invite(
+  target_invite_code text,
+  traveler_name text,
+  traveler_avatar text default '🧑'
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_trip_id uuid;
+  joiner_id uuid;
+  clean_name text;
+  clean_avatar text;
+begin
+  joiner_id := auth.uid();
+  if joiner_id is null then
+    raise exception 'You must be signed in to join a trip.';
+  end if;
+
+  select t.id
+  into target_trip_id
+  from public.trips t
+  where upper(t.invite_code) = upper(target_invite_code)
+  limit 1;
+
+  if target_trip_id is null then
+    raise exception 'Invite not found.';
+  end if;
+
+  clean_name := coalesce(
+    nullif(trim(traveler_name), ''),
+    nullif(split_part(coalesce(auth.jwt() ->> 'email', ''), '@', 1), ''),
+    'Traveler'
+  );
+  clean_avatar := coalesce(nullif(traveler_avatar, ''), '🧑');
+
+  insert into public.travelers (trip_id, user_id, name, avatar, role, status, is_me)
+  values (
+    target_trip_id,
+    joiner_id,
+    clean_name,
+    clean_avatar,
+    'Co-traveler',
+    'active',
+    false
+  )
+  on conflict do nothing;
+
+  insert into public.messages (trip_id, sender_name, sender_avatar, sender_user_id, is_me, text)
+  values (
+    target_trip_id,
+    'TripFlow',
+    '🌺',
+    null,
+    false,
+    clean_name || ' joined the trip.'
+  );
+
+  return target_trip_id;
+end;
+$$;
+
+grant execute on function public.join_trip_by_invite(text, text, text) to authenticated;
+
 create or replace function public.create_trip_with_organizer(
   trip_title text,
   trip_destination text,
