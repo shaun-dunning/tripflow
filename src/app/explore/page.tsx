@@ -7,6 +7,7 @@ import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, addToWishlist, removeFromWishlist } from "@/lib/wishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveTrip } from "@/hooks/useActiveTrip";
+import { edgeFnUrl, edgeFnHeaders } from "@/lib/edgeFunctions";
 
 type Place = {
   id: number;
@@ -1057,9 +1058,9 @@ export default function ExplorePage() {
     setAiMessages(newMessages);
     setAiLoading(true);
     try {
-      const res = await fetch("/api/assistant", {
+      const res = await fetch(edgeFnUrl("assistant"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: edgeFnHeaders(),
         body: JSON.stringify({ message: messageText, history: newMessages }),
       });
       const data = await res.json();

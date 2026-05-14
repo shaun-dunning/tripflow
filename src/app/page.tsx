@@ -13,6 +13,7 @@ import FirstTripSetup from "@/components/FirstTripSetup";
 import { useAuth } from "@/hooks/useAuth";
 import { useActiveTrip } from "@/hooks/useActiveTrip";
 import { DEMO_TRIP_ID } from "@/lib/tripConfig";
+import { edgeFnUrl, edgeFnHeaders } from "@/lib/edgeFunctions";
 
 function timeToMinutes(t: string): number {
   if (!t || t === "TBD" || t === "tbd") return -1; // TBD items sort to top of Morning
@@ -694,7 +695,7 @@ export default function MyDayPage() {
     const selectedTrip = activeTrip.activeTrip;
     const hasMauiWeather = selectedTrip.destination.toLowerCase().includes("maui");
     if (hasMauiWeather) {
-      fetch("/api/weather")
+      fetch(edgeFnUrl("weather"), { headers: edgeFnHeaders() })
         .then((r) => r.json())
         .then((data) => setWeather(data))
         .catch(() => setWeatherIssue(true));
@@ -1272,9 +1273,9 @@ export default function MyDayPage() {
       `\n\nIdentify free time gaps and suggest 2–3 activities that fit naturally into our schedule. Be specific to ${activeTrip.activeTrip?.destination ?? "this destination"} and this trip context.`;
 
     try {
-      const res = await fetch("/api/assistant", {
+      const res = await fetch(edgeFnUrl("assistant"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: edgeFnHeaders(),
         body: JSON.stringify({
           message: prompt,
           history: [{ role: "user", content: prompt }],
@@ -2243,7 +2244,7 @@ export default function MyDayPage() {
             actionLabel="Retry weather"
             onAction={() => {
               setWeatherIssue(false);
-              fetch("/api/weather")
+              fetch(edgeFnUrl("weather"), { headers: edgeFnHeaders() })
                 .then((r) => r.json())
                 .then((data) => setWeather(data))
                 .catch(() => setWeatherIssue(true));

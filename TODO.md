@@ -67,8 +67,8 @@
 
       
 ## Future Milestone – iOS App (Capacitor)
-- [ ] Move `/api/assistant` route to Supabase Edge Function (required for static export)
-- [ ] Move `/api/weather` route to Supabase Edge Function (required for static export)
+- [x] Move `/api/assistant` route to Supabase Edge Function (required for static export)
+- [x] Move `/api/weather` route to Supabase Edge Function (required for static export)
 - [ ] Add `output: "export"` to next.config.ts and verify static build works
 - [ ] Install and configure Capacitor (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`)
 - [ ] Fix Unsplash hero image caching for mobile (add Cache-Control or switch to local copies)
