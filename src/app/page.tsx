@@ -395,15 +395,6 @@ function getSections(agenda: Item[]) {
   ].filter((s) => s.items.length > 0);
 }
 
-const MOODS = [
-  { label: "Easy Morning", emoji: "☀️", color: "bg-amber-100 text-amber-700" },
-  { label: "Adventure Mode", emoji: "⚡", color: "bg-orange-100 text-orange-700" },
-  { label: "Rain Plan", emoji: "🌧️", color: "bg-blue-100 text-blue-700" },
-  { label: "Parents Need Drinks", emoji: "🍹", color: "bg-purple-100 text-purple-700" },
-  { label: "Kids Meltdown", emoji: "😤", color: "bg-red-100 text-red-700" },
-  { label: "Fancy Night", emoji: "✨", color: "bg-slate-100 text-slate-700" },
-];
-
 type ForecastDay = {
   date: string;
   high: number;
@@ -562,9 +553,6 @@ export default function MyDayPage() {
   const pullStartY = useRef<number | null>(null);
   const pullDistanceRef = useRef(0);  // for logic in touch handlers (no re-render cost)
   const isPulling = useRef(false);
-
-  // Vibe check
-  const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
   // Day route sheet
   const [showRouteSheet, setShowRouteSheet] = useState(false);
@@ -1296,7 +1284,7 @@ export default function MyDayPage() {
       if (a.index !== b.index) return a.index - b.index;
       return a.mins - b.mins;
     })
-    .slice(0, 3);
+    .slice(0, 2);
   const nextPrepAction = (() => {
     if (packingPct < 80) {
       return {
@@ -2034,7 +2022,7 @@ export default function MyDayPage() {
       </div>
 
       {/* ── Day action pills: Route + Jump to Today ── */}
-      {(dayRouteStops.length > 0 || dayIndex !== todayDayIndex) && (
+      {!isPreTrip && (dayRouteStops.length > 0 || dayIndex !== todayDayIndex) && (
         <div className="flex items-center justify-center gap-2 pt-2 pb-0 px-4 flex-wrap">
           {dayRouteStops.length > 0 && (
             <button
@@ -2078,35 +2066,35 @@ export default function MyDayPage() {
         {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
           <div className="overflow-hidden rounded-[1.6rem] border border-white/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
             <div className="relative px-4 pb-4 pt-5">
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-sky-50 to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-sky-50 to-transparent" />
               <div className="relative flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-500">Before you go</p>
-                  <h2 className="mt-1 text-2xl font-black leading-none text-slate-950">
-                    {tripInfo.daysUntilTrip} days to {activeTrip.activeTrip?.destination?.split(",")[0] ?? "your trip"}
+                  <h2 className="mt-1 text-[1.65rem] font-black leading-none text-slate-950">
+                    {tripInfo.daysUntilTrip} days until {activeTrip.activeTrip?.destination?.split(",")[0] ?? "departure"}
                   </h2>
-                  <p className="mt-2 text-sm leading-snug text-slate-500">
+                  <p className="mt-2 text-xs leading-snug text-slate-500">
                     {activeTrip.activeTrip
-                      ? `${formatTripDayDate(activeTrip.activeTrip.start_date)} – ${formatTripDayDate(activeTrip.activeTrip.end_date)} · ${crewMembers.length || "0"} travelers`
-                      : "A calm prep view for the days before departure."}
+                      ? `${formatTripDayDate(activeTrip.activeTrip.start_date)} – ${formatTripDayDate(activeTrip.activeTrip.end_date)}`
+                      : "The few things worth handling before the trip starts."}
                   </p>
                 </div>
-                <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white shadow-sm">
+                <div className="flex h-14 w-14 flex-none flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white shadow-sm">
                   <span className="text-xl font-black leading-none text-slate-950 tabular-nums">{readinessPct}%</span>
-                  <span className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">ready</span>
+                  <span className="mt-1 text-[8px] font-black uppercase tracking-widest text-slate-400">ready</span>
                 </div>
               </div>
 
               <button
                 onClick={() => router.push(nextPrepAction.href)}
-                className="relative mt-5 flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-slate-950 p-3.5 text-left text-white shadow-[0_14px_34px_rgba(15,23,42,0.16)] active:scale-[0.99] transition-transform"
+                className="relative mt-5 flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-slate-950 p-4 text-left text-white shadow-[0_14px_34px_rgba(15,23,42,0.16)] active:scale-[0.99] transition-transform"
               >
-                <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-white/12 text-2xl">
+                <span className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-white/12 text-2xl">
                   {nextPrepAction.emoji}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[9px] font-black uppercase tracking-[0.18em] text-white/45">{nextPrepAction.eyebrow}</span>
-                  <span className="mt-0.5 block text-sm font-black leading-tight">{nextPrepAction.title}</span>
+                  <span className="block text-[9px] font-black uppercase tracking-[0.18em] text-white/45">Next thing</span>
+                  <span className="mt-0.5 block text-base font-black leading-tight">{nextPrepAction.title}</span>
                   <span className="mt-1 block text-xs leading-snug text-white/62">{nextPrepAction.detail}</span>
                 </span>
                 <span className="flex-none text-xl text-white/45">→</span>
@@ -2144,18 +2132,13 @@ export default function MyDayPage() {
 
               <div className="relative mt-4 rounded-2xl bg-slate-50 px-3.5 py-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Key milestones</p>
-                  <button onClick={() => router.push("/vault")} className="text-[10px] font-black text-sky-600">Add docs</button>
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Trip anchors</p>
                 </div>
                 <div className="space-y-2">
                   {upcomingMilestones.length > 0 ? upcomingMilestones.map(({ item, tripDay }) => (
-                    <button
+                    <div
                       key={`${tripDay.dayNum}-${item.id}`}
-                      onClick={() => {
-                        setDayIndex(Math.max(0, tripDay.dayNum - 1));
-                        setEditingTheme(false);
-                      }}
-                      className="flex w-full items-center gap-3 rounded-xl bg-white px-3 py-2 text-left shadow-sm active:scale-[0.99] transition-transform"
+                      className="flex w-full items-center gap-3 rounded-xl bg-white px-3 py-2 text-left shadow-sm"
                     >
                       <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-slate-50 text-lg">{item.emoji}</span>
                       <span className="min-w-0 flex-1">
@@ -2164,7 +2147,7 @@ export default function MyDayPage() {
                           Day {tripDay.dayNum} · {tripDay.date} · {item.time}
                         </span>
                       </span>
-                    </button>
+                    </div>
                   )) : (
                     <div className="rounded-xl bg-white px-3 py-3 text-sm text-slate-500 shadow-sm">
                       Add flights, hotel, or one anchor plan so everyone can see what matters first.
@@ -2185,6 +2168,8 @@ export default function MyDayPage() {
             : null);
           const alert = getWeatherAlert(alertWeather, items, isToday);
           if (!alert) return null;
+          if (isPreTrip) return null;
+          if (isToday && alert.type !== "warning") return null;
           const isWarning = alert.type === "warning";
           return (
             <div className={`flex items-start gap-3 rounded-2xl px-4 py-3.5 border ${
@@ -2408,7 +2393,7 @@ export default function MyDayPage() {
         )}
 
         {/* ── Empty state (no items after loading) ── */}
-        {!loading && sections.length === 0 && (
+        {!loading && !isPreTrip && sections.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
             <div className="text-5xl mb-4">✨</div>
             <p className="text-base font-bold text-slate-800 mb-1">Nothing planned yet</p>
@@ -2423,7 +2408,7 @@ export default function MyDayPage() {
         )}
 
         {/* ── Time Sections (drag-to-reorder) ── */}
-        {!loading && (
+        {!loading && !isPreTrip && (
           <SortableAgendaSections
             sections={sections as DndSection[]}
             isToday={isToday}
@@ -2440,7 +2425,7 @@ export default function MyDayPage() {
 
 
         {/* ── AI Plan My Day CTA ── */}
-        {!loading && items.length > 0 && isEditable && (
+        {!loading && !isToday && !isPreTrip && items.length > 0 && isEditable && (
           <button
             onClick={planMyDay}
             className="w-full flex items-center gap-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-2xl px-4 py-3.5 shadow-sm active:scale-[0.98] transition-all"
@@ -2457,7 +2442,7 @@ export default function MyDayPage() {
         )}
 
         {/* ── Add to today / Explore CTA ── */}
-        {isEditable && (
+        {!isToday && !isPreTrip && isEditable && (
           <button
             onClick={() => router.push("/explore")}
             className="w-full relative overflow-hidden rounded-2xl text-left group"
@@ -2483,61 +2468,33 @@ export default function MyDayPage() {
         )}
 
         {/* ── Trip Memories CTA ── */}
-        <button
-          onClick={() => router.push("/memories")}
-          className="w-full relative overflow-hidden rounded-2xl text-left group active:scale-[0.98] transition-all"
-          style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)" }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=200&fit=crop&q=60"
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-10"
-          />
-          <div className="relative flex items-center gap-4 px-4 py-4">
-            <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-lg flex-none">
-              📸
+        {!isToday && !isPreTrip && (
+          <button
+            onClick={() => router.push("/memories")}
+            className="w-full relative overflow-hidden rounded-2xl text-left group active:scale-[0.98] transition-all"
+            style={{ background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)" }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=200&fit=crop&q=60"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover opacity-10"
+            />
+            <div className="relative flex items-center gap-4 px-4 py-4">
+              <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-lg flex-none">
+                📸
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-white">Trip Memories</p>
+                <p className="text-xs text-white/60 mt-0.5">Your day-by-day story, auto-built as you go</p>
+              </div>
+              <span className="text-white/50 group-hover:text-white/80 transition-colors text-lg">→</span>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-bold text-sm text-white">Trip Memories</p>
-              <p className="text-xs text-white/60 mt-0.5">Your day-by-day story, auto-built as you go</p>
-            </div>
-            <span className="text-white/50 group-hover:text-white/80 transition-colors text-lg">→</span>
-          </div>
-        </button>
-
-        {/* ── Vibe Check (today only) ── */}
-        {isToday && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Vibe Check</p>
-              {selectedMood && (
-                <span className="text-[10px] font-semibold text-slate-500">{selectedMood} selected</span>
-              )}
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-              {MOODS.map((m) => {
-                const isSelected = selectedMood === m.label;
-                return (
-                  <button
-                    key={m.label}
-                    onClick={() => setSelectedMood(isSelected ? null : m.label)}
-                    className={`flex-none flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full whitespace-nowrap transition-all ${
-                      isSelected
-                        ? "bg-slate-900 text-white shadow-md scale-105"
-                        : `${m.color} opacity-80`
-                    }`}
-                  >
-                    {m.emoji} {m.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          </button>
         )}
 
         {/* ── Trip Note (all days) ── */}
-        {day.note && (
+        {!isPreTrip && day.note && (
           <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 flex gap-3 items-start shadow-sm">
             <span className="text-lg">📌</span>
             <div>
@@ -2548,7 +2505,7 @@ export default function MyDayPage() {
         )}
 
         {/* ── Crew ── */}
-        {crewMembers.length > 0 && (
+        {!isToday && !isPreTrip && crewMembers.length > 0 && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm px-4 py-3">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
