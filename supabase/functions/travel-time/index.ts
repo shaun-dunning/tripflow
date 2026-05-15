@@ -1,11 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
-
-// In-memory cache: lives for the duration of one serverless instance.
-// Good enough to avoid hammering geocoding APIs during a single session.
-const memCache = new Map<string, { durationMin: number; distanceKm: number; estimated: boolean }>();
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+};
 
 async function geocodeAddress(
-  address: string
+  address: string,
 ): Promise<{ lat: number; lng: number } | null> {
   try {
     const url = new URL("https://nominatim.openstreetmap.org/search");
@@ -13,8 +14,7 @@ async function geocodeAddress(
     url.searchParams.set("format", "json");
     url.searchParams.set("limit", "1");
     const res = await fetch(url.toString(), {
-      headers: { "User-Agent": "TripFlow/1.0 (family-travel-app)" },
-      next: { revalidate: 86400 },
+      headers: { "User-Agent": "Daywave/1.0 (family-travel-app)" },
     });
     if (!res.ok) return null;
     const data = (await res.json()) as Array<{ lat: string; lon: string }>;
@@ -29,13 +29,13 @@ async function osrmRoute(
   oLat: number,
   oLng: number,
   dLat: number,
-  dLng: number
+  dLng: number,
 ): Promise<{ durationMin: number; distanceKm: number } | null> {
   try {
     const url =
       `https://router.project-osrm.org/route/v1/driving/` +
       `${oLng},${oLat};${dLng},${dLat}?overview=false`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = (await res.json()) as {
       routes?: Array<{ duration: number; distance: number }>;
@@ -55,7 +55,7 @@ function haversineKm(
   lat1: number,
   lng1: number,
   lat2: number,
-  lng2: number
+  lng2: number,
 ): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -68,30 +68,32 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const destination = searchParams.get("destination");
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: CORS });
+  }
+
+  const url = new URL(req.url);
+  const destination = url.searchParams.get("destination");
   if (!destination) {
-    return NextResponse.json({ error: "destination required" }, { status: 400 });
+    return json({ error: "destination required" }, 400);
   }
 
-  const oLat = parseFloat(searchParams.get("originLat") ?? "NaN");
-  const oLng = parseFloat(searchParams.get("originLng") ?? "NaN");
+  const oLat = parseFloat(url.searchParams.get("originLat") ?? "NaN");
+  const oLng = parseFloat(url.searchParams.get("originLng") ?? "NaN");
   if (isNaN(oLat) || isNaN(oLng)) {
-    return NextResponse.json(
-      { error: "originLat and originLng required" },
-      { status: 400 }
-    );
+    return json({ error: "originLat and originLng required" }, 400);
   }
 
-  const cacheKey = `${oLat.toFixed(4)},${oLng.toFixed(4)}|${destination}`;
-  const cached = memCache.get(cacheKey);
-  if (cached) {
-    return NextResponse.json(cached);
-  }
-
-  // ── 1. Google Distance Matrix (requires GOOGLE_MAPS_API_KEY) ──────────────
-  const googleKey = process.env.GOOGLE_MAPS_API_KEY;
+  // ── 1. Google Distance Matrix (requires GOOGLE_MAPS_API_KEY secret) ─────
+  const googleKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
   if (googleKey) {
     try {
       const gmUrl =
@@ -99,7 +101,7 @@ export async function GET(req: NextRequest) {
         `?origins=${oLat},${oLng}` +
         `&destinations=${encodeURIComponent(destination)}` +
         `&mode=driving&key=${googleKey}`;
-      const gmRes = await fetch(gmUrl, { next: { revalidate: 3600 } });
+      const gmRes = await fetch(gmUrl);
       if (gmRes.ok) {
         const gmData = (await gmRes.json()) as {
           rows?: Array<{
@@ -112,42 +114,39 @@ export async function GET(req: NextRequest) {
         };
         const el = gmData.rows?.[0]?.elements?.[0];
         if (el?.status === "OK" && el.duration && el.distance) {
-          const result = {
+          return json({
             durationMin: Math.max(1, Math.round(el.duration.value / 60)),
             distanceKm: Math.round((el.distance.value / 1000) * 10) / 10,
             estimated: false,
-          };
-          memCache.set(cacheKey, result);
-          return NextResponse.json(result);
+          });
         }
       }
     } catch {
-      // fall through to free fallback
+      // fall through
     }
   }
 
-  // ── 2. Nominatim geocode destination + OSRM route ────────────────────────
+  // ── 2. Nominatim geocode + OSRM route ────────────────────────────────────
   const destCoords = await geocodeAddress(destination);
   if (destCoords) {
-    const osrmResult = await osrmRoute(oLat, oLng, destCoords.lat, destCoords.lng);
+    const osrmResult = await osrmRoute(
+      oLat,
+      oLng,
+      destCoords.lat,
+      destCoords.lng,
+    );
     if (osrmResult) {
-      const result = { ...osrmResult, estimated: false };
-      memCache.set(cacheKey, result);
-      return NextResponse.json(result);
+      return json({ ...osrmResult, estimated: false });
     }
 
-    // Haversine straight-line estimate (road factor 1.35, avg 40 km/h)
     const km = haversineKm(oLat, oLng, destCoords.lat, destCoords.lng);
     const roadKm = km * 1.35;
-    const result = {
+    return json({
       durationMin: Math.max(1, Math.round((roadKm / 40) * 60)),
       distanceKm: Math.round(roadKm * 10) / 10,
       estimated: true,
-    };
-    memCache.set(cacheKey, result);
-    return NextResponse.json(result);
+    });
   }
 
-  // ── 3. No data available ──────────────────────────────────────────────────
-  return NextResponse.json({ durationMin: null, distanceKm: null, estimated: true });
-}
+  return json({ durationMin: null, distanceKm: null, estimated: true });
+});

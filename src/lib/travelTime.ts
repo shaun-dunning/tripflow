@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { edgeFnUrl, edgeFnHeaders } from "@/lib/edgeFunctions";
 
 export type TravelInfo = {
   durationMin: number;
@@ -142,7 +143,8 @@ type ItemLike = {
  * Returns travel info for an agenda item.
  *
  * Sync fast-path: returns immediately for known Maui places.
- * Async fallback: fetches /api/travel-time for reservations at other origins.
+ * Async fallback: calls the travel-time Supabase edge function for reservations
+ * at other origins.
  */
 export function useTravelTime(
   item: ItemLike,
@@ -186,7 +188,7 @@ export function useTravelTime(
       destination,
     });
 
-    fetch(`/api/travel-time?${params}`)
+    fetch(`${edgeFnUrl("travel-time")}?${params}`, { headers: edgeFnHeaders() })
       .then((r) => r.json())
       .then((data: { durationMin?: number | null; estimated?: boolean }) => {
         if (data.durationMin == null) {
