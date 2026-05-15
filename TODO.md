@@ -57,7 +57,7 @@
 - [x] Added a separate anonymized Maui demo trip path: `/join/DEMO` now opens a full sample trip with fake travelers, bookings, agenda, docs, chat, and packing seed data instead of exposing the real family trip.
 
 ## Recommended Next
-- [ ] Manual demo QA pass — run invite join, tab navigation, Vault-linked reservations, Group cards, Packing sync fallback, and mobile layout checks before sharing broadly.
+- [x] Manual demo QA pass — run invite join, tab navigation, Vault-linked reservations, Group cards, Packing sync fallback, and mobile layout checks before sharing broadly.
 - [ ] Run `supabase/demo-trip.sql` in Supabase SQL Editor before sharing `/join/DEMO`.
 - [x] Smart pre-trip readiness dashboard — combine packing progress, document readiness, reservation confidence, weather warnings, and traveler join status into one "trip ready" score.
 - [x] Reservation confirmation workflow — add "needs confirmation" states, reminders, and one-tap confirm from Vault/My Day.
@@ -70,10 +70,10 @@
 - [x] Move `/api/assistant` route to Supabase Edge Function (required for static export)
 - [x] Move `/api/weather` route to Supabase Edge Function (required for static export)
 - [x] Add `output: "export"` to next.config.ts and verify static build works
-- [ ] Install and configure Capacitor (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`)
+- [x] Install and configure Capacitor (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`)
 - [ ] Fix Unsplash hero image caching for mobile (add Cache-Control or switch to local copies)
 - [x] Replace `next/font` Geist with static CSS import in globals.css
 - [ ] Pre-generate app icons as static PNGs in /public (replace next/og icon routes)
-- [ ] Configure Capacitor for iOS — bundle ID, display name, splash screen, safe area insets
+- [x] Configure Capacitor for iOS — bundle ID, display name, splash screen, safe area insets
 - [ ] Test full app in iOS Simulator
 - [ ] Submit to App Store (requires $99/yr Apple Developer account)
