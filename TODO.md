@@ -58,7 +58,7 @@
 
 ## Recommended Next
 - [x] Manual demo QA pass — run invite join, tab navigation, Vault-linked reservations, Group cards, Packing sync fallback, and mobile layout checks before sharing broadly.
-- [ ] Run `supabase/demo-trip.sql` in Supabase SQL Editor before sharing `/join/DEMO`.
+- [x] Run `supabase/demo-trip.sql` in Supabase SQL Editor before sharing `/join/DEMO`.
 - [x] Smart pre-trip readiness dashboard — combine packing progress, document readiness, reservation confidence, weather warnings, and traveler join status into one "trip ready" score.
 - [x] Reservation confirmation workflow — add "needs confirmation" states, reminders, and one-tap confirm from Vault/My Day.
 - [x] True travel-time service — replace local Maui drive-time heuristics with geocoded locations and live/static duration estimates.
