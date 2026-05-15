@@ -1280,6 +1280,56 @@ export default function MyDayPage() {
     ? { done: items.filter((i) => i.done).length, total: items.length }
     : null;
   const allDoneToday = isToday && items.length > 0 && items.every((i) => i.done);
+  const packingTotal = Math.max(packingProgress.total, 1);
+  const packingPct = Math.min(100, Math.round((packingProgress.packed / packingTotal) * 100));
+  const docsTotal = docReadiness?.total ?? 0;
+  const docsConfirmed = docReadiness?.confirmed ?? 0;
+  const docsPct = docsTotal > 0 ? Math.min(100, Math.round((docsConfirmed / docsTotal) * 100)) : 0;
+  const readinessPct = docsTotal > 0 ? Math.round((packingPct + docsPct) / 2) : packingPct;
+  const upcomingMilestones = displayDays
+    .flatMap((tripDay, index) =>
+      (agendas[index] ?? [])
+        .filter((item) => item.title && item.time && item.time !== "TBD")
+        .map((item) => ({ item, tripDay, index, mins: timeToMinutes(item.time) })),
+    )
+    .sort((a, b) => {
+      if (a.index !== b.index) return a.index - b.index;
+      return a.mins - b.mins;
+    })
+    .slice(0, 3);
+  const nextPrepAction = (() => {
+    if (packingPct < 80) {
+      return {
+        eyebrow: "Next thing to handle",
+        title: "Pack the essentials",
+        detail: `${Math.max(packingProgress.total - packingProgress.packed, 0)} items left before you feel ready.`,
+        cta: "Open packing",
+        href: "/packing",
+        emoji: "🧳",
+      };
+    }
+    if (docsTotal > 0 && docsConfirmed < docsTotal) {
+      return {
+        eyebrow: "Next thing to handle",
+        title: "Confirm the docs",
+        detail: `${docsTotal - docsConfirmed} reservation${docsTotal - docsConfirmed === 1 ? "" : "s"} still need a final check.`,
+        cta: "Review docs",
+        href: "/vault",
+        emoji: "📋",
+      };
+    }
+    const firstTimed = upcomingMilestones[0];
+    return {
+      eyebrow: "You're in good shape",
+      title: firstTimed ? "Review arrival day" : "Shape the first day",
+      detail: firstTimed
+        ? `${firstTimed.item.title} is the first scheduled item on ${firstTimed.tripDay.date}.`
+        : "Add the first anchor plan so the trip has a clear opening rhythm.",
+      cta: firstTimed ? "See Day 1" : "Find ideas",
+      href: firstTimed ? "/" : "/explore",
+      emoji: firstTimed?.item.emoji ?? "✨",
+    };
+  })();
 
   // ── AI day-planner ───────────────────────────────────────────────────────
   async function planMyDay() {
@@ -2024,31 +2074,104 @@ export default function MyDayPage() {
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 
-        {/* ── Trip Countdown (pre-trip only) — compact strip ── */}
+        {/* ── Pre-trip command center ── */}
         {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
-          <div className="flex items-center gap-3 bg-white border border-slate-100 rounded-2xl px-3 py-2.5 shadow-sm">
-            {/* Thumbnail */}
-            <div className="relative flex-none w-11 h-11 rounded-xl overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={activeTrip.activeTrip?.cover_photo ?? day.hero}
-                alt={activeTrip.activeTrip?.destination ?? "Trip"}
-                className="w-full h-full object-cover"
-              />
-            </div>
-            {/* Text */}
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 leading-tight">✈ {activeTrip.activeTrip?.destination ?? "Upcoming trip"}</p>
-              <p className="text-xs text-slate-400 leading-tight mt-0.5">
-                {activeTrip.activeTrip
-                  ? `${formatTripDayDate(activeTrip.activeTrip.start_date)} – ${formatTripDayDate(activeTrip.activeTrip.end_date)} · ${crewMembers.length || "0"} travelers`
-                  : "Trip details"}
-              </p>
-            </div>
-            {/* Pill */}
-            <div className="flex-none flex flex-col items-center bg-sky-50 border border-sky-100 rounded-xl px-3 py-1.5">
-              <span className="text-lg font-black text-sky-600 leading-none tabular-nums">{tripInfo.daysUntilTrip}</span>
-              <span className="text-[9px] font-semibold text-sky-400 uppercase tracking-wide leading-none mt-0.5">days</span>
+          <div className="overflow-hidden rounded-[1.6rem] border border-white/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
+            <div className="relative px-4 pb-4 pt-5">
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-sky-50 to-transparent" />
+              <div className="relative flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-500">Before you go</p>
+                  <h2 className="mt-1 text-2xl font-black leading-none text-slate-950">
+                    {tripInfo.daysUntilTrip} days to {activeTrip.activeTrip?.destination?.split(",")[0] ?? "your trip"}
+                  </h2>
+                  <p className="mt-2 text-sm leading-snug text-slate-500">
+                    {activeTrip.activeTrip
+                      ? `${formatTripDayDate(activeTrip.activeTrip.start_date)} – ${formatTripDayDate(activeTrip.activeTrip.end_date)} · ${crewMembers.length || "0"} travelers`
+                      : "A calm prep view for the days before departure."}
+                  </p>
+                </div>
+                <div className="flex h-16 w-16 flex-none flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white shadow-sm">
+                  <span className="text-xl font-black leading-none text-slate-950 tabular-nums">{readinessPct}%</span>
+                  <span className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">ready</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => router.push(nextPrepAction.href)}
+                className="relative mt-5 flex w-full items-center gap-3 rounded-2xl border border-slate-100 bg-slate-950 p-3.5 text-left text-white shadow-[0_14px_34px_rgba(15,23,42,0.16)] active:scale-[0.99] transition-transform"
+              >
+                <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-white/12 text-2xl">
+                  {nextPrepAction.emoji}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[9px] font-black uppercase tracking-[0.18em] text-white/45">{nextPrepAction.eyebrow}</span>
+                  <span className="mt-0.5 block text-sm font-black leading-tight">{nextPrepAction.title}</span>
+                  <span className="mt-1 block text-xs leading-snug text-white/62">{nextPrepAction.detail}</span>
+                </span>
+                <span className="flex-none text-xl text-white/45">→</span>
+              </button>
+
+              <div className="relative mt-3 grid grid-cols-2 gap-2.5">
+                <button onClick={() => router.push("/packing")} className="rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-sm active:scale-[0.98] transition-transform">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg">🧳</span>
+                    <span className="text-[10px] font-black text-slate-500">{packingProgress.packed}/{packingProgress.total}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all ${packingPct === 100 ? "bg-emerald-500" : "bg-sky-500"}`}
+                      style={{ width: `${packingPct}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] font-black text-slate-800">Packing</p>
+                </button>
+
+                <button onClick={() => router.push("/vault")} className="rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-sm active:scale-[0.98] transition-transform">
+                  <div className="flex items-center justify-between">
+                    <span className="text-lg">📋</span>
+                    <span className="text-[10px] font-black text-slate-500">{docsTotal > 0 ? `${docsConfirmed}/${docsTotal}` : "Add"}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div
+                      className={`h-full rounded-full transition-all ${docsPct === 100 ? "bg-emerald-500" : "bg-amber-500"}`}
+                      style={{ width: `${docsTotal > 0 ? docsPct : 10}%` }}
+                    />
+                  </div>
+                  <p className="mt-2 text-[11px] font-black text-slate-800">Reservations</p>
+                </button>
+              </div>
+
+              <div className="relative mt-4 rounded-2xl bg-slate-50 px-3.5 py-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">Key milestones</p>
+                  <button onClick={() => router.push("/vault")} className="text-[10px] font-black text-sky-600">Add docs</button>
+                </div>
+                <div className="space-y-2">
+                  {upcomingMilestones.length > 0 ? upcomingMilestones.map(({ item, tripDay }) => (
+                    <button
+                      key={`${tripDay.dayNum}-${item.id}`}
+                      onClick={() => {
+                        setDayIndex(Math.max(0, tripDay.dayNum - 1));
+                        setEditingTheme(false);
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl bg-white px-3 py-2 text-left shadow-sm active:scale-[0.99] transition-transform"
+                    >
+                      <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-slate-50 text-lg">{item.emoji}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-black text-slate-800">{item.title}</span>
+                        <span className="mt-0.5 block truncate text-[11px] text-slate-400">
+                          Day {tripDay.dayNum} · {tripDay.date} · {item.time}
+                        </span>
+                      </span>
+                    </button>
+                  )) : (
+                    <div className="rounded-xl bg-white px-3 py-3 text-sm text-slate-500 shadow-sm">
+                      Add flights, hotel, or one anchor plan so everyone can see what matters first.
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -2084,50 +2207,6 @@ export default function MyDayPage() {
             </div>
           );
         })()}
-
-        {/* ── Pre-trip Readiness ── */}
-        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-sm px-4 py-3.5">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trip Readiness</p>
-              <div className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                (packingProgress.packed / packingProgress.total) > 0.8 && docReadiness?.confirmed === docReadiness?.total
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-amber-100 text-amber-700"
-              }`}>
-                {tripInfo.daysUntilTrip}d to go
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => router.push("/packing")} className="flex flex-col gap-2 bg-sky-50 rounded-xl p-3 text-left active:scale-[0.98] transition-transform">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg">🧳</span>
-                  <span className="text-[10px] font-bold text-slate-500">{packingProgress.packed}/{packingProgress.total}</span>
-                </div>
-                <div className="h-1.5 bg-sky-100 rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${packingProgress.packed === packingProgress.total ? "bg-emerald-500" : "bg-sky-500"}`}
-                    style={{ width: `${Math.round((packingProgress.packed / packingProgress.total) * 100)}%` }} />
-                </div>
-                <p className="text-[11px] font-bold text-slate-700">Packing List ›</p>
-              </button>
-              <button onClick={() => router.push("/vault")} className="flex flex-col gap-2 bg-emerald-50 rounded-xl p-3 text-left active:scale-[0.98] transition-transform">
-                <div className="flex items-center justify-between">
-                  <span className="text-lg">📋</span>
-                  {docReadiness && (
-                    <span className="text-[10px] font-bold text-slate-500">{docReadiness.confirmed}/{docReadiness.total}</span>
-                  )}
-                </div>
-                <div className="h-1.5 bg-emerald-100 rounded-full overflow-hidden">
-                  {docReadiness && (
-                    <div className={`h-full rounded-full transition-all ${docReadiness.confirmed === docReadiness.total ? "bg-emerald-500" : "bg-amber-500"}`}
-                      style={{ width: `${Math.round((docReadiness.confirmed / docReadiness.total) * 100)}%` }} />
-                  )}
-                </div>
-                <p className="text-[11px] font-bold text-slate-700">Docs & Reservations ›</p>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* ── Live Now mode (today only) — sticky card that auto-advances ── */}
         {allDoneToday && (
