@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reset Daywave</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      main {
+        width: min(100%, 380px);
+        border: 1px solid #e2e8f0;
+        border-radius: 28px;
+        background: white;
+        padding: 28px;
+        text-align: center;
+        box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+      }
+      img {
+        width: 154px;
+        height: auto;
+        margin-bottom: 18px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 24px;
+        line-height: 1.05;
+        letter-spacing: -0.03em;
+      }
+      p {
+        margin: 12px 0 0;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+      button, a {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 20px;
+        border: 0;
+        border-radius: 18px;
+        background: #020617;
+        color: white;
+        padding: 15px 18px;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 800;
+      }
+      small {
+        display: block;
+        margin-top: 14px;
+        color: #94a3b8;
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/brand/daywave-wordmark-dark.png" alt="Daywave" />
+      <h1>Refreshing Daywave</h1>
+      <p id="status">Clearing old browser cache so the newest version can open cleanly.</p>
+      <a id="continue" href="/" hidden>Open Daywave</a>
+      <small>This does not delete your Daywave account.</small>
+    </main>
+
+    <script>
+      (async function resetDaywave() {
+        var status = document.getElementById("status");
+        var link = document.getElementById("continue");
+        try {
+          if ("serviceWorker" in navigator) {
+            var registrations = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(registrations.map(function (registration) {
+              return registration.unregister();
+            }));
+          }
+          if ("caches" in window) {
+            var keys = await caches.keys();
+            await Promise.all(keys.filter(function (key) {
+              return key.indexOf("daywave-") === 0 || key.indexOf("next") >= 0;
+            }).map(function (key) {
+              return caches.delete(key);
+            }));
+          }
+          status.textContent = "Done. Opening the latest version now.";
+          setTimeout(function () {
+            window.location.replace("/");
+          }, 650);
+        } catch (error) {
+          status.textContent = "Cache reset is ready. Tap below to reopen Daywave.";
+          link.hidden = false;
+        }
+      })();
+    </script>
+  </body>
+</html>
