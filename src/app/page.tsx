@@ -57,6 +57,26 @@ type DayData = {
   agenda: Item[];
 };
 
+const MAUI_WEATHER_FALLBACK = {
+  temp: 82,
+  condition: "Partly Cloudy",
+  emoji: "⛅",
+  humidity: 65,
+  feelsLike: 85,
+  high: 86,
+  low: 74,
+  source: "static" as const,
+  forecast: [
+    { date: "2026-06-05", high: 83, low: 72, emoji: "⛅", condition: "Partly Cloudy", precipChance: 15, uvIndex: 9 },
+    { date: "2026-06-06", high: 86, low: 74, emoji: "☀️", condition: "Sunny", precipChance: 5, uvIndex: 10 },
+    { date: "2026-06-07", high: 78, low: 70, emoji: "🌦️", condition: "Showers Likely", precipChance: 70, uvIndex: 6 },
+    { date: "2026-06-08", high: 87, low: 75, emoji: "☀️", condition: "Sunny", precipChance: 5, uvIndex: 10 },
+    { date: "2026-06-09", high: 85, low: 73, emoji: "⛅", condition: "Mostly Sunny", precipChance: 10, uvIndex: 9 },
+    { date: "2026-06-10", high: 84, low: 55, emoji: "🌤️", condition: "Clear at Summit", precipChance: 10, uvIndex: 8 },
+    { date: "2026-06-11", high: 82, low: 73, emoji: "☀️", condition: "Sunny", precipChance: 5, uvIndex: 9 },
+  ],
+};
+
 const PACKING_TOTAL = 23;
 const DEMO_PACKED_COUNT = 5;
 const PACKING_STORAGE_KEY = "daywave-packing-v2-maui26";
@@ -696,9 +716,15 @@ export default function MyDayPage() {
     const hasMauiWeather = selectedTrip.destination.toLowerCase().includes("maui");
     if (hasMauiWeather) {
       fetch(edgeFnUrl("weather"), { headers: edgeFnHeaders() })
-        .then((r) => r.json())
-        .then((data) => setWeather(data))
-        .catch(() => setWeatherIssue(true));
+        .then((r) => r.ok ? r.json() : MAUI_WEATHER_FALLBACK)
+        .then((data) => {
+          setWeather(data);
+          setWeatherIssue(false);
+        })
+        .catch(() => {
+          setWeather(MAUI_WEATHER_FALLBACK);
+          setWeatherIssue(false);
+        });
     } else {
       setWeather(null);
       setWeatherIssue(false);
@@ -1004,7 +1030,8 @@ export default function MyDayPage() {
   };
   const items = agendas[dayIndex] ?? [];
   const sections = getSections(items);
-  const isToday = dayIndex === todayDayIndex;
+  const isPreTrip = tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0;
+  const isToday = !isPreTrip && dayIndex === todayDayIndex;
   const isPast = dayIndex < todayDayIndex;
   const isEditable = !isPast; // today and upcoming are editable
 
@@ -2245,9 +2272,9 @@ export default function MyDayPage() {
             onAction={() => {
               setWeatherIssue(false);
               fetch(edgeFnUrl("weather"), { headers: edgeFnHeaders() })
-                .then((r) => r.json())
+                .then((r) => r.ok ? r.json() : MAUI_WEATHER_FALLBACK)
                 .then((data) => setWeather(data))
-                .catch(() => setWeatherIssue(true));
+                .catch(() => setWeather(MAUI_WEATHER_FALLBACK));
             }}
             compact
           />

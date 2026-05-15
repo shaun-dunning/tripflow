@@ -134,6 +134,7 @@ export function useActiveTrip(user: User | null) {
     }
 
     if (typeof window !== "undefined" && localStorage.getItem(START_OWN_TRIP_KEY) === "1") {
+      localStorage.removeItem(START_OWN_TRIP_KEY);
       localStorage.removeItem(ACTIVE_TRIP_KEY);
       applySnapshot({ userId: user.id, status: "no-trip", memberships: rows, activeTrip: null, error: null });
       return;

@@ -31,6 +31,8 @@ type Traveler = {
   avatar: string;
   avatar_url: string | null;
   status: string;
+  user_id?: string | null;
+  role?: string | null;
 };
 
 type Activity = { emoji: string; label: string };
@@ -82,6 +84,22 @@ type TodayGlanceItem = { emoji: string; title: string; time: string };
 type UpcomingTrip = StoredTrip;
 
 type PhotoOption = { url: string; alt: string };
+
+function dedupeTravelers(rows: Traveler[]): Traveler[] {
+  const seenUsers = new Set<string>();
+  const seenLoose = new Set<string>();
+  return rows.filter((traveler) => {
+    if (traveler.user_id) {
+      if (seenUsers.has(traveler.user_id)) return false;
+      seenUsers.add(traveler.user_id);
+      return true;
+    }
+    const looseKey = `${traveler.name.trim().toLowerCase()}|${traveler.avatar}|${traveler.role ?? ""}`;
+    if (seenLoose.has(looseKey)) return false;
+    seenLoose.add(looseKey);
+    return true;
+  });
+}
 
 const DEMO_SIDE_TRIPS: UpcomingTrip[] = [
   {
@@ -695,10 +713,10 @@ export default function TripPage() {
       // Fetch travelers
       const { data: travelerData } = await supabase
         .from("travelers")
-        .select("id, name, avatar, avatar_url, status")
+        .select("id, name, avatar, avatar_url, status, user_id, role")
         .eq("trip_id", activeTrip.activeTripId)
         .order("created_at", { ascending: true });
-      if (travelerData) setTravelers(travelerData as Traveler[]);
+      if (travelerData) setTravelers(dedupeTravelers(travelerData as Traveler[]));
 
       if (tripDays?.length && dateInfo) {
         const mapped: Day[] = tripDays.map((td) => {

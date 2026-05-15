@@ -1,7 +1,7 @@
 import {
-  INVITE_CODE,
-  DEMO_INVITE_CODE,
   APP_PREVIEW_INVITE_CODES,
+  DEMO_INVITE_CODE,
+  INVITE_CODE,
 } from "@/lib/tripConfig";
 import JoinPageClient from "./JoinPageClient";
 

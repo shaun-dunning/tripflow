@@ -98,6 +98,22 @@ function formatDateLabel(isoString: string): string {
   return date.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
 }
 
+function dedupeTravelersByUser(rows: Traveler[]): Traveler[] {
+  const seenUsers = new Set<string>();
+  const seenLoose = new Set<string>();
+  return rows.filter((traveler) => {
+    if (traveler.user_id) {
+      if (seenUsers.has(traveler.user_id)) return false;
+      seenUsers.add(traveler.user_id);
+      return true;
+    }
+    const looseKey = `${traveler.name.trim().toLowerCase()}|${traveler.avatar}|${traveler.role}`;
+    if (seenLoose.has(looseKey)) return false;
+    seenLoose.add(looseKey);
+    return true;
+  });
+}
+
 function isSameDay(a: string, b: string): boolean {
   const da = new Date(a);
   const db = new Date(b);
@@ -192,7 +208,7 @@ export default function ChatPage() {
 
   // Derived
   const myTraveler = travelers.find((t) => t.user_id === user?.id);
-  const visibleTravelers = travelers.filter((t) => {
+  const visibleTravelers = dedupeTravelersByUser(travelers).filter((t) => {
     const legacyOrganizerPlaceholder =
       myTraveler &&
       t.is_me &&

@@ -101,6 +101,15 @@ async function joinTripByInvite(inviteCode: string, tripId: string, user: User, 
     user.email?.split("@")[0] ??
     "Traveler";
 
+  const { data: existing } = await supabase
+    .from("travelers")
+    .select("id")
+    .eq("trip_id", tripId)
+    .eq("user_id", user.id)
+    .limit(1);
+
+  if (existing?.[0]) return;
+
   const { error: joinError } = await supabase.rpc("join_trip_by_invite", {
     target_invite_code: inviteCode,
     traveler_name: name,
@@ -111,15 +120,19 @@ async function joinTripByInvite(inviteCode: string, tripId: string, user: User, 
     throw new Error(`Could not add you to this trip: ${joinError.message}`);
   }
 
-  const { data: confirmed, error: confirmError } = await supabase
-    .from("travelers")
-    .select("id")
-    .eq("trip_id", tripId)
-    .eq("user_id", user.id)
-    .maybeSingle();
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { data: confirmed, error: confirmError } = await supabase
+      .from("travelers")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("user_id", user.id)
+      .limit(1);
 
-  if (confirmError || !confirmed) {
-    throw new Error(confirmError?.message ?? "Trip membership could not be confirmed.");
+    if (confirmed?.[0]) return;
+    if (confirmError && attempt === 3) {
+      throw new Error(confirmError.message);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 350));
   }
 }
 
@@ -182,6 +195,9 @@ export default function JoinPageClient() {
   const [authLoading, setAuthLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmEmail, setConfirmEmail] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState<string | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryPassword, setRecoveryPassword] = useState("");
 
   // 1. Load trip info
   useEffect(() => {
@@ -220,7 +236,10 @@ export default function JoinPageClient() {
       if (data.user) setCurrentUser(data.user);
     });
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryMode(true);
+      }
       setCurrentUser(session?.user ?? null);
     });
     return () => listener.subscription.unsubscribe();
@@ -234,13 +253,13 @@ export default function JoinPageClient() {
       .select("id")
       .eq("trip_id", trip.id)
       .eq("user_id", currentUser.id)
-      .maybeSingle()
+      .limit(1)
       .then(({ data, error }) => {
         if (error) {
           setError(`Could not check whether you're already on this trip: ${error.message}`);
           return;
         }
-        setAlreadyMember(Boolean(data));
+        setAlreadyMember(Boolean(data?.[0]));
       });
   }, [currentUser, trip, inviteMode]);
 
@@ -251,6 +270,7 @@ export default function JoinPageClient() {
     try {
       if (inviteMode !== "preview") {
         localStorage.removeItem(PREVIEW_INVITE_KEY);
+        localStorage.removeItem(START_OWN_TRIP_KEY);
         await joinTripByInvite(inviteCode, trip.id, currentUser, selectedAvatar);
         localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
         localStorage.removeItem(FAMILY_INVITE_KEY);
@@ -258,6 +278,7 @@ export default function JoinPageClient() {
         return;
       }
       localStorage.removeItem(FAMILY_INVITE_KEY);
+      localStorage.removeItem(START_OWN_TRIP_KEY);
       localStorage.setItem(PREVIEW_INVITE_KEY, "1");
       router.replace("/");
     } catch (err) {
@@ -271,6 +292,7 @@ export default function JoinPageClient() {
     if (!trip) return;
     setError(null);
     setConfirmEmail(null);
+    setResetSent(null);
     setAuthLoading(true);
 
     let user: User | null = null;
@@ -309,6 +331,7 @@ export default function JoinPageClient() {
       try {
         if (inviteMode !== "preview") {
           localStorage.removeItem(PREVIEW_INVITE_KEY);
+          localStorage.removeItem(START_OWN_TRIP_KEY);
           await joinTripByInvite(inviteCode, trip.id, user, selectedAvatar);
           localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
           localStorage.removeItem(FAMILY_INVITE_KEY);
@@ -316,6 +339,7 @@ export default function JoinPageClient() {
           return;
         }
         localStorage.removeItem(FAMILY_INVITE_KEY);
+        localStorage.removeItem(START_OWN_TRIP_KEY);
         localStorage.setItem(PREVIEW_INVITE_KEY, "1");
         router.replace("/");
       } catch (err) {
@@ -331,6 +355,45 @@ export default function JoinPageClient() {
     localStorage.removeItem(ACTIVE_TRIP_KEY);
     localStorage.setItem(START_OWN_TRIP_KEY, "1");
     router.replace("/");
+  }
+
+  async function handlePasswordReset() {
+    setError(null);
+    setResetSent(null);
+    if (!email.trim()) {
+      setError("Enter your email first, then tap Forgot password.");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: buildInviteUrl(inviteCode),
+    });
+    if (error) {
+      setError(formatAuthError(error.message));
+      return;
+    }
+    setResetSent(email.trim());
+  }
+
+  async function handleRecoverySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (recoveryPassword.length < 6) {
+      setError("Choose a password with at least 6 characters.");
+      return;
+    }
+    setAuthLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: recoveryPassword });
+    setAuthLoading(false);
+    if (error) {
+      setError(formatAuthError(error.message));
+      return;
+    }
+    setRecoveryMode(false);
+    setPassword("");
+    setRecoveryPassword("");
+    setMode("signin");
+    setConfirmEmail(null);
+    setResetSent("Password updated. Sign in to continue.");
   }
 
   // ── Not found ──────────────────────────────────────────────────────────────
@@ -459,7 +522,42 @@ export default function JoinPageClient() {
         </div>
 
         {/* Already logged in */}
-        {currentUser ? (
+        {recoveryMode ? (
+          <form onSubmit={handleRecoverySubmit} className="flex flex-col gap-4 pt-4">
+            <div className="text-center">
+              <span className="text-4xl">🔐</span>
+              <h2 className="mt-3 text-lg font-black text-slate-900">Set a new password</h2>
+              <p className="mt-1 text-sm text-slate-400">Update your Daywave password, then continue into this trip.</p>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                New password
+              </label>
+              <input
+                type="password"
+                value={recoveryPassword}
+                onChange={(e) => setRecoveryPassword(e.target.value)}
+                placeholder="6+ characters"
+                required
+                minLength={6}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 transition-all"
+              />
+            </div>
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+                <span>⚠️</span>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mt-1 disabled:opacity-50 transition-opacity"
+            >
+              {authLoading ? "Updating…" : "Update password"}
+            </button>
+          </form>
+        ) : currentUser ? (
           <div className="flex flex-col items-center gap-4 pt-4 text-center">
             {inviteMode !== "preview" && alreadyMember ? (
               <>
@@ -472,6 +570,7 @@ export default function JoinPageClient() {
                   onClick={() => {
                     localStorage.removeItem(PREVIEW_INVITE_KEY);
                     localStorage.removeItem(FAMILY_INVITE_KEY);
+                    localStorage.removeItem(START_OWN_TRIP_KEY);
                     localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
                     router.replace("/");
                   }}
@@ -579,6 +678,17 @@ export default function JoinPageClient() {
               </div>
             )}
 
+            {resetSent && (
+              <div className="mb-5 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
+                <p className="text-xs font-black uppercase tracking-widest text-sky-700">Check your email</p>
+                <p className="mt-1 text-sm leading-relaxed text-sky-900">
+                  {resetSent.includes("@")
+                    ? <>We sent a password reset link to <span className="font-bold">{resetSent}</span>. Open it to choose a new password, then Daywave will bring you back here.</>
+                    : resetSent}
+                </p>
+              </div>
+            )}
+
             {/* Mode toggle */}
             <div className="flex bg-slate-100 rounded-2xl p-1 mb-6">
               <button
@@ -665,6 +775,15 @@ export default function JoinPageClient() {
                   minLength={6}
                   className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 transition-all"
                 />
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    onClick={handlePasswordReset}
+                    className="mt-2 text-xs font-bold text-slate-500"
+                  >
+                    Forgot password?
+                  </button>
+                )}
               </div>
 
               {error && (

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Lock, Mail } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY } from "@/lib/tripConfig";
+import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY, START_OWN_TRIP_KEY, getDaywaveOrigin } from "@/lib/tripConfig";
 
 function formatAuthError(message: string) {
   if (/email rate limit exceeded/i.test(message)) {
@@ -25,10 +25,24 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
 
   useEffect(() => {
     localStorage.removeItem(FAMILY_INVITE_KEY);
     localStorage.removeItem(PREVIEW_INVITE_KEY);
+    localStorage.removeItem(START_OWN_TRIP_KEY);
+
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryMode(true);
+        setMode("signin");
+        setError(null);
+        setSuccess(null);
+      }
+    });
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -67,6 +81,45 @@ export default function AuthPage() {
     setLoading(false);
   }
 
+  async function handleForgotPassword() {
+    setError(null);
+    setSuccess(null);
+    setResetSent(false);
+    if (!email.trim()) {
+      setError("Enter your email first, then tap Forgot password.");
+      return;
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${getDaywaveOrigin()}/auth`,
+    });
+    if (error) {
+      setError(formatAuthError(error.message));
+      return;
+    }
+    setResetSent(true);
+  }
+
+  async function handleRecoverySubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    if (newPassword.length < 6) {
+      setError("Choose a password with at least 6 characters.");
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setLoading(false);
+    if (error) {
+      setError(formatAuthError(error.message));
+      return;
+    }
+    setRecoveryMode(false);
+    setNewPassword("");
+    setPassword("");
+    setSuccess("Password updated. Sign in to continue.");
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white">
 
@@ -102,28 +155,48 @@ export default function AuthPage() {
       <div className="flex-1 bg-white px-5 pt-5 pb-8">
 
         {/* Toggle */}
-        <div className="flex bg-slate-100 rounded-2xl p-1 mb-5">
-          <button
-            onClick={() => { setMode("signin"); setError(null); }}
-            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-              mode === "signin" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => { setMode("signup"); setError(null); }}
-            className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
-              mode === "signup" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
-            }`}
-          >
-            Create Account
-          </button>
-        </div>
+        {!recoveryMode && (
+          <div className="flex bg-slate-100 rounded-2xl p-1 mb-5">
+            <button
+              onClick={() => { setMode("signin"); setError(null); }}
+              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                mode === "signin" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => { setMode("signup"); setError(null); }}
+              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${
+                mode === "signup" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
+              }`}
+            >
+              Create Account
+            </button>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={recoveryMode ? handleRecoverySubmit : handleSubmit} className="flex flex-col gap-4">
 
-          {mode === "signup" && (
+          {recoveryMode ? (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                New Password
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="6+ characters"
+                required
+                minLength={6}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
+              />
+              <p className="mt-2 text-xs leading-relaxed text-slate-400">
+                Set a new password for your Daywave account.
+              </p>
+            </div>
+          ) : mode === "signup" && (
             <div>
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5 block">
                 Your Name
@@ -139,34 +212,47 @@ export default function AuthPage() {
             </div>
           )}
 
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5 block">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
-            />
-          </div>
+          {!recoveryMode && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
+              />
+            </div>
+          )}
 
-          <div>
-            <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5 block">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="6+ characters"
-              required
-              minLength={6}
-              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
-            />
-          </div>
+          {!recoveryMode && (
+            <div>
+              <label className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-1.5 block">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="6+ characters"
+                required
+                minLength={6}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-800 placeholder:text-slate-400 outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-200 transition-all"
+              />
+              {mode === "signin" && (
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  className="mt-2 text-xs font-bold text-slate-500"
+                >
+                  Forgot password?
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Error */}
           {error && (
@@ -184,13 +270,20 @@ export default function AuthPage() {
             </div>
           )}
 
+          {resetSent && (
+            <div className="bg-sky-50 border border-sky-200 rounded-2xl px-4 py-3 flex items-center gap-2">
+              <span className="text-base">✉️</span>
+              <p className="text-sm text-sky-800">Password reset sent. Open the email to choose a new password.</p>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
             className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,23,42,0.22)] transition-all active:scale-[0.99] disabled:opacity-50"
           >
-            {loading ? "Please wait…" : mode === "signin" ? "Sign In" : "Create Account"}
-            {!loading && <ArrowRight className="size-4" />}
+            {loading ? "Please wait…" : recoveryMode ? "Update Password" : mode === "signin" ? "Sign In" : "Create Account"}
+            {!loading && !recoveryMode && <ArrowRight className="size-4" />}
           </button>
 
         </form>
