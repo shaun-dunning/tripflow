@@ -1997,7 +1997,7 @@ export default function MyDayPage() {
                 </div>
 
                 {/* Weather pill — richer with Hi/Lo */}
-                {hasWeather && (
+                {hasWeather && !isPreTrip && (
                   <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-3 py-2 border border-white/20 text-left">
                     {displayEmoji && <span className="text-2xl leading-none">{displayEmoji}</span>}
                     <div>

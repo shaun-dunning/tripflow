@@ -211,6 +211,7 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const msgPhotoRef = useRef<HTMLInputElement>(null);
+  const previousMessageCountRef = useRef(0);
 
   // Derived
   const myTraveler = travelers.find((t) => t.user_id === user?.id);
@@ -318,6 +319,9 @@ export default function ChatPage() {
   }, [activeTrip.activeTripId]);
 
   useEffect(() => {
+    const previousCount = previousMessageCountRef.current;
+    previousMessageCountRef.current = messages.length;
+    if (previousCount === 0 || messages.length <= previousCount) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
@@ -374,6 +378,14 @@ export default function ChatPage() {
     setProfileEditMode(true);
   }
 
+  useEffect(() => {
+    if (!myTraveler) return;
+    if (localStorage.getItem("daywave-open-profile") !== "1") return;
+    localStorage.removeItem("daywave-open-profile");
+    openProfileEdit();
+    setSheet({ type: "profile" });
+  }, [myTraveler]);
+
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     // works for both profile edit (myTraveler) and traveler edit (sheetTraveler)
@@ -381,13 +393,15 @@ export default function ChatPage() {
     if (!file || !targetTraveler) return;
     setUploadingPhoto(true);
     const ext = file.name.split(".").pop() ?? "jpg";
-    const path = `${targetTraveler.id}.${ext}`;
+    const path = `${targetTraveler.id}-${Date.now()}.${ext}`;
     const { error } = await supabase.storage
       .from("avatars")
-      .upload(path, file, { upsert: true });
-    if (!error) {
+      .upload(path, file, { cacheControl: "31536000", contentType: file.type || undefined });
+    if (error) {
+      setActionIssue(`Photo upload failed: ${error.message}`);
+    } else {
       const { data } = supabase.storage.from("avatars").getPublicUrl(path);
-      setEditAvatarUrl(data.publicUrl);
+      setEditAvatarUrl(`${data.publicUrl}?v=${Date.now()}`);
     }
     setUploadingPhoto(false);
     if (fileInputRef.current) fileInputRef.current.value = "";

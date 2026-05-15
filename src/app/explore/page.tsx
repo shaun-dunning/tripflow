@@ -867,7 +867,7 @@ export default function ExplorePage() {
   const [locationInput, setLocationInput] = useState("Ka'anapali");
   const [showFilters, setShowFilters] = useState(false);
   const [travelerCount, setTravelerCount] = useState(4);
-  const [currentTime, setCurrentTime] = useState("");
+  const [, setMinuteTick] = useState(0);
 
   // "Added to trip" toast
   const [addedToast, setAddedToast] = useState<string | null>(null);
@@ -918,7 +918,7 @@ export default function ExplorePage() {
 
   useEffect(() => {
     function updateTime() {
-      setCurrentTime(new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }));
+      setMinuteTick((tick) => tick + 1);
     }
     updateTime();
     const timer = setInterval(updateTime, 60_000);
@@ -1357,7 +1357,7 @@ export default function ExplorePage() {
         <div className="absolute inset-x-0 bottom-0 px-4 pb-8">
           <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/14 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-            {currentTime || "Maui"} · {location}
+            Near {location}
           </div>
           <h1 className="text-3xl font-black leading-none tracking-tight text-white">
             Explore nearby
@@ -1442,10 +1442,6 @@ export default function ExplorePage() {
               <span className="font-semibold text-slate-700">{location}</span>
             )}
           </button>
-          <span className="text-slate-200">·</span>
-          <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-            <span>🕒</span> {currentTime}
-          </span>
           <span className="text-slate-200">·</span>
           <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
             <span>👨‍👩‍👧‍👦</span> {travelerCount}
@@ -1758,7 +1754,6 @@ export default function ExplorePage() {
                       </div>
                       <p className="text-[11px] text-slate-400 mt-0.5 pl-6">{timeCtx.subtitle}</p>
                     </div>
-                    <span className="text-[11px] text-slate-400 font-medium">{currentTime}</span>
                   </div>
                   <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
                     {nowPlaces.slice(0, 5).map((place) => (
@@ -1983,7 +1978,6 @@ export default function ExplorePage() {
               </div>
               <div className="flex flex-wrap gap-1.5">
                 {[
-                  { icon: "🕒", text: currentTime },
                   { icon: "👨‍👩‍👧‍👦", text: `${travelerCount} travelers` },
                   { icon: "📍", text: `Near ${location}` },
                 ].map((chip) => (

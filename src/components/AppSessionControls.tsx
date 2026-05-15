@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { LogOut, UserRound, Waves } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
@@ -33,6 +34,7 @@ function initials(user: User) {
 }
 
 export default function AppSessionControls({ user }: AppSessionControlsProps) {
+  const router = useRouter();
   const activeTrip = useActiveTrip(user);
   const [open, setOpen] = useState(false);
   const isDemo = activeTrip.activeTripId === DEMO_TRIP_ID;
@@ -55,12 +57,18 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
     window.location.replace("/");
   }
 
+  function editTripProfile() {
+    localStorage.setItem("daywave-open-profile", "1");
+    setOpen(false);
+    router.push("/chat");
+  }
+
   return (
     <>
       {isDemo && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed left-4 top-[max(14px,env(safe-area-inset-top))] z-40 flex items-center gap-1.5 rounded-full border border-white/70 bg-white/82 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl"
+          className="fixed left-4 bottom-[calc(max(10px,env(safe-area-inset-bottom))+5.8rem)] z-40 flex items-center gap-1.5 rounded-full border border-white/70 bg-white/86 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl"
         >
           <Waves className="size-3.5 text-sky-600" />
           <span>Sample trip</span>
@@ -70,7 +78,7 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Account"
-        className="fixed right-4 top-[max(14px,env(safe-area-inset-top))] z-40 flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/86 text-[12px] font-black text-slate-800 shadow-[0_10px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl"
+        className="fixed right-4 bottom-[calc(max(10px,env(safe-area-inset-bottom))+5.8rem)] z-40 flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[12px] font-black text-slate-800 shadow-[0_10px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl"
       >
         {initials(user)}
       </button>
@@ -114,7 +122,15 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
                 </div>
               )}
 
-              <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                onClick={editTripProfile}
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-3 text-sm font-bold text-white"
+              >
+                <UserRound className="size-4" />
+                Edit trip profile
+              </button>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
                 <button
                   onClick={() => void signOut(true)}
                   className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700"

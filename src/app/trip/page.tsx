@@ -1606,7 +1606,7 @@ export default function TripPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-amber-400" />
-                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Next Trip</p>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Trip Drafts</p>
                   </div>
                   <button
                     onClick={() => openEditTrip(upNextTrip)}
@@ -1625,7 +1625,7 @@ export default function TripPage() {
 
                     {/* Up Next badge */}
                     <div className="absolute top-3 left-3 bg-amber-400 text-amber-900 text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide">
-                      Up Next
+                      Next Draft
                     </div>
 
                     {/* Countdown pill */}
@@ -1647,8 +1647,8 @@ export default function TripPage() {
 
                   {/* Action footer */}
                   <div className="px-4 py-3 flex items-center justify-between border-t border-amber-50 bg-amber-50/40">
-                    <p className="text-xs text-slate-400">Review trip details</p>
-                    <span className="text-xs font-bold text-amber-600">Open →</span>
+                    <p className="text-xs text-slate-400">Saved on this device</p>
+                    <span className="text-xs font-bold text-amber-600">Edit →</span>
                   </div>
                 </button>
               </div>
@@ -1660,7 +1660,7 @@ export default function TripPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-sky-300" />
-                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">On Deck</p>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">More Drafts</p>
                   </div>
                   <button
                     onClick={() => setShowPlanSheet(true)}
@@ -1725,7 +1725,7 @@ export default function TripPage() {
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-2 h-2 rounded-full bg-indigo-400" />
-                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">My Other Trips</p>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Switch Trips</p>
                     <span className="text-[10px] text-slate-300 font-semibold">{otherTrips.length}</span>
                   </div>
                   <div className="flex flex-col gap-2.5">
