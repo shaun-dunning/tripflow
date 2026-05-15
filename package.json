@@ -7,6 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "mobile:build": "next build && cap sync ios",
+    "cap:add:ios": "cap add ios",
+    "cap:sync:ios": "cap sync ios",
+    "cap:open:ios": "cap open ios",
     "cap:sync": "cap sync",
     "cap:ios": "cap open ios"
   },
