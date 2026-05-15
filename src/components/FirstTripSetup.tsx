@@ -82,25 +82,25 @@ export default function FirstTripSetup({ defaultName = "", onCreate }: FirstTrip
               className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm outline-none focus:border-slate-900"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2.5">
+            <div className="min-w-0">
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Starts</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 required
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3.5 text-sm outline-none focus:border-slate-900"
+                className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3.5 text-[13px] outline-none focus:border-slate-900"
               />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="mb-1.5 block text-xs font-bold uppercase tracking-widest text-slate-500">Ends</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 required
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3.5 text-sm outline-none focus:border-slate-900"
+                className="w-full min-w-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3.5 text-[13px] outline-none focus:border-slate-900"
               />
             </div>
           </div>

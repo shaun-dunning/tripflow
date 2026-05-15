@@ -149,17 +149,17 @@ async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null
     .from("trips")
     .select(select)
     .eq("invite_code", inviteCode)
-    .maybeSingle();
+    .limit(1);
 
-  if (byCode.data) return byCode.data as TripInfo;
+  if (byCode.data?.[0]) return byCode.data[0] as TripInfo;
 
   if (inviteCode === INVITE_CODE) {
     const byId = await supabase
       .from("trips")
       .select(select)
       .eq("id", TRIP_ID)
-      .maybeSingle();
-    if (byId.data) return byId.data as TripInfo;
+      .limit(1);
+    if (byId.data?.[0]) return byId.data[0] as TripInfo;
   }
 
   if (inviteCode === DEMO_INVITE_CODE) {
@@ -167,8 +167,8 @@ async function loadTripByInviteCode(inviteCode: string): Promise<TripInfo | null
       .from("trips")
       .select(select)
       .eq("id", DEMO_TRIP_ID)
-      .maybeSingle();
-    if (byId.data) return byId.data as TripInfo;
+      .limit(1);
+    if (byId.data?.[0]) return byId.data[0] as TripInfo;
   }
 
   return null;
@@ -256,9 +256,10 @@ export default function JoinPageClient() {
       .limit(1)
       .then(({ data, error }) => {
         if (error) {
-          setError(`Could not check whether you're already on this trip: ${error.message}`);
+          setAlreadyMember(false);
           return;
         }
+        setError(null);
         setAlreadyMember(Boolean(data?.[0]));
       });
   }, [currentUser, trip, inviteMode]);
@@ -355,6 +356,22 @@ export default function JoinPageClient() {
     localStorage.removeItem(ACTIVE_TRIP_KEY);
     localStorage.setItem(START_OWN_TRIP_KEY, "1");
     router.replace("/");
+  }
+
+  async function switchAccount() {
+    setError(null);
+    setConfirmEmail(null);
+    setResetSent(null);
+    setAlreadyMember(false);
+    localStorage.removeItem(PREVIEW_INVITE_KEY);
+    localStorage.removeItem(FAMILY_INVITE_KEY);
+    localStorage.removeItem(ACTIVE_TRIP_KEY);
+    localStorage.removeItem(START_OWN_TRIP_KEY);
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setMode("signin");
+    setEmail("");
+    setPassword("");
   }
 
   async function handlePasswordReset() {
@@ -586,6 +603,12 @@ export default function JoinPageClient() {
                     Start my own trip
                   </button>
                 )}
+                <button
+                  onClick={switchAccount}
+                  className="text-sm font-bold text-slate-400"
+                >
+                  Use a different account
+                </button>
               </>
             ) : (
               <>
@@ -646,6 +669,12 @@ export default function JoinPageClient() {
                     Start my own trip instead
                   </button>
                 )}
+                <button
+                  onClick={switchAccount}
+                  className="text-sm font-bold text-slate-400"
+                >
+                  Use a different account
+                </button>
               </>
             )}
           </div>

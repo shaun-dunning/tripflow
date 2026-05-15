@@ -34,7 +34,7 @@ export function useTripMembership(user: User | null, tripId = TRIP_ID) {
         .select("id")
         .eq("trip_id", tripId)
         .eq("user_id", user.id)
-        .maybeSingle();
+        .limit(1);
 
       if (cancelled) return;
 
@@ -44,7 +44,7 @@ export function useTripMembership(user: User | null, tripId = TRIP_ID) {
         return;
       }
 
-      setStatus(data ? "member" : "not-member");
+      setStatus(data?.[0] ? "member" : "not-member");
     }
 
     void checkMembership();
