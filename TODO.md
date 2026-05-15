@@ -1,4 +1,4 @@
-# TripFlow – Agent Task List
+# Daywave – Agent Task List
                                                                                                                         
   ## Critical
   - [x] Finish merging and push prior changes. Double check that items pushed are removed from this TODO list.
@@ -66,14 +66,35 @@
 - [x] Share/invite analytics or audit trail — lightweight joined/invited indicators so the organizer can see who has accepted and who has not.
 
       
-## Future Milestone – iOS App (Capacitor)
-- [x] Move `/api/assistant` route to Supabase Edge Function (required for static export)
-- [x] Move `/api/weather` route to Supabase Edge Function (required for static export)
-- [x] Add `output: "export"` to next.config.ts and verify static build works
-- [x] Install and configure Capacitor (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`)
-- [x] Fix Unsplash hero image caching for mobile (add Cache-Control or switch to local copies)
-- [x] Replace `next/font` Geist with static CSS import in globals.css
-- [x] Pre-generate app icons as static PNGs in /public (replace next/og icon routes)
-- [x] Configure Capacitor for iOS — bundle ID, display name, splash screen, safe area insets
-- [ ] Test full app in iOS Simulator
-- [ ] Submit to App Store (requires $99/yr Apple Developer account)
+## Future Milestone – iOS App / App Store Readiness
+
+### Current Foundation Complete
+- [x] Move `/api/assistant` route to Supabase Edge Function so the app can run as a static export.
+- [x] Move `/api/weather` route to Supabase Edge Function so the app can run as a static export.
+- [x] Add `output: "export"` to `next.config.ts` and verify `npm run build` produces the static `out/` directory.
+- [x] Install Capacitor packages: `@capacitor/core`, `@capacitor/ios`, and `@capacitor/cli`.
+- [x] Add `capacitor.config.ts` with Daywave bundle ID (`app.daywave`), app name, `out/` web directory, iOS safe-area settings, splash background, and status bar defaults.
+- [x] Pre-generate Daywave app icons as static PNGs in `public/brand`.
+- [x] Add PWA manifest metadata for Daywave name, theme color, portrait orientation, categories, and icons.
+- [x] Add image/static caching foundation for mobile and installed-app reliability.
+- [x] Replace remote `next/font` dependency with static/system font styling so static export and offline startup are more reliable.
+- [x] Verify production build passes after the latest Daywave changes.
+
+### Next Autonomous Engineering Work
+- [ ] Add repeatable mobile build scripts, e.g. `mobile:build`, `cap:add:ios`, `cap:sync:ios`, and `cap:open:ios`.
+- [ ] Generate the native iOS project with Capacitor (`npx cap add ios`) and commit the resulting `ios/` project once reviewed.
+- [ ] Sync the current static web build into iOS (`npm run build` then `npx cap sync ios`).
+- [ ] Audit native iOS project settings after generation: display name, bundle identifier, deployment target, app icons, splash assets, status bar, supported orientations, and signing placeholders.
+- [ ] Add an `APP_STORE_READINESS.md` runbook with exact local build, simulator, TestFlight, and App Store submission steps.
+- [ ] Add a privacy/data checklist for App Store Connect: account creation, user-generated trip data, family/invite sharing, Supabase auth, analytics status, and data deletion expectations.
+
+### Manual / Apple Account Work
+- [ ] Enroll or confirm Apple Developer Program membership ($99/year).
+- [ ] Create the Daywave App Store Connect app record.
+- [ ] Confirm final app name, subtitle, category, age rating, support URL, marketing URL, privacy policy URL, and contact info.
+- [ ] Configure iOS signing team and bundle identifier in Xcode.
+- [ ] Test full app in iOS Simulator across at least one small iPhone and one large iPhone viewport.
+- [ ] Test on a physical iPhone: invite link, auth email redirect, demo join, family join, trip creation, tab navigation, offline/poor-network behavior, safe areas, keyboard, and sharing.
+- [ ] Prepare App Store screenshots, app preview copy, keywords, description, and promotional text.
+- [ ] Submit first TestFlight build.
+- [ ] Resolve TestFlight QA issues, then submit to App Review.
