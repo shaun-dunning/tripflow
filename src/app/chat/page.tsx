@@ -8,7 +8,7 @@ import { useActiveTrip } from "@/hooks/useActiveTrip";
 import { getTripDateInfo, formatTodayLabel, type TripDateInfo } from "@/lib/tripDates";
 import { ResilientState } from "@/components/ResilientState";
 import FirstTripSetup from "@/components/FirstTripSetup";
-import { FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY, buildInviteUrl } from "@/lib/tripConfig";
+import { DEMO_TRIP_ID, FAMILY_INVITE_KEY, PREVIEW_INVITE_KEY, buildInviteUrl } from "@/lib/tripConfig";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Message = {
@@ -114,6 +114,12 @@ function dedupeTravelersByUser(rows: Traveler[]): Traveler[] {
   });
 }
 
+function limitDemoTravelers(rows: Traveler[], userId?: string | null): Traveler[] {
+  const myTraveler = rows.find((traveler) => traveler.user_id === userId);
+  const seededTravelers = rows.filter((traveler) => !traveler.user_id).slice(0, myTraveler ? 4 : 5);
+  return myTraveler ? [myTraveler, ...seededTravelers] : seededTravelers;
+}
+
 function isSameDay(a: string, b: string): boolean {
   const da = new Date(a);
   const db = new Date(b);
@@ -208,7 +214,11 @@ export default function ChatPage() {
 
   // Derived
   const myTraveler = travelers.find((t) => t.user_id === user?.id);
-  const visibleTravelers = dedupeTravelersByUser(travelers).filter((t) => {
+  const dedupedTravelers = dedupeTravelersByUser(travelers);
+  const visibleTravelersBase = activeTrip.activeTripId === DEMO_TRIP_ID
+    ? limitDemoTravelers(dedupedTravelers, user?.id)
+    : dedupedTravelers;
+  const visibleTravelers = visibleTravelersBase.filter((t) => {
     const legacyOrganizerPlaceholder =
       myTraveler &&
       t.is_me &&

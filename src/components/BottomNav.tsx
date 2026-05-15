@@ -17,9 +17,10 @@ const tabs = [
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const normalizedPathname = pathname === "/" ? "/" : pathname.replace(/\/$/, "");
 
   function navigate(href: string) {
-    if (href === pathname) return;
+    if (href === normalizedPathname) return;
     navigator.vibrate?.(8);
     startTransition(() => router.push(href));
   }
@@ -31,7 +32,7 @@ export default function BottomNav() {
     >
       <div className="flex items-center gap-1 rounded-[1.6rem] border border-white/70 bg-white/88 px-1.5 py-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.16)] backdrop-blur-xl">
         {tabs.map((tab) => {
-          const active = pathname === tab.href;
+          const active = normalizedPathname === tab.href || (tab.href !== "/" && normalizedPathname.startsWith(`${tab.href}/`));
           const Icon = tab.icon;
           return (
             <button

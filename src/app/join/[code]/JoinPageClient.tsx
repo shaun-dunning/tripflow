@@ -440,7 +440,20 @@ export default function JoinPageClient() {
 
   const isDemo = inviteMode === "demo";
   const visibleTravelers = trip.travelers.slice(0, 5);
-  const extraCount = trip.travelers.length - visibleTravelers.length;
+  const demoSelf = currentUser
+    ? {
+        id: `demo-self-${currentUser.id}`,
+        name: currentUser.user_metadata?.full_name?.split(" ")[0] ?? currentUser.email?.split("@")[0] ?? "You",
+        avatar: selectedAvatar,
+        avatar_url: null,
+      }
+    : null;
+  const visibleDemoTravelers = demoSelf
+    ? [demoSelf, ...DEMO_FALLBACK_TRIP.travelers.slice(1, 4)]
+    : DEMO_FALLBACK_TRIP.travelers;
+  const displayTravelers = isDemo ? visibleDemoTravelers : visibleTravelers;
+  const travelerCount = isDemo ? visibleDemoTravelers.length : trip.travelers.length;
+  const extraCount = travelerCount - displayTravelers.length;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -486,7 +499,7 @@ export default function JoinPageClient() {
       {/* ── Travelers going ── */}
       <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
         <div className="flex -space-x-2">
-          {visibleTravelers.map((t) => (
+          {displayTravelers.map((t) => (
             <div
               key={t.id}
               className="w-9 h-9 rounded-full bg-slate-100 border-2 border-white flex items-center justify-center text-lg shadow-sm"
@@ -509,10 +522,10 @@ export default function JoinPageClient() {
           {inviteMode !== "preview" ? (
             <>
               <p className="text-sm font-bold text-slate-900">
-                {trip.travelers.length} {isDemo ? "sample " : ""}traveler{trip.travelers.length !== 1 ? "s" : ""} going
+                {travelerCount} {isDemo ? "sample " : ""}traveler{travelerCount !== 1 ? "s" : ""} going
               </p>
               <p className="text-xs text-slate-400">
-                {isDemo ? "Anonymized demo crew" : visibleTravelers.map((t) => t.name).join(", ")}
+                {isDemo ? "Anonymized demo crew" : displayTravelers.map((t) => t.name).join(", ")}
                 {extraCount > 0 ? ` +${extraCount} more` : ""}
               </p>
             </>
@@ -830,8 +843,8 @@ export default function JoinPageClient() {
                 {authLoading
                   ? "Please wait…"
                   : mode === "signup"
-                  ? inviteMode === "family" ? `Join ${trip.title}` : isDemo ? "Create Account & Open Demo" : "Create Account & Preview"
-                  : inviteMode === "family" ? "Sign in & Join Trip" : isDemo ? "Sign in & Open Demo" : "Sign in & Preview"}
+                  ? inviteMode === "family" ? `Join ${trip.title}` : "Create Account"
+                  : inviteMode === "family" ? "Sign in & Join Trip" : "Sign In"}
               </button>
               {isDemo && (
                 <button

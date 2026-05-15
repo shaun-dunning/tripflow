@@ -1862,8 +1862,9 @@ export default function MyDayPage() {
 
         {dayIndex > 0 && (
           <button
+            aria-label="Previous day"
             onClick={() => { setDayIndex((i) => i - 1); setEditingTheme(false); }}
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-black/25 backdrop-blur-sm border border-white/20 text-white text-lg font-bold hover:bg-black/40 transition-all"
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full bg-black/34 backdrop-blur-md border border-white/30 text-white text-xl font-bold shadow-sm hover:bg-black/45 transition-all"
           >
             ‹
           </button>
@@ -1871,28 +1872,34 @@ export default function MyDayPage() {
 
         {dayIndex < displayDays.length - 1 && (
           <button
+            aria-label="Next day"
             onClick={() => { setDayIndex((i) => i + 1); setEditingTheme(false); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full bg-black/25 backdrop-blur-sm border border-white/20 text-white text-lg font-bold hover:bg-black/40 transition-all"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full bg-black/34 backdrop-blur-md border border-white/30 text-white text-xl font-bold shadow-sm hover:bg-black/45 transition-all"
           >
             ›
           </button>
         )}
 
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+        <div className="absolute bottom-1.5 left-0 right-0 flex justify-center gap-0.5">
           {displayDays.map((d, i) => (
             <button
               key={i}
+              aria-label={`Open day ${i + 1}`}
               onClick={() => { setDayIndex(i); setEditingTheme(false); }}
-              className={`rounded-full transition-all duration-200 ${
+              className="flex h-6 w-7 items-center justify-center rounded-full transition-all active:scale-95"
+            >
+              <span
+                className={`block rounded-full transition-all duration-200 ${
                 i === dayIndex
-                  ? "w-5 h-1.5 bg-white"
+                  ? "w-5 h-1.5 bg-white shadow-sm"
                   : d.status === "past"
                   ? "w-1.5 h-1.5 bg-white/40"
                   : d.status === "today"
                   ? "w-1.5 h-1.5 bg-white/70"
                   : "w-1.5 h-1.5 bg-white/30"
               }`}
-            />
+              />
+            </button>
           ))}
         </div>
 

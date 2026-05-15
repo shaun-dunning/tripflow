@@ -101,6 +101,13 @@ function dedupeTravelers(rows: Traveler[]): Traveler[] {
   });
 }
 
+function limitDemoTravelers(rows: Traveler[], userId?: string | null): Traveler[] {
+  const deduped = dedupeTravelers(rows);
+  const myTraveler = deduped.find((traveler) => traveler.user_id === userId);
+  const seededTravelers = deduped.filter((traveler) => !traveler.user_id).slice(0, myTraveler ? 4 : 5);
+  return myTraveler ? [myTraveler, ...seededTravelers] : seededTravelers;
+}
+
 const DEMO_SIDE_TRIPS: UpcomingTrip[] = [
   {
     id: 9000,
@@ -716,7 +723,10 @@ export default function TripPage() {
         .select("id, name, avatar, avatar_url, status, user_id, role")
         .eq("trip_id", activeTrip.activeTripId)
         .order("created_at", { ascending: true });
-      if (travelerData) setTravelers(dedupeTravelers(travelerData as Traveler[]));
+      if (travelerData) {
+        const rows = travelerData as Traveler[];
+        setTravelers(activeTrip.activeTripId === DEMO_TRIP_ID ? limitDemoTravelers(rows, user?.id) : dedupeTravelers(rows));
+      }
 
       if (tripDays?.length && dateInfo) {
         const mapped: Day[] = tripDays.map((td) => {
