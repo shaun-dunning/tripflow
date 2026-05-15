@@ -5,28 +5,11 @@ import { useEffect } from "react";
 export default function ServiceWorkerRegistrar() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
-
+    // Register with updateViaCache: "none" so the browser always
+    // byte-checks sw.js rather than serving a stale cached copy.
     navigator.serviceWorker
-      .getRegistrations()
-      .then((registrations) => {
-        registrations.forEach((registration) => {
-          void registration.unregister();
-        });
-      })
-      .catch(() => { /* non-fatal */ });
-
-    if ("caches" in window) {
-      caches
-        .keys()
-        .then((keys) =>
-          Promise.all(
-            keys
-              .filter((key) => key.startsWith("daywave-"))
-              .map((key) => caches.delete(key))
-          )
-        )
-        .catch(() => { /* non-fatal */ });
-    }
+      .register("/sw.js", { updateViaCache: "none" })
+      .catch(() => { /* non-fatal — app works without SW */ });
   }, []);
   return null;
 }

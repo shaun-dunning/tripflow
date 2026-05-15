@@ -71,9 +71,9 @@
 - [x] Move `/api/weather` route to Supabase Edge Function (required for static export)
 - [x] Add `output: "export"` to next.config.ts and verify static build works
 - [x] Install and configure Capacitor (`@capacitor/core`, `@capacitor/ios`, `@capacitor/cli`)
-- [ ] Fix Unsplash hero image caching for mobile (add Cache-Control or switch to local copies)
+- [x] Fix Unsplash hero image caching for mobile (add Cache-Control or switch to local copies)
 - [x] Replace `next/font` Geist with static CSS import in globals.css
-- [ ] Pre-generate app icons as static PNGs in /public (replace next/og icon routes)
+- [x] Pre-generate app icons as static PNGs in /public (replace next/og icon routes)
 - [x] Configure Capacitor for iOS — bundle ID, display name, splash screen, safe area insets
 - [ ] Test full app in iOS Simulator
 - [ ] Submit to App Store (requires $99/yr Apple Developer account)

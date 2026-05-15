@@ -22,7 +22,12 @@ export const metadata: Metadata = {
   description: "A better way to move through your trip",
   metadataBase: new URL("https://daywave.app"),
   icons: {
-    icon: "/brand/daywave-icon-512.png",
+    // 32 px favicon for browser tabs; 512 px as the hi-res fallback
+    icon: [
+      { url: "/brand/daywave-favicon.png", sizes: "32x32", type: "image/png" },
+      { url: "/brand/daywave-icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    // iOS add-to-home-screen icon
     apple: "/brand/daywave-apple-icon.png",
   },
   openGraph: {
