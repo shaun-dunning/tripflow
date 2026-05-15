@@ -1019,6 +1019,7 @@ export default function MyDayPage() {
   const items = agendas[dayIndex] ?? [];
   const sections = getSections(items);
   const isPreTrip = tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0;
+  const showPreTripPrep = isPreTrip && dayIndex === 0;
   const isToday = !isPreTrip && dayIndex === todayDayIndex;
   const isPast = dayIndex < todayDayIndex;
   const isEditable = !isPast; // today and upcoming are editable
@@ -2022,7 +2023,7 @@ export default function MyDayPage() {
       </div>
 
       {/* ── Day action pills: Route + Jump to Today ── */}
-      {!isPreTrip && (dayRouteStops.length > 0 || dayIndex !== todayDayIndex) && (
+      {(dayRouteStops.length > 0 || (!isPreTrip && dayIndex !== todayDayIndex)) && (
         <div className="flex items-center justify-center gap-2 pt-2 pb-0 px-4 flex-wrap">
           {dayRouteStops.length > 0 && (
             <button
@@ -2063,7 +2064,7 @@ export default function MyDayPage() {
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 
         {/* ── Pre-trip command center ── */}
-        {tripInfo?.status === "upcoming" && tripInfo.daysUntilTrip > 0 && (
+        {showPreTripPrep && (
           <div className="overflow-hidden rounded-[1.6rem] border border-white/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08)]">
             <div className="relative px-4 pb-4 pt-5">
               <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-sky-50 to-transparent" />
@@ -2156,6 +2157,14 @@ export default function MyDayPage() {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {showPreTripPrep && !loading && (
+          <div className="flex items-center gap-3 px-1 pt-1">
+            <div className="h-px flex-1 bg-slate-200" />
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Day 1 itinerary</p>
+            <div className="h-px flex-1 bg-slate-200" />
           </div>
         )}
 
@@ -2393,7 +2402,7 @@ export default function MyDayPage() {
         )}
 
         {/* ── Empty state (no items after loading) ── */}
-        {!loading && !isPreTrip && sections.length === 0 && (
+        {!loading && sections.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
             <div className="text-5xl mb-4">✨</div>
             <p className="text-base font-bold text-slate-800 mb-1">Nothing planned yet</p>
@@ -2408,7 +2417,7 @@ export default function MyDayPage() {
         )}
 
         {/* ── Time Sections (drag-to-reorder) ── */}
-        {!loading && !isPreTrip && (
+        {!loading && (
           <SortableAgendaSections
             sections={sections as DndSection[]}
             isToday={isToday}
@@ -2494,7 +2503,7 @@ export default function MyDayPage() {
         )}
 
         {/* ── Trip Note (all days) ── */}
-        {!isPreTrip && day.note && (
+        {!showPreTripPrep && day.note && (
           <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 flex gap-3 items-start shadow-sm">
             <span className="text-lg">📌</span>
             <div>
