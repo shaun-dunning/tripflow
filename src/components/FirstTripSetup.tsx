@@ -110,7 +110,7 @@ export default function FirstTripSetup({ defaultName = "", onCreate }: FirstTrip
               <input
                 value={travelerName}
                 onChange={(e) => setTravelerName(e.target.value)}
-                placeholder="e.g. Shaun"
+                placeholder="e.g. Taylor"
                 required
                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3.5 text-sm outline-none focus:border-slate-900"
               />

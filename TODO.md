@@ -73,10 +73,11 @@
 ## Design Audit — Needs Design Decision (Batch for discussion)
 - [x] Explore PLACES array: 40+ entries are Maui-specific POIs — needs destination-awareness or a label making Maui-only nature clear; longer-term needs location-based place API
 - [x] Explore TRAVELER_ROUTES: references hardcoded day themes ("Day 3 · Sun Jun 7") tied to Maui trip dates — needs trip-date-aware rendering or removal
-- [ ] Packing activity suggestions: Maui-specific activity triggers (Molokini, Road to Hana, etc.) — needs keyword matching against actual agenda items for any trip
-- [ ] DEMO_SIDE_TRIPS (San Diego / Napa): hardcoded 2026 dates show up in demo — decide if demo should use relative dates or fixed content is acceptable
+- [x] Packing activity suggestions: replaced hardcoded Maui TRIP_ACTIVITIES with generic keyword matching (snorkel, beach, sunrise/summit, scenic drive, formal dinner); suggestions now loaded from actual Supabase agenda_items at runtime
+- [x] DEMO_SIDE_TRIPS (San Diego / Napa): fixed 2026 dates are acceptable for demo content — no change needed
 - [x] Chat invite share text: "Join our Maui Trip 🌺" — needs trip title injected into Web Share API payload (minor, but visible to anyone the user shares with)
-- [ ] Vault: airport city map (OGG → Maui, LAX → Los Angeles) is hardcoded for known airports — acceptable for now but won't resolve obscure airports
+- [x] Vault: airport city map (OGG → Maui, LAX → Los Angeles) is hardcoded for known airports — acceptable for now but won't resolve obscure airports
+- [ ] Weather edge function: hardcoded Maui coordinates + static Jun 5–11 forecast — needs destination-aware geocoding + live Open-Meteo call for any trip (longer-term)
 
 ## Design Audit — Inconsistencies (Polish pass)
 - [x] Standardize dark CTA: bg-slate-950 everywhere (replaced all bg-slate-900 across 12 files)

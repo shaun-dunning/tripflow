@@ -1019,7 +1019,7 @@ export default function ExplorePage() {
     setDayPickerPlace(null);
 
     if (insertError) {
-      console.error("addToDay insert error:", insertError);
+      console.warn("addToDay insert error:", insertError);
       setAddedToast(`Error: ${insertError.message}`);
       setTimeout(() => setAddedToast(null), 4000);
       return;

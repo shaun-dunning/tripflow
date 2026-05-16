@@ -40,8 +40,8 @@ export default function TripAccessGate({
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-slate-500">
           {message ?? (isPreview
-            ? "This profile is previewing Daywave without joining Shaun's family trip."
-            : "You are signed in, but this profile is not a traveler on the Maui family trip yet.")}
+            ? "This profile is previewing Daywave without joining the organizer's trip."
+            : "You are signed in, but this profile hasn't joined this trip yet.")}
         </p>
         {detail && (
           <p className="mt-3 rounded-2xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-400">
@@ -53,7 +53,7 @@ export default function TripAccessGate({
             onClick={() => router.push(`/join/${INVITE_CODE}`)}
             className="mt-5 w-full rounded-2xl bg-slate-950 py-3.5 text-sm font-bold text-white"
           >
-            Join Maui Family Trip
+            Join This Trip
           </button>
         ) : (
           <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-left">

@@ -41,9 +41,9 @@ const DEMO_UPCOMING_TRIPS: UpcomingTrip[] = [
 
 // Fallback when Supabase agenda isn't available yet
 const FALLBACK_TODAY: AgendaItem[] = [
-  { emoji: "😴", title: "Nap / downtime", time: "3:00 PM" },
-  { emoji: "🤿", title: "Snorkeling – Molokini", time: "4:30 PM" },
-  { emoji: "🐟", title: "Dinner – Mama's Fish House", time: "7:00 PM" },
+  { emoji: "🌅", title: "Morning activity", time: "9:00 AM" },
+  { emoji: "🍽️", title: "Lunch", time: "12:30 PM" },
+  { emoji: "🌙", title: "Evening plans", time: "7:00 PM" },
 ];
 
 function getGreeting(): string {
@@ -63,8 +63,8 @@ export default function TripsPage() {
   const tripsLoadedRef = useRef(false);
 
   // ── Live trip data ──────────────────────────────────────────────────────────
-  const [tripTitle, setTripTitle] = useState("Maui Family Trip");
-  const [tripDateRange, setTripDateRange] = useState("Jun 5–11, 2026");
+  const [tripTitle, setTripTitle] = useState("");
+  const [tripDateRange, setTripDateRange] = useState("");
   const [tripInfo, setTripInfo] = useState<TripDateInfo | null>(null);
   const [travelerCount, setTravelerCount] = useState(4);
   const [todayItems, setTodayItems] = useState<AgendaItem[]>(FALLBACK_TODAY);

@@ -111,12 +111,12 @@ const THEME_PHOTOS: { keywords: string[]; url: string; alt: string }[] = [
   {
     keywords: ["beach", "snorkel", "swim", "ocean", "ka'anapali", "surf", "paddle", "kayak", "dive", "water", "coast"],
     url: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&h=500&fit=crop&q=85",
-    alt: "Beautiful Maui beach",
+    alt: "Tropical beach",
   },
   {
     keywords: ["hana", "waterfall", "road", "jungle", "forest", "lush", "hike", "trail", "rainforest", "bamboo"],
     url: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=85",
-    alt: "Road to Hana",
+    alt: "Lush scenic road",
   },
   {
     keywords: ["spa", "relax", "massage", "wellness", "resort", "rest", "pool"],
@@ -126,7 +126,7 @@ const THEME_PHOTOS: { keywords: string[]; url: string; alt: string }[] = [
   {
     keywords: ["haleakala", "volcano", "sunrise", "summit", "crater", "bike", "downhill"],
     url: "https://images.unsplash.com/photo-1551632811-561732d1e306?w=800&h=500&fit=crop&q=85",
-    alt: "Haleakalā sunrise",
+    alt: "Volcano sunrise",
   },
   {
     keywords: ["luau", "dinner", "dining", "restaurant", "food", "lunch", "breakfast", "eat", "market", "farm"],
@@ -141,12 +141,12 @@ const THEME_PHOTOS: { keywords: string[]; url: string; alt: string }[] = [
   {
     keywords: ["sunset", "golden hour", "evening", "sky"],
     url: "https://images.unsplash.com/photo-1472396961693-142e6e269027?w=800&h=500&fit=crop&q=85",
-    alt: "Maui sunset",
+    alt: "Beautiful sunset",
   },
   {
     keywords: ["shopping", "paia", "lahaina", "town", "explore", "upcountry", "market"],
     url: "https://images.unsplash.com/photo-1471922694854-ff1b63b20054?w=800&h=500&fit=crop&q=85",
-    alt: "Maui island",
+    alt: "Island town",
   },
 ];
 
@@ -705,8 +705,8 @@ export default function MyDayPage() {
     if (!activeTrip.activeTripId || !activeTrip.activeTrip) return;
 
     const selectedTrip = activeTrip.activeTrip;
-    const hasMauiWeather = selectedTrip.destination.toLowerCase().includes("maui");
-    if (hasMauiWeather) {
+    const isWeatherEnabled = selectedTrip.destination.toLowerCase().includes("maui");
+    if (isWeatherEnabled) {
       fetch(edgeFnUrl("weather"), { headers: edgeFnHeaders() })
         .then((r) => r.ok ? r.json() : MAUI_WEATHER_FALLBACK)
         .then((data) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { haptic } from "@/lib/haptic";
@@ -94,24 +94,6 @@ type PackingRow = {
 
 // ---------------------------------------------------------------------------
 // Trip itinerary (mirrored from trip/page.tsx fixture)
-// Used to compute smart suggestions
-// ---------------------------------------------------------------------------
-const TRIP_ACTIVITIES = [
-  "Ka'anapali Beach",
-  "Molokini Crater",
-  "Mama's Fish House",
-  "Road to Hana",
-  "Scenic drive",
-  "Black sand beach",
-  "Couples massage",
-  "Pool day",
-  "Humble Market dinner",
-  "Upcountry Market",
-  "Old Lahaina Luau",
-  "Sunrise at summit",   // Haleakālā
-  "Sliding Sands hike",
-];
-
 type Suggestion = {
   id: string;
   name: string;
@@ -119,56 +101,46 @@ type Suggestion = {
   reason: string;
 };
 
-function computeSuggestions(): Suggestion[] {
-  const all = TRIP_ACTIVITIES.join(" ").toLowerCase();
+// Matches agenda item titles against generic activity keywords and returns
+// relevant packing suggestions. Works for any trip, not just Maui.
+function computeSuggestions(agendaText: string): Suggestion[] {
+  const all = agendaText.toLowerCase();
   const out: Suggestion[] = [];
 
-  // Snorkel / Molokini
-  if (/molokini|snorkel/.test(all)) {
+  if (/snorkel|scuba|dive/.test(all)) {
     out.push(
-      { id: "sug-snorkel",  name: "Snorkel gear",           category: "Beach Gear", reason: "Molokini snorkel tour" },
-      { id: "sug-ucam",     name: "Underwater camera",       category: "Electronics", reason: "Molokini snorkel tour" },
-      { id: "sug-seasick",  name: "Sea-sickness meds",        category: "Pharmacy",   reason: "Molokini boat tour" },
-      { id: "sug-rfsun",    name: "Reef-safe sunscreen",      category: "Beach Gear", reason: "Required at Molokini" },
+      { id: "sug-snorkel",  name: "Snorkel gear",                  category: "Beach Gear",  reason: "Snorkeling on your agenda" },
+      { id: "sug-ucam",     name: "Underwater camera",              category: "Electronics", reason: "Snorkeling on your agenda" },
+      { id: "sug-seasick",  name: "Sea-sickness meds",              category: "Pharmacy",    reason: "Boat tour on your agenda" },
+      { id: "sug-rfsun",    name: "Reef-safe sunscreen",            category: "Beach Gear",  reason: "Snorkeling on your agenda" },
     );
   }
-
-  // Haleakālā / sunrise
-  if (/haleakal|sunrise|summit/.test(all)) {
+  if (/sunrise|summit|crater|mountain|hike|trail|glacier/.test(all)) {
     out.push(
-      { id: "sug-layers",   name: "Warm layers",              category: "Clothing",   reason: "Haleakālā summit (35–45°F)" },
-      { id: "sug-lamp",     name: "Headlamp",                 category: "Misc",       reason: "2:30 AM Haleakālā departure" },
-      { id: "sug-warmers",  name: "Hand warmers",             category: "Misc",       reason: "Haleakālā sunrise" },
+      { id: "sug-layers",   name: "Warm layers",                    category: "Clothing",    reason: "Cold-weather activity on your agenda" },
+      { id: "sug-lamp",     name: "Headlamp",                       category: "Misc",        reason: "Early morning activity on your agenda" },
+      { id: "sug-warmers",  name: "Hand warmers",                   category: "Misc",        reason: "Cold morning on your agenda" },
     );
   }
-
-  // Road to Hana
-  if (/hana/.test(all)) {
+  if (/scenic drive|road trip|day trip|long drive/.test(all)) {
     out.push(
-      { id: "sug-snacks",   name: "Snacks & water bottles",  category: "Misc",       reason: "Road to Hana long drive" },
-      { id: "sug-msick",    name: "Motion sickness meds",     category: "Pharmacy",   reason: "620 turns — Road to Hana" },
+      { id: "sug-snacks",   name: "Snacks & water bottles",         category: "Misc",        reason: "Long drive on your agenda" },
+      { id: "sug-msick",    name: "Motion sickness meds",           category: "Pharmacy",    reason: "Scenic drive on your agenda" },
     );
   }
-
-  // Beach / Ka'anapali
-  if (/ka.anapali|beach/.test(all)) {
+  if (/beach|pool|swim|surf|kayak|paddle/.test(all)) {
     out.push(
-      { id: "sug-btowels",  name: "Beach towels",             category: "Beach Gear", reason: "Ka'anapali Beach" },
-      { id: "sug-rguard",   name: "Rash guard",               category: "Clothing",   reason: "Ka'anapali Beach" },
+      { id: "sug-btowels",  name: "Beach towels",                   category: "Beach Gear",  reason: "Water activity on your agenda" },
+      { id: "sug-rguard",   name: "Rash guard",                     category: "Clothing",    reason: "Water activity on your agenda" },
     );
   }
-
-  // Luau
-  if (/luau/.test(all)) {
+  if (/luau|show|gala|formal dinner|performance/.test(all)) {
     out.push(
-      { id: "sug-aloha",    name: "Light sundress / aloha shirt", category: "Clothing", reason: "Old Lahaina Luau" },
+      { id: "sug-formal",   name: "Nice outfit / dress attire",     category: "Clothing",    reason: "Special evening on your agenda" },
     );
   }
-
   return out;
 }
-
-const ALL_SUGGESTIONS = computeSuggestions();
 
 // ---------------------------------------------------------------------------
 // Default items (always pre-loaded on first visit)
@@ -325,6 +297,7 @@ export default function PackingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<Category>>(new Set());
   const [showMustHaves, setShowMustHaves] = useState(false);
+  const [agendaKeywords, setAgendaKeywords] = useState("");
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [shareToast, setShareToast] = useState<string | null>(null);
   const [syncedToCloud, setSyncedToCloud] = useState(false);
@@ -373,6 +346,26 @@ export default function PackingPage() {
         if (data && data.length > 0) setTravelers(data as Traveler[]);
       } catch { /* traveler chips are optional */ }
     })();
+
+    // Fetch agenda item titles to power smart packing suggestions
+    void (async () => {
+      try {
+        const { data: days } = await supabase
+          .from("trip_days")
+          .select("id")
+          .eq("trip_id", activeTrip.activeTripId);
+        if (!days?.length) return;
+        const dayIds = (days as { id: string }[]).map((d) => d.id);
+        const { data: agendaItems } = await supabase
+          .from("agenda_items")
+          .select("title")
+          .in("trip_day_id", dayIds);
+        if (agendaItems?.length) {
+          setAgendaKeywords((agendaItems as { title: string }[]).map((i) => i.title).join(" "));
+        }
+      } catch { /* suggestions optional */ }
+    })();
+
     return () => { cancelled = true; };
   }, [activeTrip.activeTripId, activeTrip.isPreview]);
 
@@ -440,7 +433,8 @@ export default function PackingPage() {
   // Suggestions to show (not dismissed, not already in items)
   // ---------------------------------------------------------------------------
   const existingNames = new Set(items.map((i) => i.name.toLowerCase()));
-  const visibleSuggestions = ALL_SUGGESTIONS.filter(
+  const allSuggestions = useMemo(() => computeSuggestions(agendaKeywords), [agendaKeywords]);
+  const visibleSuggestions = allSuggestions.filter(
     (s) => !dismissedSuggestions.has(s.id) && !existingNames.has(s.name.toLowerCase()),
   );
 
