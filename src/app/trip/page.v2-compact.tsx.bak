@@ -1222,6 +1222,17 @@ export default function TripPage() {
 
             {/* Progress bar */}
             <div className="mt-3">
+              <div className="flex justify-between mb-1.5">
+                {days.map((d) => (
+                  <div key={d.id} title={d.theme} className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
+                    d.status === "past"    ? "bg-white border-white text-sky-700" :
+                    d.status === "today"  ? "bg-sky-400 border-white text-white ring-2 ring-white/60 scale-125 shadow-md" :
+                                            "bg-white/20 border-white/40 text-white/60"
+                  }`}>
+                    {d.status === "past" ? "✓" : d.id}
+                  </div>
+                ))}
+              </div>
               <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-white rounded-full transition-all"
@@ -1266,25 +1277,6 @@ export default function TripPage() {
 
         {/* ── Day summaries — compact ── */}
         <div className="mx-3 mb-3 mt-1 rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm">
-          {/* Departure flight */}
-          {trip?.startDate && (() => {
-            const dep = new Date(trip.startDate + "T12:00:00");
-            dep.setDate(dep.getDate() - 1);
-            const depLabel = dep.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
-            return (
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-slate-50">
-                <div className="flex-none w-16">
-                  <p className="text-[10px] font-black uppercase text-slate-400">{depLabel}</p>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-500 font-semibold truncate">
-                    Fly to {trip.destination?.split(",")[0] ?? "Maui"}
-                  </p>
-                </div>
-                <span className="text-base flex-none">✈️</span>
-              </div>
-            );
-          })()}
           {days.map((day, idx) => (
             <div
               key={day.id}
@@ -1419,14 +1411,6 @@ export default function TripPage() {
                     <p className="text-xs text-slate-400">Saved on this device</p>
                     <span className="text-xs font-bold text-amber-600">Edit →</span>
                   </div>
-                </button>
-
-                <button
-                  onClick={() => setShowPlanSheet(true)}
-                  className="mt-2 w-full flex items-center justify-center gap-2 border border-dashed border-slate-200 rounded-2xl py-3 text-xs font-semibold text-slate-400 hover:border-slate-300 hover:text-slate-500 transition-colors"
-                >
-                  <span className="text-sm">＋</span>
-                  Add upcoming trip
                 </button>
               </div>
             )}

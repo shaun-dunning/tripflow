@@ -1046,12 +1046,21 @@ export default function ChatPage() {
                 : `${visibleTravelers.length} travelers`}
             </p>
           </div>
-          {!isReadOnlyGroup && (
-            <button onClick={() => setShowInviteSheet(true)}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl mt-0.5">
-              <span>🔗</span> Invite
+          <div className="flex items-center gap-2 mt-0.5 flex-none">
+            {!isReadOnlyGroup && (
+              <button onClick={() => setShowInviteSheet(true)}
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-2 rounded-xl">
+                <span>🔗</span> Invite
+              </button>
+            )}
+            <button
+              onClick={() => setSheet({ type: "profile" })}
+              aria-label="Your profile"
+              className="flex h-9 w-9 items-center justify-center rounded-2xl bg-slate-950 text-white text-[11px] font-black transition-all active:scale-90"
+            >
+              {initials}
             </button>
-          )}
+          </div>
         </div>
 
         {!needsFamilyJoin && (

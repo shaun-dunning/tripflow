@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, UserRound, Waves } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
@@ -15,8 +16,6 @@ import {
 
 type AppSessionControlsProps = {
   user: User;
-  open: boolean;
-  onClose: () => void;
 };
 
 export function firstName(user: User) {
@@ -34,9 +33,10 @@ export function initials(user: User) {
     .toUpperCase();
 }
 
-export default function AppSessionControls({ user, open, onClose }: AppSessionControlsProps) {
+export default function AppSessionControls({ user }: AppSessionControlsProps) {
   const router = useRouter();
   const activeTrip = useActiveTrip(user);
+  const [open, setOpen] = useState(false);
   const isDemo = activeTrip.activeTripId === DEMO_TRIP_ID;
 
   async function signOut(toAuth = true) {
@@ -53,18 +53,19 @@ export default function AppSessionControls({ user, open, onClose }: AppSessionCo
     localStorage.removeItem(FAMILY_INVITE_KEY);
     localStorage.removeItem(ACTIVE_TRIP_KEY);
     localStorage.setItem(START_OWN_TRIP_KEY, "1");
-    onClose();
+    setOpen(false);
     window.location.replace("/");
   }
 
   function editTripProfile() {
     localStorage.setItem("daywave-open-profile", "1");
-    onClose();
+    setOpen(false);
     router.push("/chat");
   }
 
   return (
     <>
+      {/* Demo mode indicator — left side, never conflicts with Ask AI */}
       {isDemo && (
         <button
           onClick={() => router.push("/join/DEMO")}
@@ -76,7 +77,10 @@ export default function AppSessionControls({ user, open, onClose }: AppSessionCo
       )}
 
       {open && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/28 px-3 pb-3 backdrop-blur-[2px]" onClick={onClose}>
+        <div
+          className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/28 px-3 pb-3 backdrop-blur-[2px]"
+          onClick={() => setOpen(false)}
+        >
           <div
             className="w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.24)]"
             onClick={(e) => e.stopPropagation()}
