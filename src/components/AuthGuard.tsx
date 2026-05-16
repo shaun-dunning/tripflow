@@ -13,7 +13,8 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   const isAuthPage = pathname === "/auth" || pathname === "/auth/";
   const isJoinPage = pathname.startsWith("/join/");
-  const isPublicPage = isAuthPage || isJoinPage;
+  const isPrivacyPage = pathname === "/privacy" || pathname === "/privacy/";
+  const isPublicPage = isAuthPage || isJoinPage || isPrivacyPage;
 
   useEffect(() => {
     if (loading) return;
