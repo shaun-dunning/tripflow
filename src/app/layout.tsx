@@ -55,7 +55,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 max-w-md mx-auto relative">
+      <body className="h-full flex flex-col bg-slate-50 text-slate-900 max-w-md mx-auto relative">
         <ServiceWorkerRegistrar />
         <DeepLinkHandler />
         <ExploreProvider>
@@ -66,10 +66,10 @@ export default function RootLayout({
              * Falls back to 80 px on non-notched devices.
              */}
             <main
-              className="flex-1 tab-main-content"
+              className="flex-1 tab-main-content overflow-y-auto"
               style={{
-                paddingBottom:
-                  "calc(64px + env(safe-area-inset-bottom, 0px))",
+                paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
+                WebkitOverflowScrolling: "touch",
               }}
             >
               {children}

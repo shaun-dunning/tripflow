@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import { ACTIVE_TRIP_KEY, PREVIEW_INVITE_KEY, START_OWN_TRIP_KEY } from "@/lib/tripConfig";
+import { ACTIVE_TRIP_KEY, DEMO_TRIP_ID, PREVIEW_INVITE_KEY, START_OWN_TRIP_KEY } from "@/lib/tripConfig";
 import type { User } from "@supabase/supabase-js";
 
 export type ActiveTrip = {
@@ -141,13 +141,16 @@ export function useActiveTrip(user: User | null) {
     }
 
     const storedTripId = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_TRIP_KEY) : null;
-    const selected = rows.find((row) => row.trip_id === storedTripId) ?? rows[0];
-    if (typeof window !== "undefined") localStorage.setItem(ACTIVE_TRIP_KEY, selected.trip_id);
+    const nonDemoRows = rows.filter((row) => row.trip_id !== DEMO_TRIP_ID);
+    const preferred = rows.find((row) => row.trip_id === storedTripId && row.trip_id !== DEMO_TRIP_ID)
+      ?? nonDemoRows[0]
+      ?? rows[0];
+    if (typeof window !== "undefined") localStorage.setItem(ACTIVE_TRIP_KEY, preferred.trip_id);
     applySnapshot({
       userId: user.id,
       status: "ready",
       memberships: rows,
-      activeTrip: selected.trip,
+      activeTrip: preferred.trip,
       error: null,
     });
   }, [applySnapshot, user]);

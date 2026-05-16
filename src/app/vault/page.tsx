@@ -347,13 +347,16 @@ function parseSortKey(dateStr: string): number {
   return new Date(2026, MONTHS_IDX[m[1]], parseInt(m[2])).getTime();
 }
 
+// Module-level cache so docs persist across tab switches (stale-while-revalidate)
+let _docsCache: Doc[] | null = null;
+
 // ── Main component ─────────────────────────────────────────────────────────
 export default function VaultPage() {
   const router = useRouter();
   const { user } = useAuth();
   const activeTrip = useActiveTrip(user);
-  const [docs, setDocs] = useState<Doc[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [docs, setDocs] = useState<Doc[]>(_docsCache ?? []);
+  const [loading, setLoading] = useState(_docsCache === null);
   const [error, setError] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
 
@@ -392,9 +395,11 @@ export default function VaultPage() {
         .order("created_at", { ascending: true });
       if (error) { setError(error.message); setLoading(false); return; }
       if (!data || data.length === 0) {
+        _docsCache = [];
         setDocs([]);
         localStorage.removeItem("daywave-vault-focus-doc");
       } else {
+        _docsCache = data as Doc[];
         setDocs(data as Doc[]);
         const focusId = localStorage.getItem("daywave-vault-focus-doc");
         if (focusId) {
@@ -600,7 +605,7 @@ export default function VaultPage() {
     />
   );
 
-  if (loading) return (
+  if (loading && docs.length === 0) return (
     <div className="flex flex-col items-center justify-center h-64 gap-3">
       <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
       <p className="text-sm text-slate-400">Loading…</p>

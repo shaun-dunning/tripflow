@@ -167,15 +167,19 @@ function TravelerAvatar({
   );
 }
 
+// Module-level cache so chat persists across tab switches (stale-while-revalidate)
+let _messagesCache: Message[] | null = null;
+let _travelersCache: Traveler[] | null = null;
+
 // ── Main Component ────────────────────────────────────────────────────────────
 export default function ChatPage() {
   const { user, signOut } = useAuth();
   const activeTrip = useActiveTrip(user);
   const router = useRouter();
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [travelers, setTravelers] = useState<Traveler[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<Message[]>(_messagesCache ?? []);
+  const [travelers, setTravelers] = useState<Traveler[]>(_travelersCache ?? []);
+  const [loading, setLoading] = useState(_messagesCache === null);
   const [loadIssue, setLoadIssue] = useState<string | null>(null);
   const [actionIssue, setActionIssue] = useState<string | null>(null);
   const [input, setInput] = useState("");
@@ -284,10 +288,13 @@ export default function ChatPage() {
           previewSession = false;
           setIsPreviewSession(false);
         }
+        _travelersCache = liveTravelers;
         setTravelers(liveTravelers);
 
         const liveMessages = (msgResult.data ?? []) as Message[];
-        setMessages(liveMessages.length > 0 ? liveMessages : previewSession ? buildFallbackMessages(tripResult.data?.title ?? "Group") : []);
+        const resolvedMessages = liveMessages.length > 0 ? liveMessages : previewSession ? buildFallbackMessages(tripResult.data?.title ?? "Group") : [];
+        _messagesCache = resolvedMessages;
+        setMessages(resolvedMessages);
         if (tripResult.data) {
           setTripTitle(tripResult.data.title);
           setTripDateInfo(getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date));
@@ -599,7 +606,7 @@ export default function ChatPage() {
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
-  if (loading) {
+  if (loading && messages.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-3">
         <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
