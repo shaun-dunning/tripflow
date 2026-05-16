@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, type WishlistEntry } from "@/lib/wishlist";
 import { useExploreContext } from "@/lib/exploreContext";
-import { SortableAgendaSections, type Section as DndSection, getMapsInfo, SHERATON } from "@/components/SortableAgendaSection";
+import { SortableAgendaSections, type Section as DndSection, getMapsInfo, SHERATON, type ItemRsvp } from "@/components/SortableAgendaSection";
 import { ResilientState } from "@/components/ResilientState";
 import TripAccessGate from "@/components/TripAccessGate";
 import FirstTripSetup from "@/components/FirstTripSetup";
@@ -554,6 +554,10 @@ export default function MyDayPage() {
   const pullDistanceRef = useRef(0);  // for logic in touch handlers (no re-render cost)
   const isPulling = useRef(false);
 
+  // RSVP
+  const [rsvpsByItemId, setRsvpsByItemId] = useState<Record<string, ItemRsvp[]>>({});
+  const [rsvpSheetItem, setRsvpSheetItem] = useState<Item | null>(null);
+
   // Day route sheet
   const [showRouteSheet, setShowRouteSheet] = useState(false);
 
@@ -722,7 +726,7 @@ export default function MyDayPage() {
       setLoading(true);
       setLoadIssue(null);
       try {
-        const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult] = await Promise.all([
+        const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult, rsvpResult] = await Promise.all([
           supabase.from("trips").select("title, destination, start_date, end_date, cover_photo").eq("id", activeTrip.activeTripId).maybeSingle(),
           supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", activeTrip.activeTripId).order("created_at"),
           supabase
@@ -737,6 +741,9 @@ export default function MyDayPage() {
             .order("day_number"),
           supabase.from("documents")
             .select("id, category, name, emoji, date, notes, confirmation, provider, status")
+            .eq("trip_id", activeTrip.activeTripId),
+          supabase.from("item_rsvps")
+            .select("agenda_item_id, traveler_name, traveler_avatar, status")
             .eq("trip_id", activeTrip.activeTripId),
         ]);
 
@@ -899,6 +906,20 @@ export default function MyDayPage() {
         });
 
           setAgendas(fresh);
+        }
+
+        // Build RSVP map: agenda_item_id → list of RSVPs
+        if (rsvpResult.data) {
+          const map: Record<string, ItemRsvp[]> = {};
+          rsvpResult.data.forEach((r) => {
+            if (!map[r.agenda_item_id]) map[r.agenda_item_id] = [];
+            map[r.agenda_item_id].push({
+              traveler_name: r.traveler_name,
+              traveler_avatar: r.traveler_avatar,
+              status: r.status as "in" | "skip",
+            });
+          });
+          setRsvpsByItemId(map);
         }
       } catch (err) {
         setLoadIssue(err instanceof Error ? err.message : "The trip could not be refreshed.");
@@ -1231,6 +1252,43 @@ export default function MyDayPage() {
 
     setShowMoveSheet(false);
     closeSheet();
+  }
+
+  // ── RSVP ─────────────────────────────────────────────────────────────────
+  const myName = user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? crewMembers[0]?.name ?? "Me";
+  const myAvatar = crewMembers.find((m) => m.name === myName)?.avatar ?? "🧑";
+
+  async function handleRsvp(itemId: string, status: "in" | "skip") {
+    if (!activeTrip.activeTripId) return;
+
+    // Optimistic update
+    setRsvpsByItemId((prev) => {
+      const existing = (prev[itemId] ?? []).filter((r) => r.traveler_name !== myName);
+      return { ...prev, [itemId]: [...existing, { traveler_name: myName, traveler_avatar: myAvatar, status }] };
+    });
+
+    const { error } = await supabase.from("item_rsvps").upsert(
+      { trip_id: activeTrip.activeTripId, agenda_item_id: itemId, traveler_name: myName, traveler_avatar: myAvatar, status, updated_at: new Date().toISOString() },
+      { onConflict: "trip_id,agenda_item_id,traveler_name" },
+    );
+    if (error) setActionIssue(error.message);
+  }
+
+  async function removeRsvp(itemId: string) {
+    if (!activeTrip.activeTripId) return;
+
+    // Optimistic update
+    setRsvpsByItemId((prev) => {
+      const existing = (prev[itemId] ?? []).filter((r) => r.traveler_name !== myName);
+      return { ...prev, [itemId]: existing };
+    });
+
+    const { error } = await supabase.from("item_rsvps")
+      .delete()
+      .eq("trip_id", activeTrip.activeTripId)
+      .eq("agenda_item_id", itemId)
+      .eq("traveler_name", myName);
+    if (error) setActionIssue(error.message);
   }
 
   // ── Live Now mode (today only) ────────────────────────────────────────────
@@ -1766,6 +1824,139 @@ export default function MyDayPage() {
           </div>
         </div>
       )}
+
+      {/* ── RSVP Sheet ── */}
+      {rsvpSheetItem && (() => {
+        const itemRsvps = rsvpsByItemId[rsvpSheetItem.id] ?? [];
+        const going = itemRsvps.filter((r) => r.status === "in");
+        const skipping = itemRsvps.filter((r) => r.status === "skip");
+        const myRsvp = itemRsvps.find((r) => r.traveler_name === myName);
+        const undecided = crewMembers.filter((m) => !itemRsvps.some((r) => r.traveler_name === m.name));
+
+        return (
+          <div
+            className="fixed inset-0 z-[70] flex flex-col justify-end max-w-md mx-auto"
+            onClick={() => setRsvpSheetItem(null)}
+          >
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+            <div
+              className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col"
+              style={{ maxHeight: "80dvh" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1 flex-none">
+                <div className="w-10 h-1 bg-slate-200 rounded-full" />
+              </div>
+
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-slate-100 flex-none">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">{rsvpSheetItem.emoji} {rsvpSheetItem.title}</h3>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{rsvpSheetItem.time} · Who&apos;s joining?</p>
+                </div>
+                <button
+                  onClick={() => setRsvpSheetItem(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold"
+                >✕</button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 flex flex-col gap-5"
+                style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+
+                {/* My RSVP */}
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Your RSVP</p>
+                  <div className="flex gap-2.5">
+                    <button
+                      onClick={() => myRsvp?.status === "in" ? removeRsvp(rsvpSheetItem.id) : handleRsvp(rsvpSheetItem.id, "in")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] ${
+                        myRsvp?.status === "in"
+                          ? "bg-emerald-500 text-white shadow-md shadow-emerald-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700"
+                      }`}
+                    >
+                      <span className="text-lg">✅</span>
+                      I&apos;m in
+                    </button>
+                    <button
+                      onClick={() => myRsvp?.status === "skip" ? removeRsvp(rsvpSheetItem.id) : handleRsvp(rsvpSheetItem.id, "skip")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] ${
+                        myRsvp?.status === "skip"
+                          ? "bg-slate-700 text-white shadow-md shadow-slate-200"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      <span className="text-lg">🙅</span>
+                      I&apos;ll skip
+                    </button>
+                  </div>
+                </div>
+
+                {/* Going */}
+                {going.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">
+                      Going · {going.length}
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {going.map((r) => (
+                        <div key={r.traveler_name} className="flex items-center gap-3 bg-emerald-50 rounded-2xl px-3 py-2.5">
+                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg flex-none">
+                            {r.traveler_avatar}
+                          </div>
+                          <span className="font-semibold text-sm text-slate-800 flex-1 truncate">{r.traveler_name}</span>
+                          <span className="text-emerald-500 text-sm font-bold">✓</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Skipping */}
+                {skipping.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                      Skipping · {skipping.length}
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {skipping.map((r) => (
+                        <div key={r.traveler_name} className="flex items-center gap-3 bg-slate-50 rounded-2xl px-3 py-2.5">
+                          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-lg flex-none">
+                            {r.traveler_avatar}
+                          </div>
+                          <span className="font-semibold text-sm text-slate-500 flex-1 truncate">{r.traveler_name}</span>
+                          <span className="text-slate-400 text-sm">–</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Undecided */}
+                {undecided.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-2">
+                      No response yet · {undecided.length}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {undecided.map((m) => (
+                        <div key={m.name} className="flex items-center gap-1.5 bg-slate-50 rounded-full px-3 py-1.5 border border-slate-100">
+                          <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs flex-none">
+                            {m.avatar}
+                          </div>
+                          <span className="text-xs font-medium text-slate-400">{m.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Day Route Sheet ── */}
       {showRouteSheet && (() => {
@@ -2424,11 +2615,14 @@ export default function MyDayPage() {
             isPast={isPast}
             isEditable={isEditable}
             wishlist={wishlist}
+            rsvpsByItemId={rsvpsByItemId}
+            totalCrew={crewMembers.length}
             onReorder={handleReorder}
             onEdit={openEdit}
             onToggle={toggle}
             onAddClick={openAdd}
             onSuggestionClick={() => router.push("/explore")}
+            onRsvpClick={(item) => setRsvpSheetItem(item as Item)}
           />
         )}
 

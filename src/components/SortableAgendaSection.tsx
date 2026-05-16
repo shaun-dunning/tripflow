@@ -39,6 +39,12 @@ export type AgendaItem = {
   sourceLabel?: string;
 };
 
+export type ItemRsvp = {
+  traveler_name: string;
+  traveler_avatar: string;
+  status: "in" | "skip";
+};
+
 export type Section = {
   key: string;
   label: string;
@@ -171,8 +177,11 @@ export function AgendaItemCard({
   handleListeners,
   handleAttributes,
   origin,
+  rsvps,
+  totalCrew,
   onEdit,
   onToggle,
+  onRsvpClick,
 }: {
   item: AgendaItem;
   isToday: boolean;
@@ -183,8 +192,11 @@ export function AgendaItemCard({
   handleListeners?: object;
   handleAttributes?: object;
   origin?: { lat: number; lng: number } | null;
+  rsvps?: ItemRsvp[];
+  totalCrew?: number;
   onEdit: (item: AgendaItem) => void;
   onToggle: (id: string) => void;
+  onRsvpClick?: (item: AgendaItem) => void;
 }) {
   const { info: travelInfo, loading: travelLoading } = useTravelTime(
     item,
@@ -360,6 +372,54 @@ export function AgendaItemCard({
       )}
       </div>{/* end main row */}
 
+      {/* RSVP attendance strip */}
+      {!isDragging && onRsvpClick && (() => {
+        const going = (rsvps ?? []).filter((r) => r.status === "in");
+        const skipping = (rsvps ?? []).filter((r) => r.status === "skip");
+        const total = totalCrew ?? 0;
+        const hasRsvps = (rsvps ?? []).length > 0;
+        return (
+          <button
+            onClick={(e) => { e.stopPropagation(); onRsvpClick(item); }}
+            className="w-full flex items-center gap-2 px-3 py-2 border-t border-slate-100 bg-slate-50/60 hover:bg-slate-100/80 transition-colors text-left"
+          >
+            {/* Going avatars */}
+            {going.length > 0 && (
+              <div className="flex -space-x-1.5 flex-none">
+                {going.slice(0, 3).map((r) => (
+                  <div
+                    key={r.traveler_name}
+                    className="w-5 h-5 rounded-full bg-emerald-100 border-2 border-white flex items-center justify-center text-[10px]"
+                    title={r.traveler_name}
+                  >
+                    {r.traveler_avatar}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Count label */}
+            <span className="flex-1 text-[10px] font-semibold text-slate-500">
+              {hasRsvps ? (
+                <>
+                  <span className="text-emerald-600">{going.length} going</span>
+                  {skipping.length > 0 && (
+                    <span className="text-slate-400"> · {skipping.length} skip</span>
+                  )}
+                  {total > 0 && going.length + skipping.length < total && (
+                    <span className="text-slate-400"> · {total - going.length - skipping.length} undecided</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-slate-400">Who's joining? RSVP →</span>
+              )}
+            </span>
+
+            {/* Chevron */}
+            <span className="text-slate-300 text-xs flex-none">›</span>
+          </button>
+        );
+      })()}
     </div>
   );
 }
@@ -372,8 +432,11 @@ function SortableItem({
   isEditable,
   nextItem,
   origin,
+  rsvps,
+  totalCrew,
   onEdit,
   onToggle,
+  onRsvpClick,
   wishlistSuggestion,
   onSuggestionClick,
 }: {
@@ -383,8 +446,11 @@ function SortableItem({
   isEditable: boolean;
   nextItem: AgendaItem | undefined;
   origin?: { lat: number; lng: number } | null;
+  rsvps?: ItemRsvp[];
+  totalCrew?: number;
   onEdit: (item: AgendaItem) => void;
   onToggle: (id: string) => void;
+  onRsvpClick?: (item: AgendaItem) => void;
   wishlistSuggestion: { emoji: string; name: string; note: string; fromWishlist?: boolean } | null;
   onSuggestionClick: () => void;
 }) {
@@ -419,8 +485,11 @@ function SortableItem({
         handleListeners={listeners}
         handleAttributes={attributes}
         origin={origin}
+        rsvps={rsvps}
+        totalCrew={totalCrew}
         onEdit={onEdit}
         onToggle={onToggle}
+        onRsvpClick={onRsvpClick}
       />
 
       {/* Gap connector + suggestion (hidden while dragging) */}
@@ -548,11 +617,14 @@ export function SortableAgendaSections({
   isEditable,
   wishlist,
   origin,
+  rsvpsByItemId,
+  totalCrew,
   onReorder,
   onEdit,
   onToggle,
   onAddClick,
   onSuggestionClick,
+  onRsvpClick,
 }: {
   sections: Section[];
   isToday: boolean;
@@ -561,11 +633,14 @@ export function SortableAgendaSections({
   wishlist: WishlistEntry[];
   /** Hotel / lodging coords for drive-time calculations. Defaults to Sheraton Ka'anapali. */
   origin?: { lat: number; lng: number } | null;
+  rsvpsByItemId?: Record<string, ItemRsvp[]>;
+  totalCrew?: number;
   onReorder: (newSections: Section[]) => void;
   onEdit: (item: AgendaItem) => void;
   onToggle: (id: string) => void;
   onAddClick: (defaultTime: string) => void;
   onSuggestionClick: () => void;
+  onRsvpClick?: (item: AgendaItem) => void;
 }) {
   const [activeId, setActiveId] = React.useState<UniqueIdentifier | null>(null);
 
@@ -721,8 +796,11 @@ export function SortableAgendaSections({
                       isEditable={isEditable}
                       nextItem={nextItem}
                       origin={origin}
+                      rsvps={rsvpsByItemId?.[item.id]}
+                      totalCrew={totalCrew}
                       onEdit={onEdit}
                       onToggle={onToggle}
+                      onRsvpClick={onRsvpClick}
                       wishlistSuggestion={suggestion}
                       onSuggestionClick={onSuggestionClick}
                     />
