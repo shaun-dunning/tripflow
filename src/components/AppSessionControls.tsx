@@ -105,9 +105,9 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
 
               {isDemo && (
                 <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
-                  <p className="text-xs font-black text-slate-900">You&apos;re exploring the sample Maui trip.</p>
+                  <p className="text-xs font-black text-slate-900">You&apos;re exploring a sample trip.</p>
                   <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                    Your tester profile can look around without changing Shaun&apos;s real family trip.
+                    Your profile can look around without affecting the organizer&apos;s real trip.
                   </p>
                   <button
                     onClick={startOwnTrip}

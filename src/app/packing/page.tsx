@@ -13,7 +13,7 @@ import { DEMO_TRIP_ID } from "@/lib/tripConfig";
 // Persistence uses Supabase when the shared `packing_items` table is available,
 // with localStorage as a graceful fallback for offline/dev sessions.
 // ---------------------------------------------------------------------------
-const LS_KEY = "daywave-packing-v2-maui26";
+const packingKey = (tripId: string) => `daywave-packing-v2-${tripId}`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -230,18 +230,18 @@ const CATEGORY_PRESETS: Record<Category, string[]> = {
 // ---------------------------------------------------------------------------
 // Persistence helpers
 // ---------------------------------------------------------------------------
-function loadLocalItems(): PackItem[] {
+function loadLocalItems(tripId: string): PackItem[] {
   if (typeof window === "undefined") return buildDefaultItems();
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = localStorage.getItem(packingKey(tripId));
     if (raw) return JSON.parse(raw) as PackItem[];
   } catch { /* ignore */ }
   return buildDefaultItems();
 }
 
-function saveLocalItems(items: PackItem[]): void {
+function saveLocalItems(items: PackItem[], tripId: string): void {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(items));
+    localStorage.setItem(packingKey(tripId), JSON.stringify(items));
   } catch { /* ignore */ }
 }
 
@@ -265,7 +265,7 @@ function itemToRow(item: PackItem, index: number, tripId: string): PackingRow {
 }
 
 async function loadSharedItems(tripId: string): Promise<{ items: PackItem[]; synced: boolean }> {
-  const localItems = tripId === DEMO_TRIP_ID ? buildDemoItems() : loadLocalItems();
+  const localItems = tripId === DEMO_TRIP_ID ? buildDemoItems() : loadLocalItems(tripId);
   const { data, error } = await supabase
     .from("packing_items")
     .select("id, trip_id, name, category, assignee, packed, is_suggested, sort_order")
@@ -305,7 +305,7 @@ async function fetchSupabaseItems(tripId: string): Promise<PackItem[] | null> {
 type Milestone = { label: string; sub: string; emoji: string; bg: string } | null;
 
 function getMilestone(pct: number): Milestone {
-  if (pct >= 100) return { label: "You're fully packed!", sub: "Time to enjoy Maui. You've earned it.", emoji: "🎉", bg: "bg-emerald-50 border-emerald-200" };
+  if (pct >= 100) return { label: "You're fully packed!", sub: "Everything is ready. Have an amazing trip!", emoji: "🎉", bg: "bg-emerald-50 border-emerald-200" };
   if (pct >= 75)  return { label: "Almost there!", sub: "Just a few more items — you've got this.", emoji: "🏁", bg: "bg-sky-50 border-sky-200" };
   if (pct >= 50)  return { label: "Halfway there!", sub: "Great momentum. Keep going!", emoji: "⚡", bg: "bg-violet-50 border-violet-200" };
   if (pct >= 25)  return { label: "25% done — nice start!", sub: "Don't forget your must-haves.", emoji: "🌟", bg: "bg-amber-50 border-amber-200" };
@@ -340,17 +340,17 @@ export default function PackingPage() {
 
   // Load on mount
   useEffect(() => {
-    if (activeTrip.isPreview) {
+    const tripId = activeTrip.activeTripId;
+    if (activeTrip.isPreview || !tripId) {
       queueMicrotask(() => {
-        setItems(loadLocalItems());
+        setItems(loadLocalItems(tripId ?? "preview"));
         setSyncedToCloud(false);
         setHydrated(true);
       });
       return;
     }
-    if (!activeTrip.activeTripId) return;
     let cancelled = false;
-    loadSharedItems(activeTrip.activeTripId).then(({ items: loadedItems, synced }) => {
+    loadSharedItems(tripId).then(({ items: loadedItems, synced }) => {
       if (cancelled) return;
       setItems(loadedItems);
       setSyncedToCloud(synced);
@@ -358,7 +358,7 @@ export default function PackingPage() {
     }).catch((err) => {
       if (cancelled) return;
       console.warn("Packing list is using local fallback.", err);
-      setItems(loadLocalItems());
+      setItems(loadLocalItems(tripId));
       setSyncedToCloud(false);
       setHydrated(true);
     });
@@ -405,8 +405,8 @@ export default function PackingPage() {
   useEffect(() => {
     if (!hydrated) return;
     if (isFirstRender.current) { isFirstRender.current = false; return; }
-    saveLocalItems(items);
-    const tripId = activeTrip.activeTripId;
+    const tripId = activeTrip.activeTripId ?? "preview";
+    saveLocalItems(items, tripId);
     if (tripId && tripId !== DEMO_TRIP_ID && !activeTrip.isPreview) {
       void saveSharedItems(items, tripId).then(() => setSyncedToCloud(true)).catch(() => {});
     }
@@ -429,10 +429,12 @@ export default function PackingPage() {
   const packedCount = items.filter((i) => i.packed).length;
   const pct = totalItems > 0 ? Math.round((packedCount / totalItems) * 100) : 0;
 
-  // Days until trip
-  const tripStart = new Date("2026-06-05T00:00:00");
+  // Days until trip — use active trip's start date, fall back to null if unknown
+  const tripStartStr = activeTrip.activeTrip?.start_date ?? null;
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const daysLeft = Math.max(0, Math.ceil((tripStart.getTime() - today.getTime()) / 86_400_000));
+  const daysLeft = tripStartStr
+    ? Math.max(0, Math.ceil((new Date(tripStartStr + "T00:00:00").getTime() - today.getTime()) / 86_400_000))
+    : null;
 
   // ---------------------------------------------------------------------------
   // Suggestions to show (not dismissed, not already in items)
@@ -529,14 +531,15 @@ export default function PackingPage() {
     const reset = items.map((i) => ({ ...i, packed: false }));
     setItems(reset);
     setConfirmReset(false);
-    saveLocalItems(reset);
-    const tripId = activeTrip.activeTripId;
+    const tripId = activeTrip.activeTripId ?? "preview";
+    saveLocalItems(reset, tripId);
     if (tripId && tripId !== DEMO_TRIP_ID && !activeTrip.isPreview) void saveSharedItems(reset, tripId);
   }
 
   async function shareList() {
+    const listTitle = `🧳 ${activeTrip.activeTrip?.title ?? "Trip"} — Packing List`;
     const lines = [
-      `🧳 Maui Family Trip — Packing List (Jun 5–11)`,
+      listTitle,
       `Progress: ${packedCount}/${totalItems} packed (${pct}%)`,
       "",
     ];
@@ -554,7 +557,7 @@ export default function PackingPage() {
     const text = lines.join("\n");
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Maui Family Trip — Packing List", text });
+        await navigator.share({ title: listTitle, text });
       } else {
         await navigator.clipboard.writeText(text);
         setShareToast("Copied to clipboard!");
@@ -832,7 +835,8 @@ export default function PackingPage() {
 
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
           <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">
-            Maui Family Trip · Jun 5–11
+            {activeTrip.activeTrip?.title ?? "Your Trip"}
+            {activeTrip.activeTrip?.start_date ? ` · ${new Date(activeTrip.activeTrip.start_date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}` : ""}
           </p>
           <h1 className="text-2xl font-black text-white leading-tight">Pack Smart</h1>
           <p className="text-xs text-white/60 mt-0.5">
@@ -889,7 +893,7 @@ export default function PackingPage() {
 
         {/* Days pill */}
         <div className="flex-none flex flex-col items-center bg-amber-50 border border-amber-100 rounded-xl px-2.5 py-2 min-w-[52px]">
-          <span className="text-base font-black text-amber-600 leading-none tabular-nums">{daysLeft}</span>
+          <span className="text-base font-black text-amber-600 leading-none tabular-nums">{daysLeft ?? "—"}</span>
           <span className="text-[9px] font-bold text-amber-400 uppercase tracking-wide leading-none mt-0.5">days</span>
           {packedCount > 0 && (
             <button
@@ -1085,7 +1089,7 @@ export default function PackingPage() {
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-5 py-5 text-center">
             <p className="text-2xl mb-2">🎉</p>
             <p className="text-sm font-bold text-emerald-800">You&apos;re all packed!</p>
-            <p className="text-xs text-emerald-600 mt-1">Time to go enjoy Maui. You&apos;ve earned it.</p>
+            <p className="text-xs text-emerald-600 mt-1">Everything is ready. Have an amazing trip!</p>
           </div>
         )}
       </div>

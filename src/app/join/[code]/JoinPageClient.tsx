@@ -31,14 +31,13 @@ const MAUI_FALLBACK =
   "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=800&h=500&fit=crop&q=80";
 const FALLBACK_TRIP: TripInfo = {
   id: TRIP_ID,
-  title: "Maui Family Trip",
-  destination: "Maui, Hawaii",
-  start_date: "2026-06-05",
-  end_date: "2026-06-11",
+  title: "Family Trip",
+  destination: "Loading…",
+  start_date: "",
+  end_date: "",
   cover_photo: MAUI_FALLBACK,
   travelers: [
-    { id: "fallback-shaun", name: "Shaun", avatar: "🧔", avatar_url: null },
-    { id: "fallback-family", name: "Family", avatar: "🌺", avatar_url: null },
+    { id: "fallback-organizer", name: "Organizer", avatar: "🧳", avatar_url: null },
   ],
 };
 const DEMO_FALLBACK_TRIP: TripInfo = {
@@ -490,7 +489,7 @@ export default function JoinPageClient() {
             {inviteMode === "family"
               ? `${formatDateRange(trip.start_date, trip.end_date)} · ${trip.destination}`
               : isDemo
-              ? "A fully loaded Maui itinerary with sample bookings, chat, packing, and day-of flow."
+              ? "A fully loaded sample itinerary with bookings, chat, packing, and day-of flow."
               : "A polished sample trip you can explore before joining a real group"}
           </p>
         </div>
@@ -531,8 +530,8 @@ export default function JoinPageClient() {
             </>
           ) : (
             <>
-              <p className="text-sm font-bold text-slate-900">Sample Maui trip</p>
-              <p className="text-xs text-slate-400">Explore the app without joining Shaun&apos;s family trip</p>
+              <p className="text-sm font-bold text-slate-900">Sample trip</p>
+              <p className="text-xs text-slate-400">Explore the app without joining the organizer&apos;s trip</p>
             </>
           )}
         </div>
@@ -635,10 +634,10 @@ export default function JoinPageClient() {
                   </p>
                   <p className="text-xs text-slate-400 mt-2">
                     {inviteMode === "family"
-                      ? "This adds this account as a traveler on Shaun's Maui family trip."
+                      ? `This adds your account as a traveler on ${trip.title}.`
                       : isDemo
-                      ? "This adds this account to the anonymized Maui demo trip. Your changes stay separate from Shaun's real family trip."
-                      : "This opens a sample experience without joining Shaun's family trip."}
+                      ? "This adds your account to the sample demo trip. Your changes stay separate from the organizer's real trip."
+                      : "This opens a sample experience without joining the organizer's trip."}
                   </p>
                 </div>
                 <div className="w-full">
@@ -707,8 +706,8 @@ export default function JoinPageClient() {
                 : inviteMode === "family"
                   ? "Sign in and you'll be added to the trip."
                   : isDemo
-                  ? "Sign in to continue into the sample Maui trip."
-                  : "Sign in to preview Daywave without joining the family trip."}
+                  ? "Sign in to continue into the sample trip."
+                  : "Sign in to preview Daywave without joining the organizer's trip."}
             </p>
 
             {confirmEmail && (

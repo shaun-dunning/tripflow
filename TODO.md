@@ -57,6 +57,33 @@
 - [x] Removed remaining Today-page Maui fixture fallbacks from active trips: days, empty agenda states, doc overlays, weather labels, countdown copy, and AI planner prompts now follow the selected trip.
 - [x] Added a separate anonymized Maui demo trip path: `/join/DEMO` now opens a full sample trip with fake travelers, bookings, agenda, docs, chat, and packing seed data instead of exposing the real family trip.
 
+## Design Audit — High Priority (Hardcoded Data)
+- [x] AppSessionControls: replace hardcoded "Maui trip" and "Shaun's real family trip" with dynamic trip name
+- [x] Chat: fix fallback messages ("Maui group", "Jun 5-11", "Ka'anapali") to use active trip data; fix join button / preview copy that references "Shaun"
+- [x] Join page: remove hardcoded "Shaun" from fallback traveler and from all copy strings
+- [x] Packing: fix hero title (hardcoded "Maui Family Trip · Jun 5–11") to use active trip name/dates
+- [x] Packing: fix share text ("🧳 Maui Family Trip — Packing List (Jun 5–11)") to use active trip
+- [x] Packing: fix countdown — hardcoded `new Date("2026-06-05")` → use activeTrip start date
+- [x] Packing: fix milestone copy "Time to enjoy Maui" → destination-agnostic
+- [x] Packing: fix localStorage key "daywave-packing-v2-maui26" → per-trip-ID key
+- [x] Trip: remove hardcoded "OGG → LAX · Departs 10:30 AM" from fly-home and departure rows (no data source for specific flight details)
+
+## Design Audit — Needs Design Decision (Batch for discussion)
+- [ ] Explore PLACES array: 40+ entries are Maui-specific POIs — needs destination-awareness or a label making Maui-only nature clear; longer-term needs location-based place API
+- [ ] Explore TRAVELER_ROUTES: references hardcoded day themes ("Day 3 · Sun Jun 7") tied to Maui trip dates — needs trip-date-aware rendering or removal
+- [ ] Packing activity suggestions: Maui-specific activity triggers (Molokini, Road to Hana, etc.) — needs keyword matching against actual agenda items for any trip
+- [ ] DEMO_SIDE_TRIPS (San Diego / Napa): hardcoded 2026 dates show up in demo — decide if demo should use relative dates or fixed content is acceptable
+- [ ] Chat invite share text: "Join our Maui Trip 🌺" — needs trip title injected into Web Share API payload (minor, but visible to anyone the user shares with)
+- [ ] Vault: airport city map (OGG → Maui, LAX → Los Angeles) is hardcoded for known airports — acceptable for now but won't resolve obscure airports
+
+## Design Audit — Inconsistencies (Polish pass)
+- [ ] Standardize dark CTA: pick either bg-slate-900 or bg-slate-950 and use it everywhere
+- [ ] Standardize card border radius: define sm=rounded-xl / md=rounded-2xl / lg=rounded-3xl rules and enforce across all cards/sheets
+- [ ] Standardize sheet max-height: all bottom sheets should use consistent max-h value (currently 88vh vs 90vh)
+- [ ] Section label size: consolidate text-[10px] vs text-xs for uppercase section headers
+- [ ] Page outer padding: standardize px-4 vs px-5 across all pages
+- [ ] Terminology: pick "Docs" or "Vault" consistently; pick "Travelers" or "Crew" consistently
+
 ## Recommended Next
 - [x] Manual demo QA pass — run invite join, tab navigation, Vault-linked reservations, Group cards, Packing sync fallback, and mobile layout checks before sharing broadly.
 - [x] Run `supabase/demo-trip.sql` in Supabase SQL Editor before sharing `/join/DEMO`.

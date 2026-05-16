@@ -1312,7 +1312,6 @@ export default function TripPage() {
               <p className="text-xs font-bold text-slate-600">
                 Fly home · {trip?.endDate ? new Date(trip.endDate + "T12:00:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) : "Jun 11"}
               </p>
-              <p className="text-[10px] text-slate-400">OGG → LAX · Departs 10:30 AM</p>
             </div>
           </div>
         </div>

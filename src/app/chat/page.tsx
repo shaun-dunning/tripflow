@@ -53,25 +53,27 @@ const QUICK_ACTIONS = [
 const AVATAR_OPTIONS = ["🧔", "👩", "👦", "👧", "👵", "👴", "🧑", "👨", "👩‍🦱", "👨‍🦳", "🧒", "👶"];
 const ROLE_PRESETS = ["Trip Organizer", "Co-traveler", "Kid", "Guest", "Grandparent", "Traveler"];
 
-const FALLBACK_MESSAGES: Message[] = [
-  {
-    id: "preview-welcome",
-    sender_name: "Daywave",
-    sender_avatar: "🌺",
-    text: "Welcome to the Maui group. Share plans, quick polls, photos, and day-of updates here.",
-    created_at: new Date().toISOString(),
-  },
-  {
-    id: "preview-plan",
-    sender_name: "Daywave",
-    sender_avatar: "🌺",
-    card_type: "plan",
-    card_title: "Maui Trip Plan",
-    card_sub: "7 days · Jun 5-11 · Ka'anapali, Maui - tap to open My Day",
-    card_emoji: "📋",
-    created_at: new Date().toISOString(),
-  },
-];
+function buildFallbackMessages(title: string): Message[] {
+  return [
+    {
+      id: "preview-welcome",
+      sender_name: "Daywave",
+      sender_avatar: "🌺",
+      text: "Welcome to the group chat. Share plans, polls, photos, and day-of updates here.",
+      created_at: new Date().toISOString(),
+    },
+    {
+      id: "preview-plan",
+      sender_name: "Daywave",
+      sender_avatar: "🌺",
+      card_type: "plan",
+      card_title: `${title} Plan`,
+      card_sub: "Tap to open My Day",
+      card_emoji: "📋",
+      created_at: new Date().toISOString(),
+    },
+  ];
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function statusColor(status: string) {
@@ -178,7 +180,7 @@ export default function ChatPage() {
   const [actionIssue, setActionIssue] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [tripDateInfo, setTripDateInfo] = useState<TripDateInfo | null>(null);
-  const [tripTitle, setTripTitle] = useState("Maui Trip Group");
+  const [tripTitle, setTripTitle] = useState("");
   const [isPreviewSession, setIsPreviewSession] = useState(false);
   const [hasFamilyInvite, setHasFamilyInvite] = useState(false);
 
@@ -259,8 +261,8 @@ export default function ChatPage() {
 
         if (!activeTrip.isReady || !activeTrip.activeTripId) {
           setTravelers([]);
-          setMessages(previewSession ? FALLBACK_MESSAGES : []);
-          setTripTitle(previewSession ? "Daywave Preview" : "Private Group");
+          setMessages(previewSession ? buildFallbackMessages("Trip Preview") : []);
+          setTripTitle(previewSession ? "Trip Preview" : "");
           setTripDateInfo(null);
           setLoading(false);
           return;
@@ -285,7 +287,7 @@ export default function ChatPage() {
         setTravelers(liveTravelers);
 
         const liveMessages = (msgResult.data ?? []) as Message[];
-        setMessages(liveMessages.length > 0 ? liveMessages : previewSession ? FALLBACK_MESSAGES : []);
+        setMessages(liveMessages.length > 0 ? liveMessages : previewSession ? buildFallbackMessages(tripResult.data?.title ?? "Group") : []);
         if (tripResult.data) {
           setTripTitle(tripResult.data.title);
           setTripDateInfo(getTripDateInfo(tripResult.data.start_date, tripResult.data.end_date));
@@ -487,8 +489,8 @@ export default function ChatPage() {
     const link = getInviteLink();
     if (navigator.share) {
       await navigator.share({
-        title: "Join our Maui Trip 🌺",
-        text: "Hey! Join our family trip to Maui on Daywave.",
+        title: `Join us on Daywave`,
+        text: `Hey! Join our trip${tripTitle ? ` — ${tripTitle}` : ""} on Daywave.`,
         url: link,
       });
     } else {
@@ -1138,7 +1140,7 @@ export default function ChatPage() {
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-slate-500">
               {hasFamilyInvite
-                ? "You are signed in, but this profile is not a traveler on the Maui family trip yet."
+                ? `You are signed in, but this profile has not joined ${tripTitle || "this trip"} yet.`
                 : "This profile has not joined a trip yet. Ask the organizer for an invite link or code."}
             </p>
             {hasFamilyInvite && (
@@ -1146,7 +1148,7 @@ export default function ChatPage() {
                 onClick={() => router.push(getInviteLink())}
                 className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white"
               >
-                Join Maui Family Trip
+                Join {tripTitle || "This Trip"}
               </button>
             )}
             <button
@@ -1167,7 +1169,7 @@ export default function ChatPage() {
           <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
             <p className="text-xs font-black uppercase tracking-widest text-sky-700">Preview mode</p>
             <p className="mt-1 text-sm leading-relaxed text-sky-800">
-              This sample group is read-only and does not add this profile to Shaun&apos;s family trip.
+              This sample group is read-only. Your profile won&apos;t be added to the organizer&apos;s trip.
             </p>
           </div>
         )}
