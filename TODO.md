@@ -128,15 +128,25 @@
 - [x] Create `ios/App/App/PrivacyInfo.xcprivacy` — Apple-required privacy manifest declaring `NSPrivacyTracking: false`, collected data types (email, name, user content, photos), and UserDefaults API access (reason CA92.1).
 - [x] Make `webContentsDebuggingEnabled` env-conditional (only enabled outside production).
 
+### iOS Simulator + UI Polish (Complete)
+- [x] Install Xcode and CocoaPods, run `pod install`, fix iOS deployment target to 15.0.
+- [x] Fix `App.xcworkspace/contents.xcworkspacedata` so Xcode file navigator loads correctly.
+- [x] App running in iPhone 17 Simulator ✓
+- [x] Full-bleed hero on Trips tab (`/trip/page.tsx`) — removed rounded card wrapper, removed outer px-4.
+- [x] Full-bleed hero on Trip List tab (`/trips/page.tsx`) — same treatment.
+- [x] Auth page logo repositioned: centered below Dynamic Island (`inset-x-0 top-14`).
+- [x] Fix `useDeepLinks` — replace removed `getSessionFromUrl()` with `setSession()` using tokens from URL.
+
 ### Manual / Apple Account Work
-- [ ] Enroll or confirm Apple Developer Program membership ($99/year).
-- [ ] **Run in Supabase SQL Editor:** `supabase/packing-sync-fix.sql` (enables RLS policy for packing_items so cross-device sync works for all trip members).
-- [ ] **Supabase Auth settings:** add `app.daywave://` to allowed redirect URLs under Auth → URL Configuration.
-- [ ] Run `npm run mobile:build` then `npx cap sync ios` to push the new @capacitor/app plugin and latest web build into the Xcode project.
+- [x] Enroll or confirm Apple Developer Program membership ($99/year).
+- [x] **Run in Supabase SQL Editor:** `supabase/packing-sync-fix.sql` — done.
+- [x] **Supabase Auth settings:** add `app.daywave://` to allowed redirect URLs — done.
+- [x] Run `npm run mobile:build` then `npx cap sync ios` — done.
+- [x] Configure iOS signing team (`Shaun Dunning Personal Team`) and bundle identifier (`app.daywave`) in Xcode — done.
+- [x] Test full app in iPhone 17 Simulator — done.
+- [ ] **Test on physical iPhone** — connect device to Mac, register UDID in Apple Developer account, configure provisioning profile, build and run.
 - [ ] Create the Daywave App Store Connect app record.
 - [ ] Confirm final app name, subtitle, category, age rating, support URL, marketing URL, privacy policy URL, and contact info.
-- [ ] Configure iOS signing team and bundle identifier in Xcode (run `npm run cap:open:ios` to open the project).
-- [ ] Test full app in iOS Simulator across at least one small iPhone and one large iPhone viewport.
 - [ ] Test on a physical iPhone: invite link, auth email redirect, demo join, family join, trip creation, tab navigation, offline/poor-network behavior, safe areas, keyboard, and sharing.
 - [ ] Prepare App Store screenshots, app preview copy, keywords, description, and promotional text.
 - [ ] Submit first TestFlight build.
