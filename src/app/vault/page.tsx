@@ -1338,16 +1338,6 @@ export default function VaultPage() {
         </button>
       </div>
 
-      {/* ── Floating AI button ── */}
-      <button
-        onClick={() => router.push("/explore?ai=1")}
-        className="fixed bottom-24 right-4 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-[#061832] to-[#2f8f96] py-2 pl-2 pr-4 shadow-lg transition-all active:scale-95"
-        style={{ boxShadow: "0 8px 26px rgba(6,24,50,0.28)" }}
-      >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[13px] leading-none shadow-sm">✨</span>
-        <span className="text-sm font-bold text-white">Ask AI</span>
-      </button>
-
     </div>
   );
 }

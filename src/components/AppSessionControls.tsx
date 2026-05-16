@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, UserRound, Waves } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
@@ -16,13 +15,15 @@ import {
 
 type AppSessionControlsProps = {
   user: User;
+  open: boolean;
+  onClose: () => void;
 };
 
-function firstName(user: User) {
+export function firstName(user: User) {
   return user.user_metadata?.full_name?.split(" ")[0] ?? user.email?.split("@")[0] ?? "You";
 }
 
-function initials(user: User) {
+export function initials(user: User) {
   const source = user.user_metadata?.full_name ?? user.email ?? "Y";
   return source
     .split(/[\s@._-]+/)
@@ -33,10 +34,9 @@ function initials(user: User) {
     .toUpperCase();
 }
 
-export default function AppSessionControls({ user }: AppSessionControlsProps) {
+export default function AppSessionControls({ user, open, onClose }: AppSessionControlsProps) {
   const router = useRouter();
   const activeTrip = useActiveTrip(user);
-  const [open, setOpen] = useState(false);
   const isDemo = activeTrip.activeTripId === DEMO_TRIP_ID;
 
   async function signOut(toAuth = true) {
@@ -53,13 +53,13 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
     localStorage.removeItem(FAMILY_INVITE_KEY);
     localStorage.removeItem(ACTIVE_TRIP_KEY);
     localStorage.setItem(START_OWN_TRIP_KEY, "1");
-    setOpen(false);
+    onClose();
     window.location.replace("/");
   }
 
   function editTripProfile() {
     localStorage.setItem("daywave-open-profile", "1");
-    setOpen(false);
+    onClose();
     router.push("/chat");
   }
 
@@ -67,7 +67,7 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
     <>
       {isDemo && (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => router.push("/join/DEMO")}
           className="fixed left-4 bottom-[calc(max(10px,env(safe-area-inset-bottom))+5.8rem)] z-40 flex items-center gap-1.5 rounded-full border border-white/70 bg-white/86 px-3 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-slate-700 shadow-[0_10px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl"
         >
           <Waves className="size-3.5 text-sky-600" />
@@ -75,19 +75,11 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
         </button>
       )}
 
-      <button
-        onClick={() => setOpen(true)}
-        aria-label="Account"
-        className="fixed right-4 bottom-[calc(max(10px,env(safe-area-inset-bottom))+5.8rem)] z-40 flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[12px] font-black text-slate-800 shadow-[0_10px_28px_rgba(15,23,42,0.12)] backdrop-blur-xl"
-      >
-        {initials(user)}
-      </button>
-
       {open && (
-        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/28 px-3 pb-3 backdrop-blur-[2px]" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-slate-950/28 px-3 pb-3 backdrop-blur-[2px]" onClick={onClose}>
           <div
             className="w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.24)]"
-            onClick={(event) => event.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 pb-5 pt-4">
               <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-200" />
