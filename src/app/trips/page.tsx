@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
@@ -16,6 +16,8 @@ import {
   UPCOMING_TRIPS_KEY,
   getStoredTripSubtitle,
   readStoredTrips,
+  normalizeStoredTrip,
+  isDefaultUpcomingTrips,
   type StoredTrip,
 } from "@/lib/tripConfig";
 
@@ -57,7 +59,8 @@ export default function TripsPage() {
   const activeTrip = useActiveTrip(user);
   const [greeting] = useState(getGreeting);
   const firstName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "traveler";
-  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>(() => readStoredTrips([]));
+  const [upcomingTrips, setUpcomingTrips] = useState<UpcomingTrip[]>([]);
+  const tripsLoadedRef = useRef(false);
 
   // ── Live trip data ──────────────────────────────────────────────────────────
   const [tripTitle, setTripTitle] = useState("Maui Family Trip");
@@ -116,6 +119,31 @@ export default function TripsPage() {
     loadTrip();
   }, [activeTrip.activeTripId]);
 
+  // Load planned trips — user metadata is the cross-device source of truth,
+  // localStorage is the local fallback. Only runs once per authenticated user.
+  useEffect(() => {
+    if (!user || tripsLoadedRef.current) return;
+    tripsLoadedRef.current = true;
+
+    supabase.auth.getUser().then(({ data: { user: freshUser } }) => {
+      const fromMeta = freshUser?.user_metadata?.planned_trips;
+      if (Array.isArray(fromMeta) && fromMeta.length > 0) {
+        const normalized = fromMeta
+          .map((item: unknown) => normalizeStoredTrip(item))
+          .filter((item): item is StoredTrip => item !== null);
+        if (normalized.length > 0 && !isDefaultUpcomingTrips(normalized)) {
+          setUpcomingTrips(normalized);
+          return;
+        }
+      }
+      const fromLocal = readStoredTrips([]);
+      if (fromLocal.length > 0) setUpcomingTrips(fromLocal);
+    }).catch(() => {
+      setUpcomingTrips(readStoredTrips([]));
+    });
+  }, [user]);
+
+  // Inject demo trips when on the demo trip
   useEffect(() => {
     if (activeTrip.activeTripId === DEMO_TRIP_ID || activeTrip.activeTrip?.invite_code === DEMO_INVITE_CODE) {
       setUpcomingTrips((prev) => {
@@ -126,12 +154,16 @@ export default function TripsPage() {
     }
   }, [activeTrip.activeTrip?.invite_code, activeTrip.activeTripId]);
 
-  // Persist upcoming trips to localStorage whenever they change
+  // Persist planned trips to user metadata (cross-device) + localStorage (offline)
+  // Skip until initial load is done so we don't overwrite with empty state.
   useEffect(() => {
-    try {
-      localStorage.setItem(UPCOMING_TRIPS_KEY, JSON.stringify(upcomingTrips));
-    } catch { /* ignore storage errors */ }
-  }, [upcomingTrips]);
+    if (!tripsLoadedRef.current) return;
+    if (activeTrip.activeTripId === DEMO_TRIP_ID) return;
+    try { localStorage.setItem(UPCOMING_TRIPS_KEY, JSON.stringify(upcomingTrips)); } catch { /* ignore */ }
+    if (user) {
+      void supabase.auth.updateUser({ data: { planned_trips: upcomingTrips } });
+    }
+  }, [upcomingTrips, user, activeTrip.activeTripId]);
 
   // ── Derived display values ──────────────────────────────────────────────────
   const isUpcoming = !tripInfo || tripInfo.status === "upcoming";

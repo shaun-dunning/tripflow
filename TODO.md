@@ -21,6 +21,8 @@
 - [x] Add haptic feedback on key actions (navigator.vibrate(10) on toggle/add)
 - [x] Smooth page transitions between tabs (View Transitions API)
 - [x] Better error states  If Supabase fails or is offline, the user sees nothing. A friendly "couldn't load your trip" message with a retry button would go a long way.
+- [x] Packing list cross-device sync — fixed RLS policy (trips creator + travelers with user_id); updated packing-sync-fix.sql must be run in Supabase SQL Editor once
+- [x] Upcoming/draft trips cross-device sync — trips now backed by Supabase user metadata (auth.updateUser) as cross-device source of truth, localStorage kept as offline fallback
 
                                                                                                                             
   ## Backlog                                                                                                          
