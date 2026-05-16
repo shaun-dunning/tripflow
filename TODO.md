@@ -69,8 +69,8 @@
 - [x] Trip: remove hardcoded "OGG → LAX · Departs 10:30 AM" from fly-home and departure rows (no data source for specific flight details)
 
 ## Design Audit — Needs Design Decision (Batch for discussion)
-- [ ] Explore PLACES array: 40+ entries are Maui-specific POIs — needs destination-awareness or a label making Maui-only nature clear; longer-term needs location-based place API
-- [ ] Explore TRAVELER_ROUTES: references hardcoded day themes ("Day 3 · Sun Jun 7") tied to Maui trip dates — needs trip-date-aware rendering or removal
+- [x] Explore PLACES array: 40+ entries are Maui-specific POIs — needs destination-awareness or a label making Maui-only nature clear; longer-term needs location-based place API
+- [x] Explore TRAVELER_ROUTES: references hardcoded day themes ("Day 3 · Sun Jun 7") tied to Maui trip dates — needs trip-date-aware rendering or removal
 - [ ] Packing activity suggestions: Maui-specific activity triggers (Molokini, Road to Hana, etc.) — needs keyword matching against actual agenda items for any trip
 - [ ] DEMO_SIDE_TRIPS (San Diego / Napa): hardcoded 2026 dates show up in demo — decide if demo should use relative dates or fixed content is acceptable
 - [x] Chat invite share text: "Join our Maui Trip 🌺" — needs trip title injected into Web Share API payload (minor, but visible to anyone the user shares with)

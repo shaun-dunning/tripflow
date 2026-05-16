@@ -581,7 +581,7 @@ type TravelerRoute = {
   title: string;
   subtitle: string;
   emoji: string;
-  dayTheme: string;
+  dayNumber: number | null;  // 1-based trip day; null = any day
   photo: string;
   accentColor: string;
   steps: { time: string; placeId: number; note: string }[];
@@ -593,7 +593,7 @@ const TRAVELER_ROUTES: TravelerRoute[] = [
     title: "Perfect Road to Hana",
     subtitle: "Verified by 2,800+ travelers",
     emoji: "🚗",
-    dayTheme: "Day 3 · Sun Jun 7",
+    dayNumber: 3,
     photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=240&fit=crop&q=80",
     accentColor: "#16a34a",
     steps: [
@@ -608,7 +608,7 @@ const TRAVELER_ROUTES: TravelerRoute[] = [
     title: "Upcountry Morning Loop",
     subtitle: "Verified by 1,400+ travelers",
     emoji: "🌄",
-    dayTheme: "Best on Day 5",
+    dayNumber: 5,
     photo: "https://images.unsplash.com/photo-1500595046743-cd271d694d30?w=600&h=240&fit=crop&q=80",
     accentColor: "#7c3aed",
     steps: [
@@ -623,7 +623,7 @@ const TRAVELER_ROUTES: TravelerRoute[] = [
     title: "West Maui Beach Crawl",
     subtitle: "Verified by 3,200+ travelers",
     emoji: "🏖️",
-    dayTheme: "Any beach day",
+    dayNumber: null,
     photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=240&fit=crop&q=80",
     accentColor: "#0ea5e9",
     steps: [
@@ -852,6 +852,15 @@ const AI_QUICK_PROMPTS = [
 ];
 
 type AiMessage = { role: "user" | "assistant"; content: string };
+
+function formatRouteDay(dayNumber: number | null, tripStartDate: string | undefined): string {
+  if (!dayNumber) return "Any beach day";
+  if (!tripStartDate) return `Day ${dayNumber}`;
+  const [y, m, d] = tripStartDate.split("-").map(Number);
+  const date = new Date(y, m - 1, d + dayNumber - 1);
+  const label = date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  return `Day ${dayNumber} · ${label}`;
+}
 
 export default function ExplorePage() {
   const searchParams = useSearchParams();
@@ -1256,7 +1265,7 @@ export default function ExplorePage() {
               />
               <div>
                 <h2 className="text-base font-black text-white">Daywave AI</h2>
-                <p className="text-xs text-white/70 mt-0.5">Your day-of Maui guide</p>
+                <p className="text-xs text-white/70 mt-0.5">Your day-of {activeTrip.activeTrip?.destination ?? "travel"} guide</p>
               </div>
             </div>
             <button
@@ -1272,7 +1281,7 @@ export default function ExplorePage() {
             {aiMessages.length === 0 && (
               <div className="flex flex-col gap-3 py-4">
                 <div className="flex flex-col items-center gap-2 mb-3">
-                  <p className="text-sm font-bold text-slate-700 text-center">Hi! I know all about your Maui trip.</p>
+                  <p className="text-sm font-bold text-slate-700 text-center">Hi! I know all about your {activeTrip.activeTrip?.title ?? "trip"}.</p>
                   <p className="text-xs text-slate-400 text-center">Ask about activities, restaurants, packing tips, road to Hana, kids stuff — anything!</p>
                 </div>
                 <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">Try asking:</p>
@@ -1329,7 +1338,7 @@ export default function ExplorePage() {
               value={aiInput}
               onChange={(e) => setAiInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendAiMessage()}
-              placeholder="Ask about Maui…"
+              placeholder={`Ask about ${activeTrip.activeTrip?.destination ?? "your trip"}…`}
               className="flex-1 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-sky-400"
             />
             <button
@@ -1355,9 +1364,17 @@ export default function ExplorePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/78 via-slate-950/18 to-sky-950/5" />
         <div className="absolute inset-x-0 bottom-0 px-4 pb-8">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/14 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-            Near {location}
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/14 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+              Near {location}
+            </div>
+            {activeTrip.activeTrip?.destination && (
+              <div className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-amber-400/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-200 backdrop-blur-md">
+                <span>📍</span>
+                {activeTrip.activeTrip.destination}
+              </div>
+            )}
           </div>
           <h1 className="text-3xl font-black leading-none tracking-tight text-white">
             Explore nearby
@@ -2028,7 +2045,14 @@ export default function ExplorePage() {
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-sm font-black text-slate-900">Verified Traveler Routes</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-black text-slate-900">Verified Traveler Routes</p>
+                  {activeTrip.activeTrip?.destination && (
+                    <span className="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-full px-2 py-0.5">
+                      📍 {activeTrip.activeTrip.destination}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-400 mt-0.5">Optimized day itineraries from thousands of visitors</p>
               </div>
               <div className="flex items-center gap-1 bg-sky-50 border border-sky-100 rounded-full px-2.5 py-1">
@@ -2057,7 +2081,7 @@ export default function ExplorePage() {
                           {route.subtitle}
                         </div>
                         <div className="absolute bottom-0 left-0 right-0 px-3 pb-3">
-                          <p className="text-[10px] font-semibold text-white/70 mb-0.5">{route.dayTheme}</p>
+                          <p className="text-[10px] font-semibold text-white/70 mb-0.5">{formatRouteDay(route.dayNumber, activeTrip.activeTrip?.start_date)}</p>
                           <div className="flex items-center justify-between">
                             <p className="text-base font-black text-white">{route.emoji} {route.title}</p>
                             <span className="text-white/60 text-sm">{isOpen ? "↑" : "↓"}</span>
