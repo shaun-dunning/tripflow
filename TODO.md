@@ -79,12 +79,12 @@
 - [ ] Vault: airport city map (OGG → Maui, LAX → Los Angeles) is hardcoded for known airports — acceptable for now but won't resolve obscure airports
 
 ## Design Audit — Inconsistencies (Polish pass)
-- [ ] Standardize dark CTA: pick either bg-slate-900 or bg-slate-950 and use it everywhere
-- [ ] Standardize card border radius: define sm=rounded-xl / md=rounded-2xl / lg=rounded-3xl rules and enforce across all cards/sheets
-- [ ] Standardize sheet max-height: all bottom sheets should use consistent max-h value (currently 88vh vs 90vh)
-- [ ] Section label size: consolidate text-[10px] vs text-xs for uppercase section headers
-- [ ] Page outer padding: standardize px-4 vs px-5 across all pages
-- [ ] Terminology: pick "Docs" or "Vault" consistently; pick "Travelers" or "Crew" consistently
+- [x] Standardize dark CTA: bg-slate-950 everywhere (replaced all bg-slate-900 across 12 files)
+- [x] Standardize card border radius: already consistent — rounded-t-3xl sheets, rounded-2xl cards, rounded-xl inputs. No changes needed.
+- [x] Standardize sheet max-height: all full bottom sheets now max-h-[90vh]; shorter pickers intentionally stay shorter
+- [x] Section label size: uppercase section/status labels standardized to text-[10px]; form input labels kept at text-xs for readability
+- [x] Page outer padding: already consistently px-4 for page content, px-5 for sheet interiors. No changes needed.
+- [x] Terminology: "Docs" is the visible label in nav + page header; "Travelers" is used in visible UI. "Crew" and "Vault" are only in internal code. No changes needed.
 
 ## Recommended Next
 - [x] Manual demo QA pass — run invite join, tab navigation, Vault-linked reservations, Group cards, Packing sync fallback, and mobile layout checks before sharing broadly.
