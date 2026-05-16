@@ -133,7 +133,7 @@ export default function AuthPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#061832]/92 via-[#061832]/34 to-[#061832]/10" />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/30 to-transparent" />
-        <div className="absolute left-6 top-6">
+        <div className="absolute inset-x-0 top-14 flex justify-center">
           <p className="font-serif text-2xl font-light leading-none text-white drop-shadow-sm">
             daywave
           </p>

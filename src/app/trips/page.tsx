@@ -284,7 +284,7 @@ export default function TripsPage() {
   }
 
   return (
-    <div className="flex flex-col px-4 pt-5 pb-6 gap-5">
+    <div className="flex flex-col pb-6 gap-5">
 
       {/* ── Edit trip sheet ── */}
       {editingTrip && (
@@ -472,89 +472,86 @@ export default function TripsPage() {
       )}
 
       {/* ══════════════════════════════════════
-          ACTIVE TRIP CARD
+          ACTIVE TRIP HERO — full-bleed
       ══════════════════════════════════════ */}
       <div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Active Trip</p>
-        <div className="rounded-2xl overflow-hidden shadow-md border border-sky-100">
+        {/* Hero photo — edge-to-edge */}
+        <div className="relative h-56 w-full overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&h=560&fit=crop&q=85"
+            alt="Maui, Hawaii"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#061832]/90 via-[#061832]/30 to-[#061832]/10" />
 
-          {/* Hero photo */}
-          <div className="relative h-48 w-full">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=300&fit=crop&q=80"
-              alt="Maui, Hawaii"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-sky-900/10" />
-
-            {/* Countdown pill */}
-            <div className="absolute top-3 right-3 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-1.5 text-center min-w-[56px]">
-              {isComplete ? (
-                <p className="text-xl font-black leading-none">✓</p>
-              ) : (
-                <p className="text-xl font-black leading-none">{countdownNumber}</p>
-              )}
-              <p className="text-[10px] font-semibold tracking-wide mt-0.5 opacity-80">{countdownLabel}</p>
-            </div>
-
-            {/* Trip identity */}
-            <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
-              <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-0.5">
-                {statusLabel}
-              </p>
-              <h2 className="text-xl font-black text-white leading-tight">{tripTitle}</h2>
-              <p className="text-xs text-white/70 mt-0.5">{tripDateRange} · {travelerCount} travelers 🌺</p>
-            </div>
+          {/* Countdown pill */}
+          <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-1.5 text-center min-w-[56px]">
+            {isComplete ? (
+              <p className="text-xl font-black leading-none">✓</p>
+            ) : (
+              <p className="text-xl font-black leading-none">{countdownNumber}</p>
+            )}
+            <p className="text-[10px] font-semibold tracking-wide mt-0.5 opacity-80">{countdownLabel}</p>
           </div>
 
-          {/* Stats + CTA row */}
-          <div
-            className="px-4 py-3 flex items-center gap-4"
-            style={{ background: "linear-gradient(135deg, #e0f2fe, #fef9c3)" }}
-          >
-            <div className="flex gap-4 flex-1">
-              <div className="flex flex-col items-center">
-                <span className="text-base font-black text-slate-800">{statDays}</span>
-                <span className="text-[10px] text-slate-500 font-medium">days</span>
-              </div>
-              <div className="w-px h-8 bg-slate-200 self-center" />
-              <div className="flex flex-col items-center">
-                <span className="text-base font-black text-slate-800">{travelerCount}</span>
-                <span className="text-[10px] text-slate-500 font-medium">travelers</span>
-              </div>
-              <div className="w-px h-8 bg-slate-200 self-center" />
-              <div className="flex flex-col items-center">
-                <span className="text-base font-black text-slate-800">{statRight}</span>
-                <span className="text-[10px] text-slate-500 font-medium">{statRightLabel}</span>
-              </div>
-            </div>
-            <Link
-              href="/"
-              className="bg-slate-950 text-white text-xs font-bold px-4 py-2.5 rounded-xl whitespace-nowrap flex-none hover:bg-slate-800 transition-colors"
-            >
-              Open Trip →
-            </Link>
+          {/* Trip identity */}
+          <div className="absolute bottom-0 left-0 right-0 px-4 pb-5">
+            <p className="text-[10px] font-semibold text-white/60 uppercase tracking-widest mb-0.5">
+              {statusLabel}
+            </p>
+            <h2 className="text-2xl font-black text-white leading-tight">{tripTitle}</h2>
+            <p className="text-xs text-white/70 mt-0.5">{tripDateRange} · {travelerCount} travelers 🌺</p>
           </div>
-
-          {/* Packing List ingress */}
-          <button
-            onClick={() => router.push("/packing")}
-            className="w-full flex items-center gap-3 px-4 py-3 border-t border-slate-100 bg-white hover:bg-slate-50 transition-colors"
-          >
-            <span className="text-base">🧳</span>
-            <div className="flex-1 text-left">
-              <p className="text-xs font-bold text-slate-700">Packing List</p>
-              <p className="text-[10px] text-slate-400">Tailored to your {tripTitle} itinerary</p>
-            </div>
-            <span className="text-slate-300 text-sm">›</span>
-          </button>
         </div>
+
+        {/* Stats + CTA row */}
+        <div
+          className="px-4 py-3 flex items-center gap-4"
+          style={{ background: "linear-gradient(135deg, #e0f2fe, #fef9c3)" }}
+        >
+          <div className="flex gap-4 flex-1">
+            <div className="flex flex-col items-center">
+              <span className="text-base font-black text-slate-800">{statDays}</span>
+              <span className="text-[10px] text-slate-500 font-medium">days</span>
+            </div>
+            <div className="w-px h-8 bg-slate-200 self-center" />
+            <div className="flex flex-col items-center">
+              <span className="text-base font-black text-slate-800">{travelerCount}</span>
+              <span className="text-[10px] text-slate-500 font-medium">travelers</span>
+            </div>
+            <div className="w-px h-8 bg-slate-200 self-center" />
+            <div className="flex flex-col items-center">
+              <span className="text-base font-black text-slate-800">{statRight}</span>
+              <span className="text-[10px] text-slate-500 font-medium">{statRightLabel}</span>
+            </div>
+          </div>
+          <Link
+            href="/"
+            className="bg-slate-950 text-white text-xs font-bold px-4 py-2.5 rounded-xl whitespace-nowrap flex-none hover:bg-slate-800 transition-colors"
+          >
+            Open Trip →
+          </Link>
+        </div>
+
+        {/* Packing List ingress */}
+        <button
+          onClick={() => router.push("/packing")}
+          className="w-full flex items-center gap-3 px-4 py-3 border-t border-slate-100 bg-white hover:bg-slate-50 transition-colors"
+        >
+          <span className="text-base">🧳</span>
+          <div className="flex-1 text-left">
+            <p className="text-xs font-bold text-slate-700">Packing List</p>
+            <p className="text-[10px] text-slate-400">Tailored to your {tripTitle} itinerary</p>
+          </div>
+          <span className="text-slate-300 text-sm">›</span>
+        </button>
       </div>
 
       {/* ══════════════════════════════════════
           TODAY AT A GLANCE
       ══════════════════════════════════════ */}
+      <div className="px-4 flex flex-col gap-5">
       {isActive ? (
         <div className="bg-sky-50 border border-sky-100 rounded-2xl px-4 py-3.5">
           <div className="flex items-center justify-between mb-3">
@@ -652,6 +649,7 @@ export default function TripsPage() {
         Plan a new trip
       </button>
 
+      </div>
     </div>
   );
 }

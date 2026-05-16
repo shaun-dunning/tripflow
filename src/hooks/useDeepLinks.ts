@@ -30,16 +30,19 @@ export function useDeepLinks() {
 
           try {
             const parsed = new URL(normalized);
-            const type = parsed.searchParams.get("type") ?? new URLSearchParams(parsed.hash.slice(1)).get("type");
+            const hashParams = new URLSearchParams(parsed.hash.slice(1));
+            const type = parsed.searchParams.get("type") ?? hashParams.get("type");
+            const accessToken = parsed.searchParams.get("access_token") ?? hashParams.get("access_token");
+            const refreshToken = parsed.searchParams.get("refresh_token") ?? hashParams.get("refresh_token");
 
-            // Let Supabase parse the tokens from the URL and establish a session.
-            const { error } = await supabase.auth.getSessionFromUrl();
-            if (!error) {
-              // Route to the appropriate screen after auth completes.
-              if (type === "recovery") {
-                router.replace("/auth");
-              } else {
-                router.replace("/");
+            if (accessToken && refreshToken) {
+              const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+              if (!error) {
+                if (type === "recovery") {
+                  router.replace("/auth");
+                } else {
+                  router.replace("/");
+                }
               }
             }
           } catch {

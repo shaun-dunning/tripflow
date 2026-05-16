@@ -821,7 +821,7 @@ export default function TripPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 px-4 pt-4 pb-6">
+    <div className="flex flex-col gap-5 pb-6">
 
       {/* ── Trip saved toast ────────────────────────────────────────────── */}
       {savedTripToast && (
@@ -1182,10 +1182,10 @@ export default function TripPage() {
       {/* ══════════════════════════════════════
           ACTIVE TRIP CONTAINER
       ══════════════════════════════════════ */}
-      <div className="rounded-3xl overflow-hidden shadow-xl border border-sky-100">
+      <div>
 
         {/* ── Cover photo ── */}
-        <div className="relative h-52 w-full">
+        <div className="relative h-56 w-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={trip?.coverPhoto ?? getPhotosForDestination(trip?.destination ?? "")[0]?.url ?? DEFAULT_PHOTOS[0].url}
@@ -1320,6 +1320,7 @@ export default function TripPage() {
       {/* ══════════════════════════════════════
           TRIP LIFECYCLE SECTIONS
       ══════════════════════════════════════ */}
+      <div className="px-4 flex flex-col gap-5">
       {(() => {
         // Sort planning trips by date ascending, split past vs future
         const todayMs = new Date().setHours(0, 0, 0, 0);
@@ -1590,6 +1591,7 @@ export default function TripPage() {
           </>
         );
       })()}
+      </div>
 
     </div>
   );
