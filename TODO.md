@@ -119,11 +119,23 @@
 - [x] Add an `APP_STORE_READINESS.md` runbook with exact local build, simulator, TestFlight, and App Store submission steps.
 - [x] Add a privacy/data checklist for App Store Connect: account creation, user-generated trip data, family/invite sharing, Supabase auth, analytics status, and data deletion expectations.
 
+### iOS Deep Link + Privacy Hardening (Complete)
+- [x] Install `@capacitor/app` v8.1.0 for `appUrlOpen` deep link events.
+- [x] Add `isNativeApp()` utility and update `getDaywaveOrigin()` to return `app.daywave:/` inside Capacitor shell.
+- [x] Add `useDeepLinks` hook — listens for `appUrlOpen`, normalizes custom scheme, calls `supabase.auth.getSessionFromUrl()`, and routes to the correct screen post-auth.
+- [x] Add `DeepLinkHandler` client component wrapper so the hook can mount from the server-component layout.
+- [x] Rewrite `ios/App/App/Info.plist` — add `app.daywave` URL scheme, `NSPhotoLibraryUsageDescription`, `NSCameraUsageDescription`, portrait-only iPhone orientations, and `arm64` device requirement.
+- [x] Create `ios/App/App/PrivacyInfo.xcprivacy` — Apple-required privacy manifest declaring `NSPrivacyTracking: false`, collected data types (email, name, user content, photos), and UserDefaults API access (reason CA92.1).
+- [x] Make `webContentsDebuggingEnabled` env-conditional (only enabled outside production).
+
 ### Manual / Apple Account Work
 - [ ] Enroll or confirm Apple Developer Program membership ($99/year).
+- [ ] **Run in Supabase SQL Editor:** `supabase/packing-sync-fix.sql` (enables RLS policy for packing_items so cross-device sync works for all trip members).
+- [ ] **Supabase Auth settings:** add `app.daywave://` to allowed redirect URLs under Auth → URL Configuration.
+- [ ] Run `npm run mobile:build` then `npx cap sync ios` to push the new @capacitor/app plugin and latest web build into the Xcode project.
 - [ ] Create the Daywave App Store Connect app record.
 - [ ] Confirm final app name, subtitle, category, age rating, support URL, marketing URL, privacy policy URL, and contact info.
-- [ ] Configure iOS signing team and bundle identifier in Xcode.
+- [ ] Configure iOS signing team and bundle identifier in Xcode (run `npm run cap:open:ios` to open the project).
 - [ ] Test full app in iOS Simulator across at least one small iPhone and one large iPhone viewport.
 - [ ] Test on a physical iPhone: invite link, auth email redirect, demo join, family join, trip creation, tab navigation, offline/poor-network behavior, safe areas, keyboard, and sharing.
 - [ ] Prepare App Store screenshots, app preview copy, keywords, description, and promotional text.
