@@ -264,7 +264,7 @@ function itemToRow(item: PackItem, index: number, tripId: string): PackingRow {
   };
 }
 
-async function loadSharedItems(tripId: string): Promise<{ items: PackItem[]; shared: boolean }> {
+async function loadSharedItems(tripId: string): Promise<{ items: PackItem[]; synced: boolean }> {
   const localItems = tripId === DEMO_TRIP_ID ? buildDemoItems() : loadLocalItems();
   const { data, error } = await supabase
     .from("packing_items")
@@ -272,16 +272,31 @@ async function loadSharedItems(tripId: string): Promise<{ items: PackItem[]; sha
     .eq("trip_id", tripId)
     .order("sort_order", { ascending: true });
 
-  if (error) return { items: localItems, shared: false };
-  if (data && data.length > 0) return { items: (data as PackingRow[]).map(rowToItem), shared: true };
+  if (error) {
+    // Supabase unreachable or RLS blocking — return local copy but mark unsynced.
+    // Saves will still attempt Supabase on each change; this is not a permanent fallback.
+    return { items: localItems, synced: false };
+  }
+  if (data && data.length > 0) return { items: (data as PackingRow[]).map(rowToItem), synced: true };
 
+  // No rows in Supabase yet — seed from local so both devices share the same starting list.
   await saveSharedItems(localItems, tripId);
-  return { items: localItems, shared: true };
+  return { items: localItems, synced: true };
 }
 
 async function saveSharedItems(items: PackItem[], tripId: string): Promise<void> {
   const rows = items.map((item, index) => itemToRow(item, index, tripId));
   await supabase.from("packing_items").upsert(rows, { onConflict: "id" });
+}
+
+async function fetchSupabaseItems(tripId: string): Promise<PackItem[] | null> {
+  const { data, error } = await supabase
+    .from("packing_items")
+    .select("id, trip_id, name, category, assignee, packed, is_suggested, sort_order")
+    .eq("trip_id", tripId)
+    .order("sort_order", { ascending: true });
+  if (error || !data || data.length === 0) return null;
+  return (data as PackingRow[]).map(rowToItem);
 }
 
 // ---------------------------------------------------------------------------
@@ -312,7 +327,7 @@ export default function PackingPage() {
   const [showMustHaves, setShowMustHaves] = useState(false);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<Set<string>>(new Set());
   const [shareToast, setShareToast] = useState<string | null>(null);
-  const [sharedPacking, setSharedPacking] = useState(false);
+  const [syncedToCloud, setSyncedToCloud] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
 
   // Add-item sheet
@@ -328,23 +343,23 @@ export default function PackingPage() {
     if (activeTrip.isPreview) {
       queueMicrotask(() => {
         setItems(loadLocalItems());
-        setSharedPacking(false);
+        setSyncedToCloud(false);
         setHydrated(true);
       });
       return;
     }
     if (!activeTrip.activeTripId) return;
     let cancelled = false;
-    loadSharedItems(activeTrip.activeTripId).then(({ items: loadedItems, shared }) => {
+    loadSharedItems(activeTrip.activeTripId).then(({ items: loadedItems, synced }) => {
       if (cancelled) return;
       setItems(loadedItems);
-      setSharedPacking(shared);
+      setSyncedToCloud(synced);
       setHydrated(true);
     }).catch((err) => {
       if (cancelled) return;
       console.warn("Packing list is using local fallback.", err);
       setItems(loadLocalItems());
-      setSharedPacking(false);
+      setSyncedToCloud(false);
       setHydrated(true);
     });
 
@@ -361,6 +376,21 @@ export default function PackingPage() {
     return () => { cancelled = true; };
   }, [activeTrip.activeTripId, activeTrip.isPreview]);
 
+  // Re-fetch from Supabase whenever the tab/app regains visibility so cross-device
+  // changes made on another device appear without a full page reload.
+  useEffect(() => {
+    const tripId = activeTrip.activeTripId;
+    if (!tripId || activeTrip.isPreview) return;
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      fetchSupabaseItems(tripId).then((fresh) => {
+        if (fresh) { setItems(fresh); setSyncedToCloud(true); }
+      }).catch(() => { /* silent — keep current list */ });
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [activeTrip.activeTripId, activeTrip.isPreview]);
+
   // Scroll-aware sticky header
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 140);
@@ -368,14 +398,19 @@ export default function PackingPage() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Persist on every change (skip initial render)
+  // Persist on every change (skip initial render).
+  // Always attempt Supabase — don't gate on syncedToCloud so a transient initial
+  // load failure doesn't silently strand changes on this device.
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (!hydrated) return;
     if (isFirstRender.current) { isFirstRender.current = false; return; }
     saveLocalItems(items);
-    if (sharedPacking && activeTrip.activeTripId) void saveSharedItems(items, activeTrip.activeTripId);
-  }, [activeTrip.activeTripId, items, hydrated, sharedPacking]);
+    const tripId = activeTrip.activeTripId;
+    if (tripId && tripId !== DEMO_TRIP_ID && !activeTrip.isPreview) {
+      void saveSharedItems(items, tripId).then(() => setSyncedToCloud(true)).catch(() => {});
+    }
+  }, [activeTrip.activeTripId, activeTrip.isPreview, items, hydrated]);
 
   // Focus add-name field when sheet opens
   useEffect(() => {
@@ -428,8 +463,9 @@ export default function PackingPage() {
 
   function deleteItem(id: string) {
     setItems((prev) => prev.filter((i) => i.id !== id));
-    if (sharedPacking && activeTrip.activeTripId) {
-      void supabase.from("packing_items").delete().eq("trip_id", activeTrip.activeTripId).eq("id", id);
+    const tripId = activeTrip.activeTripId;
+    if (tripId && tripId !== DEMO_TRIP_ID && !activeTrip.isPreview) {
+      void supabase.from("packing_items").delete().eq("trip_id", tripId).eq("id", id);
     }
   }
 
@@ -494,7 +530,8 @@ export default function PackingPage() {
     setItems(reset);
     setConfirmReset(false);
     saveLocalItems(reset);
-    if (sharedPacking && activeTrip.activeTripId) void saveSharedItems(reset, activeTrip.activeTripId);
+    const tripId = activeTrip.activeTripId;
+    if (tripId && tripId !== DEMO_TRIP_ID && !activeTrip.isPreview) void saveSharedItems(reset, tripId);
   }
 
   async function shareList() {
@@ -799,7 +836,7 @@ export default function PackingPage() {
           </p>
           <h1 className="text-2xl font-black text-white leading-tight">Pack Smart</h1>
           <p className="text-xs text-white/60 mt-0.5">
-            {totalItems} items · {sharedPacking ? "shared with the group" : "private on this device"}
+            {totalItems} items · {syncedToCloud ? "synced with group ☁️" : "saving locally…"}
           </p>
         </div>
       </div>
