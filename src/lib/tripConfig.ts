@@ -12,8 +12,17 @@ export const DAYWAVE_URL = "https://daywave.app";
 export const UPCOMING_TRIPS_KEY = "daywave-upcoming-trips";
 export const ARCHIVED_TRIPS_KEY = "daywave-archived-trips";
 
+export function isNativeApp(): boolean {
+  if (typeof window === "undefined") return false;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return !!(window as any).Capacitor?.isNativePlatform?.();
+}
+
 export function getDaywaveOrigin(): string {
   if (typeof window === "undefined") return DAYWAVE_URL;
+  // Inside the iOS Capacitor shell, redirects must use the custom URL scheme
+  // so iOS routes magic-link emails back into the app instead of a browser.
+  if (isNativeApp()) return "app.daywave:/";
   const origin = window.location.origin;
   if (origin.includes("localhost") || origin.includes("127.0.0.1")) return origin;
   return DAYWAVE_URL;

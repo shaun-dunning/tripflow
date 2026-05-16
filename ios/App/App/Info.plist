@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Daywave</string>
+	<string>Daywave</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -20,6 +20,31 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+
+	<!-- Custom URL scheme — iOS routes app.daywave:// links back into the app.
+	     Supabase auth magic links and invite links use this scheme on iOS.
+	     Also add app.daywave:// to your Supabase project's allowed redirect URLs. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>app.daywave</string>
+			</array>
+			<key>CFBundleURLName</key>
+			<string>app.daywave</string>
+		</dict>
+	</array>
+
+	<!-- Photo library — required for group chat photo sharing.
+	     Apple rejects apps that access the photo library without this string. -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Daywave uses your photo library so you can share trip moments with your group.</string>
+
+	<!-- Camera — required if camera access is used for photo uploads. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Daywave uses your camera so you can take and share photos with your travel group.</string>
+
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -28,13 +53,14 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
+
+	<!-- Portrait-only on iPhone — Daywave is a mobile-first app optimised for portrait.
+	     iPad keeps full rotation support. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

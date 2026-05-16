@@ -21,9 +21,8 @@ const config: CapacitorConfig = {
     // Disable native scroll bounce — the app manages its own scroll containers.
     scrollEnabled: false,
 
-    // Allow remote debugging via Safari while developing.
-    // Set to false before submitting to the App Store.
-    webContentsDebuggingEnabled: true,
+    // Only allow Safari remote debugging in dev builds — must be false for App Store.
+    webContentsDebuggingEnabled: process.env.NODE_ENV !== "production",
 
     // Match the Daywave brand navy used as the splash and status-bar background.
     backgroundColor: "#061832",
