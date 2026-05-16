@@ -1642,7 +1642,7 @@ export default function MyDayPage() {
               onClick={() => setDraft((d) => ({ ...d, reservation: !d.reservation }))}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 border transition-all ${
                 draft.reservation
-                  ? "bg-slate-900 text-white border-slate-900"
+                  ? "bg-slate-950 text-white border-slate-900"
                   : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
               }`}
             >
@@ -1698,7 +1698,7 @@ export default function MyDayPage() {
             <button
               onClick={isNewItem ? addItem : saveEdit}
               disabled={sheetSaving || !draft.title.trim()}
-              className="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-sm disabled:opacity-40 transition-opacity"
+              className="flex-1 bg-slate-950 text-white font-bold py-3.5 rounded-2xl text-sm disabled:opacity-40 transition-opacity"
             >
               {sheetSaving
                 ? (isNewItem ? "Adding…" : "Saving…")
@@ -1801,7 +1801,7 @@ export default function MyDayPage() {
                   <div className="flex gap-2.5">
                     <button
                       onClick={() => router.push("/explore")}
-                      className="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-sm"
+                      className="flex-1 bg-slate-950 text-white font-bold py-3.5 rounded-2xl text-sm"
                     >
                       Browse Activities →
                     </button>
@@ -2003,7 +2003,7 @@ export default function MyDayPage() {
                 {/* Origin */}
                 <div className="flex items-start gap-3 mb-1">
                   <div className="flex flex-col items-center flex-none pt-0.5">
-                    <div className="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center text-white text-xs">🏨</div>
+                    <div className="w-7 h-7 rounded-full bg-slate-950 flex items-center justify-center text-white text-xs">🏨</div>
                     <div className="w-0.5 h-4 bg-slate-200 mt-1" />
                   </div>
                   <div className="pt-1">
@@ -2053,7 +2053,7 @@ export default function MyDayPage() {
               <div className="px-5 pb-8 pt-3 border-t border-slate-100 flex flex-col gap-2 flex-none">
                 <a
                   href={googleRouteUrl}
-                  className="w-full flex items-center justify-center gap-2 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm active:scale-[0.98] transition-all"
+                  className="w-full flex items-center justify-center gap-2 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm active:scale-[0.98] transition-all"
                 >
                   <span>🗺</span>
                   <span>Open Full Route in Google Maps</span>
@@ -2153,7 +2153,7 @@ export default function MyDayPage() {
             <div className="absolute bottom-0 left-0 right-0 px-4 pb-4">
               <div className="flex items-end justify-between">
                 <div>
-                  <span className="text-xs font-semibold text-white/70 uppercase tracking-widest">{day.date}</span>
+                  <span className="text-[10px] font-semibold text-white/70 uppercase tracking-widest">{day.date}</span>
                   {editingTheme ? (
                     <input
                       autoFocus
@@ -2228,7 +2228,7 @@ export default function MyDayPage() {
           {dayIndex !== todayDayIndex && (
             <button
               onClick={() => { setDayIndex(todayDayIndex); setEditingTheme(false); }}
-              className="flex items-center gap-1.5 bg-slate-900 text-white text-[11px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-slate-700 active:scale-95 transition-all"
+              className="flex items-center gap-1.5 bg-slate-950 text-white text-[11px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-slate-700 active:scale-95 transition-all"
             >
               <span className="text-[8px]">⬤</span>
               <span>Jump to Today</span>
@@ -2498,7 +2498,7 @@ export default function MyDayPage() {
                     onClick={(e) => { e.stopPropagation(); toggle(item.id); }}
                     className={`text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 active:scale-95 transition-all flex-none ${
                       status === "tbd"
-                        ? "bg-slate-900 text-white"
+                        ? "bg-slate-950 text-white"
                         : "bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white"
                     }`}
                   >

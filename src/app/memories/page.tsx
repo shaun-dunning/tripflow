@@ -269,7 +269,7 @@ export default function MemoriesPage() {
                     <p className="text-white text-[9px] font-semibold opacity-70">Day {day.dayNum}</p>
                   </div>
                   {day.status === "upcoming" && (
-                    <div className="absolute inset-0 bg-slate-900/30 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-slate-950/30 flex items-center justify-center">
                       <span className="text-2xl">🔒</span>
                     </div>
                   )}

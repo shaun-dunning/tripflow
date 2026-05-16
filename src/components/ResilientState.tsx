@@ -41,7 +41,7 @@ export function ResilientState({
           {actionLabel && onAction ? (
             <button
               onClick={onAction}
-              className="mt-3 rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white active:scale-95"
+              className="mt-3 rounded-full bg-slate-950 px-4 py-2 text-xs font-bold text-white active:scale-95"
             >
               {actionLabel}
             </button>

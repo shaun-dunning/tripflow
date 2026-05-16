@@ -308,7 +308,7 @@ export default function TripsPage() {
                       key={e}
                       onClick={() => setEditEmoji(e)}
                       className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl transition-all ${
-                        editEmoji === e ? "bg-slate-900 scale-110" : "bg-slate-100"
+                        editEmoji === e ? "bg-slate-950 scale-110" : "bg-slate-100"
                       }`}
                     >
                       {e}
@@ -341,7 +341,7 @@ export default function TripsPage() {
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={saveEditTrip}
-                  className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
+                  className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm"
                 >
                   Save changes
                 </button>
@@ -424,7 +424,7 @@ export default function TripsPage() {
                       onClick={() => setNewTravelers(n)}
                       className={`flex-1 py-2.5 rounded-2xl text-sm font-bold border transition-all ${
                         newTravelers === n
-                          ? "bg-slate-900 text-white border-slate-900"
+                          ? "bg-slate-950 text-white border-slate-900"
                           : "bg-white text-slate-600 border-slate-200"
                       }`}
                     >
@@ -439,7 +439,7 @@ export default function TripsPage() {
               <button
                 onClick={addNewTrip}
                 disabled={!newTitle.trim()}
-                className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40"
+                className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40"
               >
                 Create Trip
               </button>
@@ -531,7 +531,7 @@ export default function TripsPage() {
             </div>
             <Link
               href="/"
-              className="bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl whitespace-nowrap flex-none hover:bg-slate-800 transition-colors"
+              className="bg-slate-950 text-white text-xs font-bold px-4 py-2.5 rounded-xl whitespace-nowrap flex-none hover:bg-slate-800 transition-colors"
             >
               Open Trip →
             </Link>

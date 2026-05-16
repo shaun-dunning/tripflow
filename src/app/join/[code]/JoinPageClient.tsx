@@ -581,7 +581,7 @@ export default function JoinPageClient() {
             <button
               type="submit"
               disabled={authLoading}
-              className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mt-1 disabled:opacity-50 transition-opacity"
+              className="w-full bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm mt-1 disabled:opacity-50 transition-opacity"
             >
               {authLoading ? "Updating…" : "Update password"}
             </button>
@@ -603,7 +603,7 @@ export default function JoinPageClient() {
                     localStorage.setItem(ACTIVE_TRIP_KEY, trip.id);
                     router.replace("/");
                   }}
-                  className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
+                  className="w-full bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm"
                 >
                   Open Daywave
                 </button>
@@ -649,7 +649,7 @@ export default function JoinPageClient() {
                         onClick={() => setSelectedAvatar(avatar)}
                         className={`h-11 rounded-2xl text-xl transition-all ${
                           selectedAvatar === avatar
-                            ? "bg-slate-900 shadow-sm"
+                            ? "bg-slate-950 shadow-sm"
                             : "bg-slate-100"
                         }`}
                       >
@@ -667,7 +667,7 @@ export default function JoinPageClient() {
                 <button
                   onClick={handleJoinAsLoggedIn}
                   disabled={joining}
-                  className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-50"
+                  className="w-full bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-50"
                 >
                   {joining
                     ? (inviteMode === "preview" ? "Opening…" : "Joining…")
@@ -712,7 +712,7 @@ export default function JoinPageClient() {
 
             {confirmEmail && (
               <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                <p className="text-xs font-black uppercase tracking-widest text-amber-700">Check your email</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-amber-700">Check your email</p>
                 <p className="mt-1 text-sm leading-relaxed text-amber-900">
                   We sent a confirmation link to <span className="font-bold">{confirmEmail}</span>. Open that email to finish creating your Daywave account, then sign in here to open the sample trip.
                 </p>
@@ -721,7 +721,7 @@ export default function JoinPageClient() {
 
             {resetSent && (
               <div className="mb-5 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
-                <p className="text-xs font-black uppercase tracking-widest text-sky-700">Check your email</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-sky-700">Check your email</p>
                 <p className="mt-1 text-sm leading-relaxed text-sky-900">
                   {resetSent.includes("@")
                     ? <>We sent a password reset link to <span className="font-bold">{resetSent}</span>. Open it to choose a new password, then Daywave will bring you back here.</>
@@ -763,7 +763,7 @@ export default function JoinPageClient() {
                       onClick={() => setSelectedAvatar(avatar)}
                       className={`h-11 rounded-2xl text-xl transition-all ${
                         selectedAvatar === avatar
-                          ? "bg-slate-900 shadow-sm"
+                          ? "bg-slate-950 shadow-sm"
                           : "bg-slate-100"
                       }`}
                     >
@@ -837,7 +837,7 @@ export default function JoinPageClient() {
               <button
                 type="submit"
                 disabled={authLoading}
-                className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mt-1 disabled:opacity-50 transition-opacity"
+                className="w-full bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm mt-1 disabled:opacity-50 transition-opacity"
               >
                 {authLoading
                   ? "Please wait…"

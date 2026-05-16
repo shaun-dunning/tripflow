@@ -51,13 +51,13 @@ export default function TripAccessGate({
         {showJoinAction ? (
           <button
             onClick={() => router.push(`/join/${INVITE_CODE}`)}
-            className="mt-5 w-full rounded-2xl bg-slate-900 py-3.5 text-sm font-bold text-white"
+            className="mt-5 w-full rounded-2xl bg-slate-950 py-3.5 text-sm font-bold text-white"
           >
             Join Maui Family Trip
           </button>
         ) : (
           <div className="mt-5 rounded-2xl bg-slate-50 px-4 py-3 text-left">
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Invite required</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Invite required</p>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">
               Ask the trip organizer for their invite link or code to join a private trip.
             </p>

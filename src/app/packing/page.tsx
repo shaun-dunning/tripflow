@@ -636,7 +636,7 @@ export default function PackingPage() {
           <div className="h-5 w-px bg-slate-100 flex-none" />
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-700 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-full transition-all flex-none"
+            className="flex items-center gap-1.5 bg-slate-950 hover:bg-slate-700 active:scale-95 text-white text-xs font-bold px-4 py-2.5 rounded-full transition-all flex-none"
           >
             <span className="text-sm leading-none">←</span>
             <span>Done</span>
@@ -646,7 +646,7 @@ export default function PackingPage() {
 
       {/* ── Share toast ── */}
       {shareToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-slate-950 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <span>📋</span>
           <span>{shareToast}</span>
         </div>
@@ -720,7 +720,7 @@ export default function PackingPage() {
                         onClick={() => setAddCategory(cat)}
                         className={`flex items-center gap-2 px-3 py-2.5 rounded-2xl border text-sm font-semibold transition-all ${
                           addCategory === cat
-                            ? "bg-slate-900 text-white border-slate-900"
+                            ? "bg-slate-950 text-white border-slate-900"
                             : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
                         }`}
                       >
@@ -744,7 +744,7 @@ export default function PackingPage() {
                         onClick={() => setAddAssignee(a)}
                         className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-xs font-semibold transition-all ${
                           addAssignee === a
-                            ? "bg-slate-900 text-white border-slate-900"
+                            ? "bg-slate-950 text-white border-slate-900"
                             : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
                         }`}
                       >
@@ -761,7 +761,7 @@ export default function PackingPage() {
               <button
                 onClick={submitAddItem}
                 disabled={!addName.trim()}
-                className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40 transition-opacity"
+                className="w-full bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40 transition-opacity"
               >
                 Add to {addCategory}
               </button>
@@ -1006,7 +1006,7 @@ export default function PackingPage() {
                     className={`text-[10px] font-bold px-2.5 py-1 rounded-full transition-colors ${
                       catDone
                         ? "bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                        : "bg-slate-900 text-white hover:bg-slate-700"
+                        : "bg-slate-950 text-white hover:bg-slate-700"
                     }`}
                   >
                     {catDone ? "Unpack all" : "Pack all"}
@@ -1097,7 +1097,7 @@ export default function PackingPage() {
       {/* ── FAB ── */}
       <button
         onClick={() => openAddSheet()}
-        className="fixed bottom-24 right-4 w-14 h-14 bg-slate-900 text-white rounded-full shadow-xl flex items-center justify-center text-2xl font-light hover:bg-slate-700 transition-colors z-40 active:scale-95"
+        className="fixed bottom-24 right-4 w-14 h-14 bg-slate-950 text-white rounded-full shadow-xl flex items-center justify-center text-2xl font-light hover:bg-slate-700 transition-colors z-40 active:scale-95"
         title="Add item"
       >
         +

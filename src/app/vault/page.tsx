@@ -626,7 +626,7 @@ export default function VaultPage() {
 
       {/* ── Save success toast ── */}
       <div className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 ${savedToast ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"}`}>
-        <div className="flex items-center gap-2 bg-slate-900 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg">
+        <div className="flex items-center gap-2 bg-slate-950 text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg">
           <span className="text-emerald-400">✓</span>
           <span>Reservation saved</span>
         </div>
@@ -655,7 +655,7 @@ export default function VaultPage() {
                 <button key={cat}
                   onClick={() => setAddForm({ ...BLANK_ADD, category: cat, emoji: CATEGORY_EMOJIS[cat] ?? "📄" })}
                   className={`flex-none flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full transition-all ${
-                    addForm.category === cat ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"
+                    addForm.category === cat ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-500"
                   }`}
                 >
                   <span>{CATEGORY_EMOJIS[cat]}</span> {cat}
@@ -686,7 +686,7 @@ export default function VaultPage() {
                     <button key={s}
                       onClick={() => setAddForm({ ...addForm, status: s })}
                       className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                        addForm.status === s ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
+                        addForm.status === s ? "bg-slate-950 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
                       }`}
                     >
                       {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -711,7 +711,7 @@ export default function VaultPage() {
               Cancel
             </button>
             <button onClick={addDoc} disabled={saving}
-              className="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-sm disabled:opacity-50">
+              className="flex-1 bg-slate-950 text-white font-bold py-3.5 rounded-2xl text-sm disabled:opacity-50">
               {saving ? "Saving…" : "Add to Docs"}
             </button>
           </div>
@@ -781,7 +781,7 @@ export default function VaultPage() {
             {detailDoc && (isEditing ? (
               /* ── Edit mode ── */
               <div className="flex flex-col gap-3.5 pb-4">
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Edit details</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Edit details</p>
 
                 <Field label="Name / Route">
                   <input type="text" value={(editFields.name as string) ?? ""}
@@ -857,7 +857,7 @@ export default function VaultPage() {
                   <div className="flex gap-2">
                     {(["confirmed", "pending", "completed"] as const).map((s) => (
                       <button key={s} onClick={() => setEditFields({ ...editFields, status: s })}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${editFields.status === s ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}`}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${editFields.status === s ? "bg-slate-950 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}`}
                       >{s.charAt(0).toUpperCase() + s.slice(1)}</button>
                     ))}
                   </div>
@@ -969,7 +969,7 @@ export default function VaultPage() {
                 <button onClick={() => { setIsEditing(false); setSaveError(null); }}
                   className="px-4 py-3 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl">Cancel</button>
                 <button onClick={saveEdit} disabled={saving}
-                  className="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-sm disabled:opacity-50">
+                  className="flex-1 bg-slate-950 text-white font-bold py-3.5 rounded-2xl text-sm disabled:opacity-50">
                   {saving ? "Saving…" : "Save Changes"}
                 </button>
               </>
@@ -982,7 +982,7 @@ export default function VaultPage() {
                   </button>
                 )}
                 <button onClick={startEdit}
-                  className="flex-1 bg-slate-900 text-white font-bold py-3.5 rounded-2xl text-sm">
+                  className="flex-1 bg-slate-950 text-white font-bold py-3.5 rounded-2xl text-sm">
                   Edit Details
                 </button>
               </>
@@ -1054,7 +1054,7 @@ export default function VaultPage() {
             return (
               <button key={cat} onClick={() => setActiveCategory(cat)}
                 className={`flex-none flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-full whitespace-nowrap transition-all ${
-                  active ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  active ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                 }`}
               >
                 {cat !== "All" && <span className="text-sm">{CATEGORY_EMOJIS[cat]}</span>}
@@ -1327,7 +1327,7 @@ export default function VaultPage() {
         {/* Add CTA */}
         <button onClick={openAddSheet}
           className="flex items-center gap-3 w-full bg-white border border-slate-100 rounded-2xl px-4 py-4 text-left shadow-sm hover:shadow-md transition-shadow group">
-          <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-lg flex-none group-hover:bg-sky-600 transition-colors">
+          <div className="w-10 h-10 rounded-xl bg-slate-950 flex items-center justify-center text-lg flex-none group-hover:bg-sky-600 transition-colors">
             <span className="text-white font-black text-base">+</span>
           </div>
           <div className="flex-1">

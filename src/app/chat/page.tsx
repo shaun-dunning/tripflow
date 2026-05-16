@@ -672,7 +672,7 @@ export default function ChatPage() {
               </div>
 
               <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
-                <p className="text-xs font-black uppercase tracking-widest text-sky-700">Trying the app</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-sky-700">Trying the app</p>
                 <p className="mt-1 text-sm leading-relaxed text-sky-800">
                   For friends who should test a fully loaded anonymized trip, use <span className="font-mono font-bold">/join/DEMO</span>. For a lightweight read-only preview, use <span className="font-mono font-bold">/join/DAYWAVE</span>.
                 </p>
@@ -689,7 +689,7 @@ export default function ChatPage() {
                 </button>
                 <button
                   onClick={shareInviteLink}
-                  className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
+                  className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm"
                 >
                   Share ↗
                 </button>
@@ -783,7 +783,7 @@ export default function ChatPage() {
                 <button
                   onClick={submitPoll}
                   disabled={!pollQuestion.trim() || pollOptions.filter((o) => o.trim()).length < 2}
-                  className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40"
+                  className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40"
                 >
                   Post Poll
                 </button>
@@ -798,7 +798,7 @@ export default function ChatPage() {
         <div className="fixed inset-0 z-[60] flex items-end justify-center" onClick={closeSheet}>
           <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
           <div
-            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl max-h-[88vh] overflow-y-auto"
+            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-center pt-3 pb-1 sticky top-0 bg-white z-10">
@@ -815,7 +815,7 @@ export default function ChatPage() {
                         {myTraveler ? (
                           <TravelerAvatar traveler={myTraveler} size="xl" />
                         ) : (
-                          <div className="w-20 h-20 rounded-full bg-slate-900 flex items-center justify-center text-white text-2xl font-bold">
+                          <div className="w-20 h-20 rounded-full bg-slate-950 flex items-center justify-center text-white text-2xl font-bold">
                             {initials}
                           </div>
                         )}
@@ -832,7 +832,7 @@ export default function ChatPage() {
                       </div>
                     </div>
                     {myTraveler && (
-                      <button onClick={openProfileEdit} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm mb-2.5">
+                      <button onClick={openProfileEdit} className="w-full bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm mb-2.5">
                         Edit my profile
                       </button>
                     )}
@@ -873,7 +873,7 @@ export default function ChatPage() {
                           {AVATAR_OPTIONS.map((emoji) => (
                             <button key={emoji} onClick={() => setEditAvatar(emoji)}
                               className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl transition-all ${
-                                editAvatar === emoji ? "bg-slate-900 scale-110" : "bg-slate-100"
+                                editAvatar === emoji ? "bg-slate-950 scale-110" : "bg-slate-100"
                               }`}>
                               {emoji}
                             </button>
@@ -894,7 +894,7 @@ export default function ChatPage() {
                           return (
                             <button key={preset} onClick={() => setEditRole(preset === "Kid" ? "Kid · Age " : preset)}
                               className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                                active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
+                                active ? "bg-slate-950 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
                               }`}>
                               {preset === "Kid" ? "👦 Kid" : preset}
                             </button>
@@ -907,7 +907,7 @@ export default function ChatPage() {
                       <p className="text-[10px] text-slate-400 mt-1.5 px-1">Tap a preset or type anything custom</p>
                     </div>
                     <div className="flex gap-2 pt-1">
-                      <button onClick={saveProfileEdit} className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
+                      <button onClick={saveProfileEdit} className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
                       <button onClick={() => setProfileEditMode(false)} className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl">Back</button>
                     </div>
                   </div>
@@ -935,7 +935,7 @@ export default function ChatPage() {
                       <p className="text-center text-sm text-slate-400 mb-4">This is you ✨</p>
                     ) : (
                       <div className="flex flex-col gap-2.5">
-                        <button onClick={() => setEditMode(true)} className="w-full bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm">Edit traveler</button>
+                        <button onClick={() => setEditMode(true)} className="w-full bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm">Edit traveler</button>
                         <button onClick={removeTraveler} className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-4 rounded-2xl text-sm">Remove from trip</button>
                       </div>
                     )}
@@ -969,7 +969,7 @@ export default function ChatPage() {
                           {AVATAR_OPTIONS.map((emoji) => (
                             <button key={emoji} onClick={() => setEditAvatar(emoji)}
                               className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl transition-all ${
-                                editAvatar === emoji ? "bg-slate-900 scale-110" : "bg-slate-100"
+                                editAvatar === emoji ? "bg-slate-950 scale-110" : "bg-slate-100"
                               }`}>
                               {emoji}
                             </button>
@@ -991,7 +991,7 @@ export default function ChatPage() {
                             <button key={preset}
                               onClick={() => setEditRole(preset === "Kid" ? "Kid · Age " : preset)}
                               className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                                active ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
+                                active ? "bg-slate-950 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"
                               }`}>
                               {preset === "Kid" ? "👦 Kid" : preset}
                             </button>
@@ -1004,7 +1004,7 @@ export default function ChatPage() {
                       <p className="text-[10px] text-slate-400 mt-1.5 px-1">Tap a preset or type anything custom</p>
                     </div>
                     <div className="flex gap-2 pt-1">
-                      <button onClick={saveEdit} className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
+                      <button onClick={saveEdit} className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
                       <button onClick={() => setEditMode(false)} className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl">Back</button>
                     </div>
                   </div>
@@ -1101,7 +1101,7 @@ export default function ChatPage() {
               <input autoFocus type="text" value={newName} onChange={(e) => setNewName(e.target.value)}
                 placeholder="Name…"
                 className="text-xs border border-slate-300 rounded-xl px-2 py-1.5 outline-none focus:border-slate-900 w-24 bg-white" />
-              <button type="submit" className="text-xs bg-slate-900 text-white px-2.5 py-1.5 rounded-xl font-bold">Add</button>
+              <button type="submit" className="text-xs bg-slate-950 text-white px-2.5 py-1.5 rounded-xl font-bold">Add</button>
               <button type="button" onClick={() => { setAddingTraveler(false); setNewName(""); }}
                 className="text-[10px] text-slate-400 font-semibold">✕</button>
             </form>
@@ -1146,7 +1146,7 @@ export default function ChatPage() {
             {hasFamilyInvite && (
               <button
                 onClick={() => router.push(getInviteLink())}
-                className="mt-4 w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white"
+                className="mt-4 w-full rounded-2xl bg-slate-950 py-3 text-sm font-bold text-white"
               >
                 Join {tripTitle || "This Trip"}
               </button>
@@ -1167,7 +1167,7 @@ export default function ChatPage() {
 
         {isPreviewSession && (
           <div className="rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3">
-            <p className="text-xs font-black uppercase tracking-widest text-sky-700">Preview mode</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-sky-700">Preview mode</p>
             <p className="mt-1 text-sm leading-relaxed text-sky-800">
               This sample group is read-only. Your profile won&apos;t be added to the organizer&apos;s trip.
             </p>

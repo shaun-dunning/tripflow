@@ -889,7 +889,7 @@ export default function TripPage() {
                 <div className="flex gap-2 flex-wrap">
                   {TRIP_EMOJIS.map((e) => (
                     <button key={e} onClick={() => setEditEmoji(e)}
-                      className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl transition-all ${editEmoji === e ? "bg-slate-900 scale-110" : "bg-slate-100"}`}
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl transition-all ${editEmoji === e ? "bg-slate-950 scale-110" : "bg-slate-100"}`}
                     >{e}</button>
                   ))}
                 </div>
@@ -969,7 +969,7 @@ export default function TripPage() {
             {/* Footer buttons */}
             <div className="px-5 pt-3 pb-8 flex flex-col gap-2.5 border-t border-slate-100 flex-none">
               <div className="flex gap-2">
-                <button onClick={saveEditTrip} className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
+                <button onClick={saveEditTrip} className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm">Save changes</button>
                 <button onClick={() => setEditingTrip(null)} className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl">Cancel</button>
               </div>
               <button
@@ -1071,7 +1071,7 @@ export default function TripPage() {
             </div>
             <div className="px-5 pt-3 pb-8 flex gap-3 border-t border-slate-100 flex-none">
               <button onClick={addNewTrip} disabled={!newTitle.trim()}
-                className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40">Create Trip</button>
+                className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm disabled:opacity-40">Create Trip</button>
               <button onClick={() => setShowPlanSheet(false)}
                 className="px-5 text-sm font-semibold text-slate-400 border border-slate-200 rounded-2xl">Cancel</button>
             </div>
@@ -1170,7 +1170,7 @@ export default function TripPage() {
               </button>
               <button
                 onClick={shareLink}
-                className="flex-1 bg-slate-900 text-white font-bold py-4 rounded-2xl text-sm"
+                className="flex-1 bg-slate-950 text-white font-bold py-4 rounded-2xl text-sm"
               >
                 Share ↗
               </button>

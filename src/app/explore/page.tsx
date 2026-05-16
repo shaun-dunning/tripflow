@@ -1149,7 +1149,7 @@ export default function ExplorePage() {
 
       {/* ── "Added to trip" toast ── */}
       {addedToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-slate-900 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-slate-950 text-white text-sm font-semibold px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
           <span>✅</span>
           <span className="truncate max-w-[220px]">{addedToast}</span>
           <span className="text-white/60">added!</span>
@@ -1409,7 +1409,7 @@ export default function ExplorePage() {
               onClick={() => setShowFilters((v) => !v)}
               className={`relative w-9 h-9 rounded-full border-2 flex items-center justify-center flex-none transition-all ${
                 showFilters || activeFilterCount > 0
-                  ? "bg-slate-900 border-slate-900 text-white"
+                  ? "bg-slate-950 border-slate-900 text-white"
                   : "bg-white border-slate-200 text-slate-500 hover:border-slate-400"
               }`}
             >
@@ -1485,7 +1485,7 @@ export default function ExplorePage() {
                     onClick={() => setActiveScenario(activeScenario === i ? null : i)}
                     className={`flex-none flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full border whitespace-nowrap transition-colors ${
                       activeScenario === i
-                        ? "bg-slate-900 text-white border-slate-900"
+                        ? "bg-slate-950 text-white border-slate-900"
                         : "bg-white text-slate-600 border-slate-200"
                     }`}
                   >
@@ -1559,7 +1559,7 @@ export default function ExplorePage() {
               onClick={() => setActiveNeighborhood(n)}
               className={`flex-none text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all whitespace-nowrap ${
                 active
-                  ? "bg-slate-900 text-white border-slate-900"
+                  ? "bg-slate-950 text-white border-slate-900"
                   : "bg-white text-slate-500 border-slate-200 hover:border-slate-400"
               }`}
             >
@@ -1573,7 +1573,7 @@ export default function ExplorePage() {
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-slate-50 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex-none">Source:</span>
         {[
-          { key: null,           label: "All Reviews",   color: activeSource === null ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200" },
+          { key: null,           label: "All Reviews",   color: activeSource === null ? "bg-slate-950 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200" },
           { key: "TripAdvisor",  label: "TripAdvisor",   color: activeSource === "TripAdvisor" ? "bg-[#00AF87] text-white border-[#00AF87]" : "bg-white text-slate-500 border-slate-200" },
           { key: "Yelp",         label: "Yelp",          color: activeSource === "Yelp" ? "bg-[#D32323] text-white border-[#D32323]" : "bg-white text-slate-500 border-slate-200" },
           { key: "Google",       label: "Google",        color: activeSource === "Google" ? "bg-[#4285F4] text-white border-[#4285F4]" : "bg-white text-slate-500 border-slate-200" },
@@ -1738,7 +1738,7 @@ export default function ExplorePage() {
                     <p className="text-[10px] text-slate-400 mt-0.5">{place.category}</p>
                     <button
                       onClick={() => setDayPickerPlace(place)}
-                      className="mt-2 w-full bg-slate-900 text-white text-[10px] font-bold py-1.5 rounded-lg"
+                      className="mt-2 w-full bg-slate-950 text-white text-[10px] font-bold py-1.5 rounded-lg"
                     >
                       Add to Trip →
                     </button>
@@ -1804,7 +1804,7 @@ export default function ExplorePage() {
                           </div>
                           <button
                             onClick={(e) => { e.stopPropagation(); setDayPickerPlace(place); }}
-                            className="w-full bg-slate-900 text-white text-[10px] font-bold py-1.5 rounded-xl"
+                            className="w-full bg-slate-950 text-white text-[10px] font-bold py-1.5 rounded-xl"
                           >
                             + Add to Trip
                           </button>
@@ -1893,7 +1893,7 @@ export default function ExplorePage() {
                             <p className="text-[9px] text-slate-400 mt-1">{place.reviewCount.toLocaleString()} reviews · {place.drive}</p>
                             <button
                               onClick={(e) => { e.stopPropagation(); setDayPickerPlace(place); }}
-                              className="mt-2 w-full text-[10px] font-bold bg-slate-900 text-white py-1.5 rounded-lg"
+                              className="mt-2 w-full text-[10px] font-bold bg-slate-950 text-white py-1.5 rounded-lg"
                             >
                               + Add to Trip
                             </button>
@@ -1957,7 +1957,7 @@ export default function ExplorePage() {
                       </div>
                       <button
                         onClick={(e) => { e.stopPropagation(); setDayPickerPlace(place); }}
-                        className="mt-2 w-full text-[11px] font-bold bg-slate-900 text-white py-2 rounded-xl"
+                        className="mt-2 w-full text-[11px] font-bold bg-slate-950 text-white py-2 rounded-xl"
                       >
                         + Add to Trip
                       </button>
@@ -1988,7 +1988,7 @@ export default function ExplorePage() {
           <div className="flex flex-col gap-3">
             <div className="bg-indigo-50 border border-indigo-200 rounded-2xl px-4 py-3">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-bold text-indigo-700 uppercase tracking-widest">Right now · Your context</p>
+                <p className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest">Right now · Your context</p>
                 <button onClick={() => setShowWhatNow(false)} className="text-[10px] font-semibold text-indigo-400 hover:text-indigo-600">
                   ✕ close
                 </button>
@@ -2024,7 +2024,7 @@ export default function ExplorePage() {
                         </div>
                         <button
                           onClick={() => setDayPickerPlace(place)}
-                          className="mt-2 self-start bg-slate-900 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg"
+                          className="mt-2 self-start bg-slate-950 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg"
                         >
                           + Add to Trip
                         </button>
@@ -2114,7 +2114,7 @@ export default function ExplorePage() {
                                 </div>
                                 <button
                                   onClick={() => setDayPickerPlace(place)}
-                                  className="flex-none text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-xl hover:bg-slate-900 hover:text-white transition-colors"
+                                  className="flex-none text-[10px] font-bold bg-slate-100 text-slate-700 px-2.5 py-1.5 rounded-xl hover:bg-slate-950 hover:text-white transition-colors"
                                 >
                                   + Add
                                 </button>
@@ -2130,7 +2130,7 @@ export default function ExplorePage() {
                                 if (place) setDayPickerPlace(place);
                               });
                             }}
-                            className="flex-1 bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl"
+                            className="flex-1 bg-slate-950 text-white text-xs font-bold py-2.5 rounded-xl"
                           >
                             Add all to trip →
                           </button>
@@ -2205,7 +2205,7 @@ export default function ExplorePage() {
                   onClick={() => setSortBy(opt.key)}
                   className={`flex-none text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all whitespace-nowrap ${
                     sortBy === opt.key
-                      ? "bg-slate-900 text-white border-slate-900"
+                      ? "bg-slate-950 text-white border-slate-900"
                       : "bg-white text-slate-500 border-slate-200"
                   }`}
                 >
@@ -2317,7 +2317,7 @@ export default function ExplorePage() {
                           )}
                           <button
                             onClick={() => setDayPickerPlace(place)}
-                            className="text-xs font-bold bg-slate-900 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
+                            className="text-xs font-bold bg-slate-950 text-white px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
                           >
                             + Add to Trip
                           </button>

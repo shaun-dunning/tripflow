@@ -361,7 +361,7 @@ export function AgendaItemCard({
         >
           <div
             className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-none transition-colors ${
-              item.done ? "bg-slate-900 border-slate-900" : "border-slate-300"
+              item.done ? "bg-slate-950 border-slate-900" : "border-slate-300"
             }`}
           >
             {item.done && (
