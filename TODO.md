@@ -84,9 +84,9 @@
 - [x] Add repeatable mobile build scripts, e.g. `mobile:build`, `cap:add:ios`, `cap:sync:ios`, and `cap:open:ios`.
 - [ ] Generate the native iOS project with Capacitor (`npx cap add ios`) and commit the resulting `ios/` project once reviewed.
 - [ ] Sync the current static web build into iOS (`npm run build` then `npx cap sync ios`).
-- [ ] Audit native iOS project settings after generation: display name, bundle identifier, deployment target, app icons, splash assets, status bar, supported orientations, and signing placeholders.
+- [x] Audit native iOS project settings after generation: display name, bundle identifier, deployment target, app icons, splash assets, status bar, supported orientations, and signing placeholders.
 - [x] Add an `APP_STORE_READINESS.md` runbook with exact local build, simulator, TestFlight, and App Store submission steps.
-- [ ] Add a privacy/data checklist for App Store Connect: account creation, user-generated trip data, family/invite sharing, Supabase auth, analytics status, and data deletion expectations.
+- [x] Add a privacy/data checklist for App Store Connect: account creation, user-generated trip data, family/invite sharing, Supabase auth, analytics status, and data deletion expectations.
 
 ### Manual / Apple Account Work
 - [ ] Enroll or confirm Apple Developer Program membership ($99/year).

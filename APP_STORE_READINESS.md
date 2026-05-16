@@ -198,7 +198,9 @@ Click **Submit for Review**. Review typically takes 24–48 h.
 
 ## 10. Privacy & Data Checklist
 
-See also the App Store Connect **Privacy** tab, which requires disclosing every data type the app collects.
+> **Full checklist:** see [`PRIVACY_DATA_CHECKLIST.md`](./PRIVACY_DATA_CHECKLIST.md) for the complete, step-by-step App Store Connect privacy submission checklist covering account creation, data types, family/invite sharing, Supabase auth, analytics status, and data deletion expectations.
+
+Quick reference summary:
 
 ### Data Types Daywave Collects
 
@@ -209,12 +211,12 @@ See also the App Store Connect **Privacy** tab, which requires disclosing every 
 | Photos (optional upload) | Group chat sharing | Yes | No |
 | Trip itinerary & agenda | Core app function | Yes | No |
 | Packing list items | Core app function | Yes | No |
-| Device identifiers | Crash reporting (if added) | No | No |
+| Analytics | None — no analytics SDK | — | — |
 
 ### User Data Rights
 
-- **Deletion**: users can delete their account via Supabase Auth; all linked rows should cascade-delete.
-- **Export**: no self-serve export today — note this in your privacy policy.
+- **Deletion**: users can delete their account via Supabase Auth; all linked rows cascade-delete.
+- **Export**: no self-serve export today — note this in the privacy policy.
 - **Retention**: trip data is retained until the user deletes their account or the trip is removed.
 
 ### Third-Party SDKs to Declare
@@ -222,7 +224,21 @@ See also the App Store Connect **Privacy** tab, which requires disclosing every 
 | SDK | Data Access |
 |---|---|
 | Supabase JS | Auth tokens, all user data |
-| Anthropic / Gemini APIs | Prompt text sent to LLM (no PII if prompts are anonymized) |
+| Anthropic / Gemini APIs | Prompt text (no PII if prompts are anonymized) |
 | Open-Meteo | None (public weather, no user data sent) |
 
-Declare these in the **App Privacy** section of App Store Connect before submission.
+---
+
+## 11. iOS Project Settings Audit
+
+> **Audit script:** run [`scripts/audit-ios-settings.sh`](./scripts/audit-ios-settings.sh) on macOS after `npm run cap:add:ios` to verify all required settings.
+
+```bash
+# Audit only (print PASS / WARN / FAIL)
+./scripts/audit-ios-settings.sh
+
+# Audit + auto-apply safe fixes
+./scripts/audit-ios-settings.sh --fix
+```
+
+The script checks: bundle identifier (`app.daywave`), display name (`Daywave`), deployment target (iOS 16+), portrait-only orientations, status bar style, app icon presence (including mandatory 1024×1024), splash background color, code signing team placeholder, `webContentsDebuggingEnabled` flag, and required Info.plist privacy strings.
