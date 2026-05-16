@@ -26,7 +26,8 @@
   ## Backlog                                                                                                          
 - [x] Smart trip recap / memory book — auto-generated day cards after each day passes, swipeable "Trip Memories" reel at trip end
 - [x] Map view for the day — toggle on My Day shows pins color-coded by section with optimal route, Apple/Google Maps deep-link on tap. But don't overload My Day which we just cleaned up. FIgure out a graceful place to surface the Map and directions. Keep a lot of the busier elements on a dialog after a click to not clutter the page.
-- [x] Shared family presence — per-item "who's going" toggles with avatars + real-time "I'm in / I'll skip" via Supabase Realtime
+- [x] Shared family presence — per-item "who's going" toggles with avatars + real-time "I'm in / I'll skip" via Supabase Realtime (removed hardcoded initials; replaced by RSVP feature below)
+- [ ] **RSVP / attendance per activity** — let each traveler tap "I'm in / I'll skip" on individual agenda items. Store per-item attendance in Supabase (trip_id, day_id, agenda_item_id, user_id, status). Surface attendance counts on Today cards ("3 of 4 going") and a detail sheet per item. More meaningful than hardcoded initials — ties to real group members and can drive notification reminders.
 - [x] Smart pre-trip readiness dashboard — combine docReadiness + packingProgress + weather warnings into single "87% trip-ready" card
 - [x] First-trip onboarding — 3-screen welcome for users joining via /join/[code], includes avatar picker
 - [x] Weather widget under the Trips hero  Embed a 7-day Maui forecast pulled from Open-Meteo (free, no API key). Showing "82°F ☀️" on the hero card would be a wow moment.

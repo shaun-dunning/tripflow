@@ -1220,15 +1220,6 @@ export default function TripPage() {
               </button>
             </div>
 
-            {/* Progress bar */}
-            <div className="mt-3">
-              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-white rounded-full transition-all"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
           </div>
         </div>
 

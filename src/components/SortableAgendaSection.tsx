@@ -21,16 +21,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { useItemPresence } from "@/hooks/useItemPresence";
 import { useTravelTime } from "@/lib/travelTime";
-
-// ── Family fixture for presence display ─────────────────────────────────────────────
-const FAMILY_SLOTS = [
-  { id: "slot-dad",   initial: "D", label: "Dad",   color: "bg-sky-500"     },
-  { id: "slot-mom",   initial: "M", label: "Mom",   color: "bg-pink-400"    },
-  { id: "slot-kid1",  initial: "S", label: "Sarah", color: "bg-emerald-500" },
-  { id: "slot-kid2",  initial: "L", label: "Liam",  color: "bg-amber-500"   },
-];
 
 // ── Types (mirrors page.tsx Item) ────────────────────────────────────────────
 export type AgendaItem = {
@@ -165,44 +156,6 @@ function DragHandle({ listeners, attributes }: { listeners?: object; attributes?
       <span className="w-3.5 h-[1.5px] rounded-full bg-slate-300" />
       <span className="w-3.5 h-[1.5px] rounded-full bg-slate-300" />
       <span className="w-3.5 h-[1.5px] rounded-full bg-slate-300" />
-    </div>
-  );
-}
-
-// ── Presence strip ────────────────────────────────────────────────────────────────────
-function PresenceStrip({ itemId }: { itemId: string }) {
-  const { attendees, iAmGoing, toggle } = useItemPresence(itemId);
-
-  return (
-    <div className="flex items-center gap-1.5 px-3 pb-2.5 pt-0.5">
-      <span className="text-[9px] font-semibold text-slate-400 tracking-wide mr-0.5 flex-none">
-        Going:
-      </span>
-      {FAMILY_SLOTS.map((slot) => {
-        const isGoing = attendees.includes(slot.id);
-        return (
-          <span
-            key={slot.id}
-            title={`${slot.label}: ${isGoing ? "going ✓" : "undecided"}`}
-            className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold select-none transition-all ${
-              isGoing ? `${slot.color} text-white` : "bg-slate-100 text-slate-400"
-            }`}
-          >
-            {slot.initial}
-          </span>
-        );
-      })}
-      <button
-        onClick={(e) => { e.stopPropagation(); toggle(); }}
-        className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-bold transition-all ml-0.5 ${
-          iAmGoing
-            ? "bg-slate-900 text-white"
-            : "border border-slate-200 text-slate-500 hover:border-slate-400 active:bg-slate-50"
-        }`}
-        title={iAmGoing ? "You're going — tap to opt out" : "Tap to mark yourself as going"}
-      >
-        {iAmGoing ? "✓ You" : "+ You"}
-      </button>
     </div>
   );
 }
@@ -407,10 +360,6 @@ export function AgendaItemCard({
       )}
       </div>{/* end main row */}
 
-      {/* Presence strip — who's going to this activity */}
-      {!isPast && !isDragging && (
-        <PresenceStrip itemId={item.id} />
-      )}
     </div>
   );
 }
