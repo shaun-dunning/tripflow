@@ -1225,7 +1225,7 @@ export default function TripPage() {
 
         {/* ── 7-day forecast strip ── */}
         {tripWeather.length > 0 && (
-          <div className="border-t border-slate-100 bg-white px-3.5 pt-3 pb-2">
+          <div className="bg-white px-3.5 pt-3 pb-2">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 7-day outlook
