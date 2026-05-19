@@ -74,6 +74,12 @@ export default function RootLayout({
              * pb accounts for the nav bar (~64 px) plus the home-indicator
              * safe area, so content can always be scrolled into view.
              */}
+            {/*
+             * BottomNav is INSIDE main so it shares the same stacking context.
+             * This lets position:fixed sheets (z-[60]+) correctly layer above
+             * the nav (z-50) on iOS where overflow:auto creates a compositing
+             * layer that would otherwise trap sheets below an external nav.
+             */}
             <main
               className="flex-1 tab-main-content overflow-y-auto"
               style={{
@@ -82,8 +88,8 @@ export default function RootLayout({
               }}
             >
               {children}
+              <BottomNav />
             </main>
-            <BottomNav />
           </AuthGuard>
         </ExploreProvider>
       </body>

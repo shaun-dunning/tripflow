@@ -6,11 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { CalendarDays, Compass, FolderCheck, MessageCircle, SunMedium } from "lucide-react";
 
 const tabs = [
-  { href: "/", label: "Today", icon: SunMedium },
-  { href: "/explore", label: "Explore", icon: Compass },
-  { href: "/vault", label: "Docs", icon: FolderCheck },
-  { href: "/chat", label: "Group", icon: MessageCircle },
-  { href: "/trip", label: "Trips", icon: CalendarDays },
+  { href: "/",        label: "Today",   icon: SunMedium       },
+  { href: "/explore", label: "Explore", icon: Compass         },
+  { href: "/vault",   label: "Docs",    icon: FolderCheck     },
+  { href: "/chat",    label: "Group",   icon: MessageCircle   },
+  { href: "/trip",    label: "Trips",   icon: CalendarDays    },
 ];
 
 export default function BottomNav() {
@@ -29,10 +29,10 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 px-3 pt-2 bg-white/88 backdrop-blur-xl"
-      style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-100"
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="flex items-center gap-1 rounded-[1.6rem] border border-white/70 bg-white/88 px-1.5 py-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.16)] backdrop-blur-xl">
+      <div className="max-w-md mx-auto flex items-center">
         {tabs.map((tab) => {
           const active =
             normalizedPathname === tab.href ||
@@ -42,14 +42,20 @@ export default function BottomNav() {
             <button
               key={tab.href}
               onClick={() => navigate(tab.href)}
-              className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 rounded-[1.15rem] py-2 transition-all ${
-                active ? "bg-slate-950 text-white shadow-sm" : "text-slate-400 active:bg-slate-100"
+              className={`flex-1 flex flex-col items-center gap-0.5 py-3 transition-colors active:opacity-60 ${
+                active ? "text-sky-600" : "text-slate-400"
               }`}
             >
-              <span className="relative flex items-center justify-center h-5">
-                <Icon className={`size-4 transition-all ${active ? "stroke-[2.5]" : "stroke-2"}`} />
-              </span>
-              <span className={`text-[10px] leading-none transition-all ${active ? "font-bold" : "font-semibold"}`}>
+              <Icon
+                className={`size-[22px] transition-all ${
+                  active ? "stroke-[2.5]" : "stroke-[1.5]"
+                }`}
+              />
+              <span
+                className={`text-[10px] leading-none transition-all ${
+                  active ? "font-bold" : "font-medium"
+                }`}
+              >
                 {tab.label}
               </span>
             </button>

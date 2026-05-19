@@ -486,7 +486,7 @@ export default function TripsPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#061832]/90 via-[#061832]/30 to-[#061832]/10" />
 
           {/* Countdown pill */}
-          <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-1.5 text-center min-w-[56px]">
+          <div className="absolute right-4 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-1.5 text-center min-w-[56px]" style={{ top: "max(16px, env(safe-area-inset-top))" }}>
             {isComplete ? (
               <p className="text-xl font-black leading-none">✓</p>
             ) : (
