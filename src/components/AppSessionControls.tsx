@@ -38,6 +38,8 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
   const router = useRouter();
   const activeTrip = useActiveTrip(user);
   const [open, setOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const isDemo = activeTrip.activeTripId === DEMO_TRIP_ID;
 
   useEffect(() => {
@@ -63,6 +65,26 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
     localStorage.setItem(START_OWN_TRIP_KEY, "1");
     setOpen(false);
     window.location.replace("/");
+  }
+
+  async function deleteAccount() {
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      localStorage.clear();
+      window.location.replace("/auth/");
+    } catch {
+      setDeleting(false);
+      setDeleteConfirm(false);
+    }
   }
 
   function editTripProfile() {
@@ -150,6 +172,49 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
                   Sign out
                 </button>
               </div>
+
+              <button
+                onClick={() => setDeleteConfirm(true)}
+                className="mt-2 w-full rounded-2xl border border-red-100 bg-white py-3 text-sm font-bold text-red-400"
+              >
+                Delete account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteConfirm && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-950/28 px-3 pb-3 backdrop-blur-[2px]"
+          onClick={() => { if (!deleting) setDeleteConfirm(false); }}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.24)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 pb-6 pt-5">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <h2 className="text-center text-base font-black text-slate-900">Delete your account?</h2>
+              <p className="mt-2 text-center text-sm leading-relaxed text-slate-500">
+                This permanently deletes your profile, all trip data, messages, and cannot be undone.
+              </p>
+              <button
+                onClick={() => void deleteAccount()}
+                disabled={deleting}
+                className="mt-5 w-full rounded-2xl bg-red-500 py-3.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {deleting ? "Deleting…" : "Yes, delete my account"}
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(false)}
+                disabled={deleting}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>

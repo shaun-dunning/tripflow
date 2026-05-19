@@ -28,6 +28,7 @@ export default function AuthPage() {
   const [resetSent, setResetSent] = useState(false);
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [newPassword, setNewPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   useEffect(() => {
     localStorage.removeItem(FAMILY_INVITE_KEY);
@@ -277,9 +278,31 @@ export default function AuthPage() {
             </div>
           )}
 
+          {mode === "signup" && !recoveryMode && (
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-0.5 h-4 w-4 flex-none rounded border-slate-300 accent-slate-900"
+              />
+              <span className="text-xs leading-relaxed text-slate-500">
+                I agree to the{" "}
+                <a href="/terms/" target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-700 underline">
+                  Terms of Service
+                </a>{" "}
+                and{" "}
+                <a href="/privacy/" target="_blank" rel="noopener noreferrer" className="font-semibold text-slate-700 underline">
+                  Privacy Policy
+                </a>
+                . I understand there is no tolerance for objectionable content or abusive behavior.
+              </span>
+            </label>
+          )}
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (mode === "signup" && !recoveryMode && !termsAccepted)}
             className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 py-4 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,23,42,0.22)] transition-all active:scale-[0.99] disabled:opacity-50"
           >
             {loading ? "Please wait…" : recoveryMode ? "Update Password" : mode === "signin" ? "Sign In" : "Create Account"}

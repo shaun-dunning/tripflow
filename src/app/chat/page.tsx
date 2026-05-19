@@ -213,6 +213,9 @@ export default function ChatPage() {
   // Add traveler
   const [addingTraveler, setAddingTraveler] = useState(false);
   const [newName, setNewName] = useState("");
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const [reportSheet, setReportSheet] = useState<{ messageId: string; senderId: string | null; senderName: string } | null>(null);
+  const [reportSent, setReportSent] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -339,6 +342,40 @@ export default function ChatPage() {
     if (previousCount === 0 || messages.length <= previousCount) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  // Load blocked users
+  useEffect(() => {
+    if (!user) return;
+    void supabase
+      .from("blocked_users")
+      .select("blocked_user_id")
+      .eq("user_id", user.id)
+      .then(({ data }) => {
+        if (data) setBlockedUserIds(new Set(data.map((r: { blocked_user_id: string }) => r.blocked_user_id)));
+      });
+  }, [user]);
+
+  async function reportMessage(messageId: string, reportedUserId: string | null, contentPreview: string) {
+    if (!user) return;
+    await supabase.from("content_reports").insert({
+      reporter_user_id: user.id,
+      reported_user_id: reportedUserId,
+      message_id: messageId,
+      trip_id: activeTrip.activeTripId,
+      reason: "objectionable_content",
+      content_preview: contentPreview.slice(0, 200),
+    });
+    setReportSheet(null);
+    setReportSent(true);
+    setTimeout(() => setReportSent(false), 4000);
+  }
+
+  async function blockUser(blockedId: string) {
+    if (!user) return;
+    await supabase.from("blocked_users").insert({ user_id: user.id, blocked_user_id: blockedId });
+    setBlockedUserIds((prev) => new Set([...prev, blockedId]));
+    await reportMessage(reportSheet?.messageId ?? "", blockedId, "blocked_user");
+  }
 
   // ── Actions ───────────────────────────────────────────────────────────────
   async function send() {
@@ -1182,11 +1219,13 @@ export default function ChatPage() {
           </div>
         )}
 
-        {!needsFamilyJoin && messages.map((msg, idx) => {
+        {!needsFamilyJoin && messages
+          .filter((msg) => !msg.sender_user_id || !blockedUserIds.has(msg.sender_user_id))
+          .map((msg, idx, arr) => {
           const isMe = msg.sender_user_id
             ? msg.sender_user_id === user?.id
             : msg.sender_name === (user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0]);
-          const prevMsg = messages[idx - 1];
+          const prevMsg = arr[idx - 1];
           const prevIsMe = prevMsg ? (prevMsg.sender_user_id ? prevMsg.sender_user_id === user?.id : false) : false;
           const showAvatar = !isMe && (!prevMsg || prevMsg.sender_name !== msg.sender_name || prevIsMe);
           const showDateDivider = !prevMsg || !isSameDay(prevMsg.created_at, msg.created_at);
@@ -1202,9 +1241,9 @@ export default function ChatPage() {
                   <div className="flex-1 h-px bg-slate-100" />
                 </div>
               )}
-              <div className={`flex gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+              <div className={`flex gap-2 items-end ${isMe ? "flex-row-reverse" : "flex-row"}`}>
                 {!isMe && (
-                  <div className="flex-none w-8 mt-auto">
+                  <div className="flex-none w-8">
                     {showAvatar && (
                       <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-base">
                         {msg.sender_avatar}
@@ -1298,6 +1337,15 @@ export default function ChatPage() {
                   })()}
                   <p className="text-[10px] text-slate-400 px-1">{formatTime(msg.created_at)}</p>
                 </div>
+                {!isMe && !isPreviewSession && msg.sender_user_id && (
+                  <button
+                    onClick={() => setReportSheet({ messageId: msg.id, senderId: msg.sender_user_id ?? null, senderName: msg.sender_name })}
+                    className="flex-none self-end mb-0.5 text-slate-300 text-base px-0.5 leading-none"
+                    aria-label="Report message"
+                  >
+                    ⋯
+                  </button>
+                )}
               </div>
             </React.Fragment>
           );
@@ -1337,6 +1385,50 @@ export default function ChatPage() {
       {/* ── File inputs ───────────────────────────────────────────────────── */}
       <input type="file" accept="image/*" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" />
       <input type="file" accept="image/*" ref={msgPhotoRef} onChange={handleMsgPhoto} className="hidden" />
+
+      {/* ── Report / Block sheet ─────────────────────────────────────────── */}
+      {reportSheet && (
+        <div className="fixed inset-0 z-[80] flex items-end justify-center" onClick={() => setReportSheet(null)}>
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+          <div
+            className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-9 h-1 bg-slate-200 rounded-full" />
+            </div>
+            <div className="px-6 pt-3 pb-10 flex flex-col gap-2.5">
+              <h3 className="text-base font-black text-slate-900 text-center mb-1">Message Options</h3>
+              <button
+                onClick={() => void reportMessage(reportSheet.messageId, reportSheet.senderId, "")}
+                className="w-full border border-amber-200 bg-amber-50 text-amber-800 font-bold py-4 rounded-2xl text-sm"
+              >
+                🚩 Report this message
+              </button>
+              {reportSheet.senderId && (
+                <button
+                  onClick={() => void blockUser(reportSheet.senderId!)}
+                  className="w-full border border-red-200 bg-red-50 text-red-600 font-bold py-4 rounded-2xl text-sm"
+                >
+                  🚫 Block {reportSheet.senderName}
+                </button>
+              )}
+              <button
+                onClick={() => setReportSheet(null)}
+                className="w-full text-sm text-slate-400 font-semibold py-3 text-center"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reportSent && (
+        <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[90] bg-slate-950 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap">
+          Report sent — we&apos;ll review within 24 hours.
+        </div>
+      )}
 
     </div>
   );
