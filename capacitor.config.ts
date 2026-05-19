@@ -24,11 +24,9 @@ const config: CapacitorConfig = {
     // Only allow Safari remote debugging in dev builds — must be false for App Store.
     webContentsDebuggingEnabled: process.env.NODE_ENV !== "production",
 
-    // Match the Daywave brand navy used as the splash and status-bar background.
-    backgroundColor: "#061832",
+    // White background matches the nav bar and page headers — no dark bleed.
+    backgroundColor: "#ffffff",
 
-    // Use a liminal "dark" status bar so white text is legible on the navy splash.
-    // Actual runtime control is handled by @capacitor/status-bar if installed.
     preferredContentMode: "mobile",
   },
 
@@ -49,9 +47,9 @@ const config: CapacitorConfig = {
     },
 
     StatusBar: {
-      // "Dark" = light foreground text, correct on the navy background.
+      // "Dark" = dark icons/text — correct on the white header background.
       style: "Dark",
-      backgroundColor: "#061832",
+      backgroundColor: "#ffffff",
     },
 
     // Keyboard behaviour — avoid the web view resizing when the keyboard appears

@@ -911,14 +911,14 @@ export default function ChatPage() {
                     <button onClick={handleSignOut} className="w-full border border-slate-200 bg-white text-slate-700 font-bold py-4 rounded-2xl text-sm">
                       Sign out
                     </button>
+                    <button onClick={closeSheet} className="w-full mt-1 text-sm text-slate-400 font-semibold py-3 text-center">
+                      Close
+                    </button>
                     <button
                       onClick={() => setDeleteAccountConfirm(true)}
-                      className="w-full mt-2 border border-red-100 bg-white text-red-400 font-bold py-3.5 rounded-2xl text-sm"
+                      className="w-full mt-4 pb-4 text-[11px] text-slate-300 text-center"
                     >
                       Delete account
-                    </button>
-                    <button onClick={closeSheet} className="w-full mt-1 text-sm text-slate-400 font-semibold py-3 pb-6 text-center">
-                      Close
                     </button>
                   </>
                 ) : (

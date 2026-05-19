@@ -14,8 +14,8 @@ export const viewport: Viewport = {
   userScalable: false,
   // Lets content render behind the notch / Dynamic Island / home indicator
   viewportFit: "cover",
-  // Matches the Daywave navy; tints the browser chrome / status bar
-  themeColor: "#061832",
+  // White matches the bottom nav and header — consistent chrome on iOS/Android
+  themeColor: "#ffffff",
 };
 
 // ── App metadata ─────────────────────────────────────────────────────────────

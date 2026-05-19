@@ -42,18 +42,24 @@ export default function BottomNav() {
             <button
               key={tab.href}
               onClick={() => navigate(tab.href)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-3 transition-colors active:opacity-60 ${
+              className={`flex-1 flex flex-col items-center gap-1 pt-2.5 pb-2 transition-colors active:opacity-60 relative ${
                 active ? "text-sky-600" : "text-slate-400"
               }`}
             >
+              {/* top indicator bar */}
+              <span
+                className={`absolute top-0 rounded-full transition-all duration-200 h-[3px] ${
+                  active ? "w-6 bg-sky-500" : "w-0 bg-transparent"
+                }`}
+              />
               <Icon
-                className={`size-[22px] transition-all ${
-                  active ? "stroke-[2.5]" : "stroke-[1.5]"
+                className={`transition-all ${
+                  active ? "size-[23px] stroke-[2.5]" : "size-[22px] stroke-[1.5]"
                 }`}
               />
               <span
                 className={`text-[10px] leading-none transition-all ${
-                  active ? "font-bold" : "font-medium"
+                  active ? "font-extrabold" : "font-medium"
                 }`}
               >
                 {tab.label}
