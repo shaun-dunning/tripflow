@@ -1272,7 +1272,7 @@ export default function ExplorePage() {
           {/* Header */}
           <div
             className="flex items-center justify-between px-5 pb-4 flex-none"
-            style={{ paddingTop: "max(20px, env(safe-area-inset-top))", background: "linear-gradient(135deg, #061832 0%, #12385f 62%, #2f8f96 100%)" }}
+            style={{ paddingTop: "clamp(12px, env(safe-area-inset-top), 44px)", background: "linear-gradient(135deg, #061832 0%, #12385f 62%, #2f8f96 100%)" }}
           >
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-xl">

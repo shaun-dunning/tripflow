@@ -1917,7 +1917,7 @@ export default function MyDayPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-black/20" />
 
-        <div className="absolute top-0 left-0 right-0 px-4 flex items-center justify-between" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}>
+        <div className="absolute top-0 left-0 right-0 px-4 flex items-center justify-between" style={{ paddingTop: "clamp(12px, env(safe-area-inset-top), 44px)" }}>
           <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">My Day</span>
           <div className="flex items-center gap-2">
             {!isPreTrip && dayIndex !== todayDayIndex && (

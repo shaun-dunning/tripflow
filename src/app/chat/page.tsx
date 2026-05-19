@@ -1094,7 +1094,7 @@ export default function ChatPage() {
       )}
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-100 px-4 pb-3 flex-none" style={{ paddingTop: "max(20px, env(safe-area-inset-top))" }}>
+      <div className="bg-white border-b border-slate-100 px-4 pb-3 flex-none" style={{ paddingTop: "clamp(12px, env(safe-area-inset-top), 44px)" }}>
         <div className="flex items-start justify-between mb-2.5">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
