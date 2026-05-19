@@ -78,11 +78,12 @@ export default function RootLayout({
               className="flex-1 tab-main-content overflow-y-auto"
               style={{
                 paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
+                WebkitOverflowScrolling: "touch",
               }}
             >
               {children}
-              <BottomNav />
             </main>
+            <BottomNav />
           </AuthGuard>
         </ExploreProvider>
       </body>

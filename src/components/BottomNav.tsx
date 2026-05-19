@@ -29,7 +29,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 px-3 pt-2"
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 px-3 pt-2 bg-white/88 backdrop-blur-xl"
       style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}
     >
       <div className="flex items-center gap-1 rounded-[1.6rem] border border-white/70 bg-white/88 px-1.5 py-1.5 shadow-[0_14px_40px_rgba(15,23,42,0.16)] backdrop-blur-xl">

@@ -216,6 +216,8 @@ export default function ChatPage() {
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [reportSheet, setReportSheet] = useState<{ messageId: string; senderId: string | null; senderName: string } | null>(null);
   const [reportSent, setReportSent] = useState(false);
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -368,6 +370,26 @@ export default function ChatPage() {
     setReportSheet(null);
     setReportSent(true);
     setTimeout(() => setReportSent(false), 4000);
+  }
+
+  async function deleteAccount() {
+    setDeletingAccount(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+      });
+      if (!res.ok) throw new Error("Delete failed");
+      localStorage.clear();
+      window.location.replace("/auth/");
+    } catch {
+      setDeletingAccount(false);
+      setDeleteAccountConfirm(false);
+    }
   }
 
   async function blockUser(blockedId: string) {
@@ -886,10 +908,16 @@ export default function ChatPage() {
                         Edit my profile
                       </button>
                     )}
-                    <button onClick={handleSignOut} className="w-full border border-red-200 bg-red-50 text-red-500 font-bold py-4 rounded-2xl text-sm">
+                    <button onClick={handleSignOut} className="w-full border border-slate-200 bg-white text-slate-700 font-bold py-4 rounded-2xl text-sm">
                       Sign out
                     </button>
-                    <button onClick={closeSheet} className="w-full mt-2 text-sm text-slate-400 font-semibold py-3 pb-6 text-center">
+                    <button
+                      onClick={() => setDeleteAccountConfirm(true)}
+                      className="w-full mt-2 border border-red-100 bg-white text-red-400 font-bold py-3.5 rounded-2xl text-sm"
+                    >
+                      Delete account
+                    </button>
+                    <button onClick={closeSheet} className="w-full mt-1 text-sm text-slate-400 font-semibold py-3 pb-6 text-center">
                       Close
                     </button>
                   </>
@@ -1066,7 +1094,7 @@ export default function ChatPage() {
       )}
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="bg-white border-b border-slate-100 px-4 pt-5 pb-3 flex-none">
+      <div className="bg-white border-b border-slate-100 px-4 pb-3 flex-none" style={{ paddingTop: "max(20px, env(safe-area-inset-top))" }}>
         <div className="flex items-start justify-between mb-2.5">
           <div>
             <div className="flex items-center gap-2 mb-0.5">
@@ -1427,6 +1455,44 @@ export default function ChatPage() {
       {reportSent && (
         <div className="fixed bottom-32 left-1/2 -translate-x-1/2 z-[90] bg-slate-950 text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap">
           Report sent — we&apos;ll review within 24 hours.
+        </div>
+      )}
+
+      {/* ── Delete Account confirmation ───────────────────────────────── */}
+      {deleteAccountConfirm && (
+        <div
+          className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/30 backdrop-blur-[2px]"
+          onClick={() => { if (!deletingAccount) setDeleteAccountConfirm(false); }}
+        >
+          <div
+            className="w-full max-w-md bg-white rounded-t-3xl shadow-2xl px-5 pb-10 pt-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-center mb-4">
+              <div className="w-9 h-1 bg-slate-200 rounded-full" />
+            </div>
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h2 className="text-center text-base font-black text-slate-900">Delete your account?</h2>
+            <p className="mt-2 text-center text-sm leading-relaxed text-slate-500">
+              This permanently deletes your profile, all trip data, messages, and cannot be undone.
+            </p>
+            <button
+              onClick={() => void deleteAccount()}
+              disabled={deletingAccount}
+              className="mt-5 w-full rounded-2xl bg-red-500 py-3.5 text-sm font-bold text-white disabled:opacity-50"
+            >
+              {deletingAccount ? "Deleting…" : "Yes, delete my account"}
+            </button>
+            <button
+              onClick={() => setDeleteAccountConfirm(false)}
+              disabled={deletingAccount}
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-600"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
