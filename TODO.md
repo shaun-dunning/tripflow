@@ -144,10 +144,16 @@
 - [x] Run `npm run mobile:build` then `npx cap sync ios` — done.
 - [x] Configure iOS signing team (`Shaun Dunning Personal Team`) and bundle identifier (`app.daywave`) in Xcode — done.
 - [x] Test full app in iPhone 17 Simulator — done.
+- [x] Create the Daywave App Store Connect app record — done.
+- [x] Confirm final app name, subtitle, category, age rating, support URL, marketing URL, privacy policy URL, and contact info — done.
+- [x] Prepare App Store screenshots, app preview copy, keywords, description, and promotional text — done.
+- [x] Submit first build to App Review — done (awaiting Apple approval).
 - [ ] **Test on physical iPhone** — connect device to Mac, register UDID in Apple Developer account, configure provisioning profile, build and run.
-- [ ] Create the Daywave App Store Connect app record.
-- [ ] Confirm final app name, subtitle, category, age rating, support URL, marketing URL, privacy policy URL, and contact info.
-- [ ] Test on a physical iPhone: invite link, auth email redirect, demo join, family join, trip creation, tab navigation, offline/poor-network behavior, safe areas, keyboard, and sharing.
-- [ ] Prepare App Store screenshots, app preview copy, keywords, description, and promotional text.
-- [ ] Submit first TestFlight build.
-- [ ] Resolve TestFlight QA issues, then submit to App Review.
+
+### After App Store Approval (v1.1 — Push Notifications)
+- [ ] **Flip `APNS_SANDBOX` to `false`** in Supabase secrets: either via Dashboard → Edge Functions → Manage secrets, or run `! /opt/homebrew/bin/supabase secrets set APNS_SANDBOX=false --project-ref urxuxdzwysubaiuzqbqa`
+- [ ] Run `npm run mobile:build` then `npx cap sync ios` to include the push notifications capability in a fresh build.
+- [ ] In Xcode: archive and upload the new build to App Store Connect.
+- [ ] Submit v1.1 to App Review.
+- [ ] Test push notifications end-to-end on real iPhone: day-before trip reminder, day-of reservation alert, early wake-up alert.
+- [ ] **Delete Mexico City test trip** from Supabase Table Editor (trips table) so it doesn't appear in production.
