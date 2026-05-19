@@ -1223,12 +1223,19 @@ export default function TripPage() {
           </div>
         </div>
 
-        {/* ── 7-day forecast strip ── */}
-        {tripWeather.length > 0 && (
+        {/* ── 7-day forecast strip — only shown when trip is within 7 days ── */}
+        {tripWeather.length > 0 && (() => {
+          const startDate = activeTrip.activeTrip?.start_date;
+          if (!startDate) return null;
+          const tripStart = new Date(startDate + "T12:00:00");
+          const now = new Date(); now.setHours(12, 0, 0, 0);
+          const daysUntil = Math.round((tripStart.getTime() - now.getTime()) / 86400000);
+          if (daysUntil > 7) return null;
+          return (
           <div className="bg-white px-3.5 pt-3 pb-2">
             <div className="mb-2 flex items-center justify-between">
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                7-day outlook
+                {daysUntil <= 0 ? "This week's forecast" : "Forecast for your trip"}
               </p>
               {tripWeather[0] && (
                 <p className="text-[11px] font-semibold text-slate-500">
@@ -1253,7 +1260,8 @@ export default function TripPage() {
               ))}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── Day summaries — compact ── */}
         <div className="mx-3 mb-3 mt-1 rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm">
@@ -1442,7 +1450,7 @@ export default function TripPage() {
                       return (
                         <button
                           key={m.trip_id}
-                          onClick={() => activeTrip.selectTrip(m.trip_id)}
+                          onClick={() => { activeTrip.selectTrip(m.trip_id); router.push("/"); }}
                           className="bg-white rounded-2xl border border-indigo-50 shadow-sm overflow-hidden text-left w-full active:scale-[0.99] transition-transform"
                         >
                           <div className="flex items-stretch overflow-hidden">

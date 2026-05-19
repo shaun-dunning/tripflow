@@ -2,6 +2,7 @@
 
 import { startTransition } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { CalendarDays, Compass, FolderCheck, MessageCircle, SunMedium } from "lucide-react";
 
 const tabs = [
@@ -13,8 +14,11 @@ const tabs = [
 ];
 
 export default function BottomNav() {
+  const { user } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+
+  if (!user) return null;
   const normalizedPathname = pathname === "/" ? "/" : pathname.replace(/\/$/, "");
 
   function navigate(href: string) {

@@ -34,7 +34,7 @@ type Place = {
 
 const PLACES: Place[] = [
   {
-    id: 1, name: "Kapalua Beach", category: "Beach", neighborhood: "Ka'anapali",
+    id: 1, name: "Kapalua Beach", category: "Beach", neighborhood: "Kapalua",
     tags: ["beach", "activity", "kids", "free"],
     distance: "2.1 mi", drive: "8 min", price: "$", kidFriendly: true, rating: 4.9,
     photo: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?w=600&h=300&fit=crop&q=80",
@@ -142,7 +142,7 @@ const PLACES: Place[] = [
     proTip: "Book 60+ days ahead — they often sell out. Request a table by the ocean. Lunch is slightly easier to book than dinner.",
   },
   {
-    id: 10, name: "Kapalua Coastal Trail", category: "Activity", neighborhood: "Ka'anapali",
+    id: 10, name: "Kapalua Coastal Trail", category: "Activity", neighborhood: "Kapalua",
     tags: ["activity", "free", "morning", "kids"],
     distance: "2.3 mi", drive: "9 min", price: "$", kidFriendly: true, rating: 4.8,
     photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=300&fit=crop&q=80",
@@ -250,7 +250,7 @@ const PLACES: Place[] = [
     proTip: "Reservations strongly recommended. Don't skip the Szechuan salmon appetizer — it's on every best-of-Maui list for a reason.",
   },
   {
-    id: 19, name: "Kapalua Ziplines", category: "Activity", neighborhood: "Ka'anapali",
+    id: 19, name: "Kapalua Ziplines", category: "Activity", neighborhood: "Kapalua",
     tags: ["activity", "adventure", "kids"],
     distance: "3.1 mi", drive: "10 min", price: "$$", kidFriendly: true, rating: 4.6,
     photo: "https://images.unsplash.com/photo-1542259009477-d625272157b7?w=600&h=300&fit=crop&q=80",
@@ -526,7 +526,7 @@ const PLACES: Place[] = [
     proTip: "Combine with the Upcountry Farmer's Market nearby. Cash preferred. Bring a jacket — Keokea is cooler and often misty. Open until 5pm.",
   },
   {
-    id: 42, name: "Kapalua Wine & Food Festival", category: "Activity", neighborhood: "Ka'anapali",
+    id: 42, name: "Kapalua Wine & Food Festival", category: "Activity", neighborhood: "Kapalua",
     tags: ["activity", "adults", "drinks", "unique"],
     distance: "3.0 mi", drive: "10 min", price: "$$$", kidFriendly: false, rating: 4.7,
     photo: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=600&h=300&fit=crop&q=80",
@@ -839,7 +839,7 @@ const NEIGHBORHOOD_GUIDE = [
     vibe: "Secluded North",
     bestFor: "Sea turtles · Ziplines · Golf",
     timeToVisit: "Morning",
-    photo: "https://images.unsplash.com/photo-1566895291281-ea63efd4bdab?w=300&h=200&fit=crop&q=80",
+    photo: "https://images.unsplash.com/photo-1559494007-9f5847c49d94?w=300&h=200&fit=crop&q=80",
     accent: "from-indigo-600 to-blue-900",
   },
 ];
@@ -918,6 +918,7 @@ export default function ExplorePage() {
   const [aiInput, setAiInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const aiBottomRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (searchParams.get("ai") === "1") {
@@ -980,6 +981,14 @@ export default function ExplorePage() {
   useEffect(() => {
     aiBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [aiMessages]);
+
+  useEffect(() => {
+    if (activeNeighborhood !== "All Areas") {
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  }, [activeNeighborhood]);
 
   async function addToDay(place: Place, dayNum: number) {
     const tripDayId = tripDayMap[dayNum];
@@ -1070,7 +1079,16 @@ export default function ExplorePage() {
       const res = await fetch(edgeFnUrl("assistant"), {
         method: "POST",
         headers: edgeFnHeaders(),
-        body: JSON.stringify({ message: messageText, history: newMessages }),
+        body: JSON.stringify({
+          message: messageText,
+          history: newMessages,
+          tripContext: {
+            title: activeTrip.activeTrip?.title,
+            destination: activeTrip.activeTrip?.destination,
+            startDate: activeTrip.activeTrip?.start_date,
+            endDate: activeTrip.activeTrip?.end_date,
+          },
+        }),
       });
       const data = await res.json();
       setAiMessages([...newMessages, { role: "assistant", content: data.reply ?? "Sorry, I couldn't get a response." }]);
@@ -1257,15 +1275,12 @@ export default function ExplorePage() {
             style={{ background: "linear-gradient(135deg, #061832 0%, #12385f 62%, #2f8f96 100%)" }}
           >
             <div className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/brand/daywave-icon-512.png"
-                alt="Daywave"
-                className="h-10 w-10 rounded-2xl shadow-lg shadow-black/20"
-              />
+              <div className="h-10 w-10 rounded-2xl bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center text-xl">
+                🌊
+              </div>
               <div>
                 <h2 className="text-base font-black text-white">Daywave AI</h2>
-                <p className="text-xs text-white/70 mt-0.5">Your day-of {activeTrip.activeTrip?.destination ?? "travel"} guide</p>
+                <p className="text-xs text-white/70 mt-0.5">Your {activeTrip.activeTrip?.destination ?? "travel"} trip assistant</p>
               </div>
             </div>
             <button
@@ -1355,7 +1370,7 @@ export default function ExplorePage() {
       {/* ══════════════════════════════════════
           SEARCH HEADER
       ══════════════════════════════════════ */}
-      <div className="relative h-40 overflow-hidden">
+      <div className="relative h-56 overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=900&h=480&fit=crop&q=85"
@@ -1364,18 +1379,14 @@ export default function ExplorePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/78 via-slate-950/18 to-sky-950/5" />
         <div className="absolute inset-x-0 bottom-0 px-4 pb-8">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/14 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white/80 backdrop-blur-md">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
-              Near {location}
-            </div>
-            {activeTrip.activeTrip?.destination && (
+          {activeTrip.activeTrip?.destination && (
+            <div className="flex items-center gap-2 mb-2">
               <div className="inline-flex items-center gap-1 rounded-full border border-white/20 bg-amber-400/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-amber-200 backdrop-blur-md">
                 <span>📍</span>
                 {activeTrip.activeTrip.destination}
               </div>
-            )}
-          </div>
+            </div>
+          )}
           <h1 className="text-3xl font-black leading-none tracking-tight text-white">
             Explore nearby
           </h1>
@@ -1425,54 +1436,6 @@ export default function ExplorePage() {
           )}
         </div>
 
-        {/* ── Context chips + location ── */}
-        <div className="flex items-center gap-2 mt-3 px-1">
-          <button
-            onClick={() => { setLocationInput(location); setEditingLocation(true); }}
-            className="flex items-center gap-1 text-xs text-slate-500 font-medium hover:text-slate-700 transition-colors"
-          >
-            <span>📍</span>
-            {editingLocation ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const trimmed = locationInput.trim();
-                  if (trimmed) setLocation(trimmed);
-                  setEditingLocation(false);
-                }}
-              >
-                <input
-                  autoFocus
-                  type="text"
-                  value={locationInput}
-                  onChange={(e) => setLocationInput(e.target.value)}
-                  onBlur={() => {
-                    const trimmed = locationInput.trim();
-                    if (trimmed) setLocation(trimmed);
-                    setEditingLocation(false);
-                  }}
-                  className="text-xs font-semibold text-slate-900 outline-none bg-transparent w-28"
-                  placeholder="Area on Maui…"
-                />
-              </form>
-            ) : (
-              <span className="font-semibold text-slate-700">{location}</span>
-            )}
-          </button>
-          <span className="text-slate-200">·</span>
-          <span className="flex items-center gap-1 text-xs text-slate-500 font-medium">
-            <span>👨‍👩‍👧‍👦</span> {travelerCount}
-          </span>
-          <button
-            onClick={() => setKidsOnly(!kidsOnly)}
-            className={`ml-auto flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1 rounded-full border transition-colors ${
-              kidsOnly ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-slate-500 border-slate-200"
-            }`}
-          >
-            👦 Kids OK
-          </button>
-        </div>
-
         {/* ── Expandable filter panel ── */}
         {showFilters && (
           <div className="mt-3 bg-slate-50 rounded-2xl p-3 flex flex-col gap-3 border border-slate-100">
@@ -1506,6 +1469,15 @@ export default function ExplorePage() {
                 className="w-full h-1.5 accent-slate-900 cursor-pointer"
               />
             </div>
+
+            <button
+              onClick={() => setKidsOnly(!kidsOnly)}
+              className={`self-start flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-full border transition-colors ${
+                kidsOnly ? "bg-emerald-500 text-white border-emerald-500" : "bg-white text-slate-600 border-slate-200"
+              }`}
+            >
+              👦 Kids OK
+            </button>
 
             {activeFilterCount > 0 && (
               <button
@@ -1590,10 +1562,40 @@ export default function ExplorePage() {
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
 
+        {/* ── AI slim banner ── */}
+        {!isSearching && (
+          <>
+            <button
+              onClick={() => setShowAI(true)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-sky-50 hover:from-indigo-100 hover:to-sky-100 transition-colors shadow-sm"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-base flex-none shadow-sm">
+                ✨
+              </div>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm font-bold text-slate-900 leading-tight">Ask Daywave AI</p>
+                <p className="text-[11px] text-slate-500 truncate">What should we do this afternoon?</p>
+              </div>
+              <span className="text-slate-400 text-sm">→</span>
+            </button>
+            <div className="flex gap-2 overflow-x-auto -mx-4 px-4" style={{ scrollbarWidth: "none" }}>
+              {AI_QUICK_PROMPTS.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => { setShowAI(true); sendAiMessage(q); }}
+                  className="flex-none text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-indigo-100 transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
         {/* ══════════════════════════════════════
             BEST OF COLLECTIONS
         ══════════════════════════════════════ */}
-        {!searchQuery && (
+        {!searchQuery && activeNeighborhood === "All Areas" && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -1646,68 +1648,6 @@ export default function ExplorePage() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════
-            NEIGHBORHOOD EXPLORER
-        ══════════════════════════════════════ */}
-        {!searchQuery && !activeBestOf && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-sm font-black text-slate-900">Explore by Area</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">Each neighborhood has its own personality</p>
-              </div>
-              {activeNeighborhood !== "All Areas" && (
-                <button onClick={() => setActiveNeighborhood("All Areas")} className="text-[11px] font-semibold text-rose-500">Clear ✕</button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-2.5">
-              {NEIGHBORHOOD_GUIDE.map((hood) => {
-                const count = PLACES.filter((p) => p.neighborhood === hood.name).length;
-                const isActive = activeNeighborhood === hood.name;
-                return (
-                  <button
-                    key={hood.name}
-                    onClick={() => setActiveNeighborhood(isActive ? "All Areas" : hood.name)}
-                    className={`relative rounded-2xl overflow-hidden text-left transition-all active:scale-[0.97] ${isActive ? "ring-2 ring-slate-900 ring-offset-1" : ""}`}
-                    style={{ aspectRatio: "1.7/1" }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={hood.photo} alt={hood.name} className="absolute inset-0 w-full h-full object-cover" />
-                    <div className={`absolute inset-0 bg-gradient-to-br ${hood.accent} opacity-70`} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                    {isActive && (
-                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
-                        <span className="text-slate-900 text-[10px] font-black">✓</span>
-                      </div>
-                    )}
-                    <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
-                      <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest">{hood.vibe}</p>
-                      <p className="text-xs font-black text-white leading-tight">{hood.emoji} {hood.name}</p>
-                      {count > 0 && (
-                        <p className="text-[9px] text-white/60 mt-0.5">{count} place{count !== 1 ? "s" : ""}</p>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            {activeNeighborhood !== "All Areas" && (() => {
-              const hood = NEIGHBORHOOD_GUIDE.find((h) => h.name === activeNeighborhood);
-              if (!hood) return null;
-              return (
-                <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 flex items-center gap-3">
-                  <span className="text-2xl">{hood.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-slate-900">{hood.name}</p>
-                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{hood.bestFor}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Best time: {hood.timeToVisit}</p>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
         {/* ── Saved for Later ── */}
         {wishlistIds.size > 0 && (
           <div>
@@ -1749,75 +1689,6 @@ export default function ExplorePage() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════
-            SMART TIME: OPEN NOW / BEST RIGHT NOW
-            Feature 1: time-aware contextual picks
-        ══════════════════════════════════════ */}
-        {!isSearching && !activeBestOf && (
-          <div>
-            {(() => {
-              const hour = new Date().getHours();
-              const timeCtx = getTimeContext(hour);
-              const nowIds = getWhatNowIds(hour);
-              const nowPlaces = nowIds.map((id) => PLACES.find((p) => p.id === id)).filter(Boolean) as Place[];
-              return (
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{timeCtx.emoji}</span>
-                        <p className="text-sm font-black text-slate-900">{timeCtx.label}</p>
-                        <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wide">Live</span>
-                      </div>
-                      <p className="text-[11px] text-slate-400 mt-0.5 pl-6">{timeCtx.subtitle}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: "none" }}>
-                    {nowPlaces.slice(0, 5).map((place) => (
-                      <button
-                        key={place.id}
-                        onClick={() => setExpandedId(expandedId === place.id ? null : place.id)}
-                        className="flex-none w-44 bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm text-left active:scale-[0.97] transition-transform"
-                      >
-                        <div className="relative h-28 overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={place.photo} alt={place.photoAlt} className="w-full h-full object-cover" />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
-                          <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase">
-                            Open
-                          </div>
-                          <div className="absolute top-2 right-2 flex items-center gap-0.5 bg-black/50 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
-                            <span className="text-amber-400">★</span>
-                            <span>{place.verifiedRating.toFixed(1)}</span>
-                          </div>
-                          <div className="absolute bottom-0 left-0 right-0 px-2.5 pb-2">
-                            <p className="text-[9px] text-white/60 font-semibold">{place.neighborhood}</p>
-                            <p className="text-xs font-bold text-white leading-tight">{place.name}</p>
-                          </div>
-                        </div>
-                        <div className="px-2.5 py-2.5">
-                          <div className="flex items-center gap-1 mb-1.5">
-                            <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wide">{place.drive}</span>
-                            <span className="text-slate-200">·</span>
-                            <span className="text-[9px] font-semibold text-slate-400">{place.price}</span>
-                            {place.kidFriendly && <span className="text-[9px] font-semibold text-emerald-500">· Kid OK</span>}
-                          </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setDayPickerPlace(place); }}
-                            className="w-full bg-slate-950 text-white text-[10px] font-bold py-1.5 rounded-xl"
-                          >
-                            + Add to Trip
-                          </button>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
         {/* ── Search result count ── */}
         {isSearching && (
           <div className="flex items-center gap-2">
@@ -1837,7 +1708,7 @@ export default function ExplorePage() {
         )}
 
         {/* ── Verified by Source — curated strips ── */}
-        {!isSearching && !activeBestOf && (
+        {!isSearching && !activeBestOf && activeNeighborhood === "All Areas" && (
           <div className="flex flex-col gap-6">
             {[
               { source: "TripAdvisor", label: "Top on TripAdvisor", badge: "bg-[#00AF87] text-white", icon: "🦉", sub: "Ranked by traveler reviews" },
@@ -1908,7 +1779,7 @@ export default function ExplorePage() {
         )}
 
         {/* ── Traveler Picks ── */}
-        {!searchQuery && !activeBestOf && (
+        {!searchQuery && !activeBestOf && activeNeighborhood === "All Areas" && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -2041,7 +1912,7 @@ export default function ExplorePage() {
             TRAVELER ROUTES — Feature 3
             Verified day-trip routes from real visitors
         ══════════════════════════════════════ */}
-        {!isSearching && !activeBestOf && (
+        {!isSearching && !activeBestOf && activeNeighborhood === "All Areas" && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <div>
@@ -2144,33 +2015,67 @@ export default function ExplorePage() {
           </div>
         )}
 
-        {/* ── AI slim banner ── */}
-        <button
-          onClick={() => setShowAI(true)}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl border border-indigo-100 bg-gradient-to-r from-indigo-50 to-sky-50 hover:from-indigo-100 hover:to-sky-100 transition-colors shadow-sm"
-        >
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-base flex-none shadow-sm">
-            ✨
+        {/* ══════════════════════════════════════
+            NEIGHBORHOOD EXPLORER
+        ══════════════════════════════════════ */}
+        {!searchQuery && !activeBestOf && (
+          <div ref={resultsRef}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-black text-slate-900">Explore by Area</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Each neighborhood has its own personality</p>
+              </div>
+              {activeNeighborhood !== "All Areas" && (
+                <button onClick={() => setActiveNeighborhood("All Areas")} className="text-[11px] font-semibold text-rose-500">Clear ✕</button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {NEIGHBORHOOD_GUIDE.map((hood) => {
+                const count = PLACES.filter((p) => p.neighborhood === hood.name).length;
+                const isActive = activeNeighborhood === hood.name;
+                return (
+                  <button
+                    key={hood.name}
+                    onClick={() => setActiveNeighborhood(isActive ? "All Areas" : hood.name)}
+                    className={`relative rounded-2xl overflow-hidden text-left transition-all active:scale-[0.97] ${isActive ? "ring-2 ring-slate-900 ring-offset-1" : ""}`}
+                    style={{ aspectRatio: "1.7/1" }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={hood.photo} alt={hood.name} className="absolute inset-0 w-full h-full object-cover" />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${hood.accent} opacity-70`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    {isActive && (
+                      <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-white flex items-center justify-center">
+                        <span className="text-slate-900 text-[10px] font-black">✓</span>
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 px-3 pb-2.5">
+                      <p className="text-[9px] font-bold text-white/70 uppercase tracking-widest">{hood.vibe}</p>
+                      <p className="text-xs font-black text-white leading-tight">{hood.emoji} {hood.name}</p>
+                      {count > 0 && (
+                        <p className="text-[9px] text-white/60 mt-0.5">{count} place{count !== 1 ? "s" : ""}</p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {activeNeighborhood !== "All Areas" && (() => {
+              const hood = NEIGHBORHOOD_GUIDE.find((h) => h.name === activeNeighborhood);
+              if (!hood) return null;
+              return (
+                <div className="mt-3 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+                  <span className="text-2xl">{hood.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black text-slate-900">{hood.name}</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{hood.bestFor}</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Best time: {hood.timeToVisit}</p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-          <div className="flex-1 text-left min-w-0">
-            <p className="text-sm font-bold text-slate-900 leading-tight">Ask Daywave AI</p>
-            <p className="text-[11px] text-slate-500 truncate">What should we do this afternoon?</p>
-          </div>
-          <span className="text-slate-400 text-sm">→</span>
-        </button>
-
-        {/* Quick prompts row */}
-        <div className="flex gap-2 overflow-x-auto -mx-4 px-4" style={{ scrollbarWidth: "none" }}>
-          {AI_QUICK_PROMPTS.map((q) => (
-            <button
-              key={q}
-              onClick={() => { setShowAI(true); sendAiMessage(q); }}
-              className="flex-none text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-indigo-100 transition-colors"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
+        )}
 
         {/* ── Results ── */}
         <div>

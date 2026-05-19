@@ -308,6 +308,12 @@ export default function ChatPage() {
   }, [activeTrip.activeTripId, activeTrip.isChecking, activeTrip.isReady, user?.id]);
 
   useEffect(() => {
+    const onTripChanged = () => void activeTrip.reloadTrips();
+    window.addEventListener("daywave:trip-changed", onTripChanged);
+    return () => window.removeEventListener("daywave:trip-changed", onTripChanged);
+  }, [activeTrip.reloadTrips]);
+
+  useEffect(() => {
     if (!activeTrip.activeTripId) return;
     const channel = supabase
       .channel("messages-realtime")
@@ -626,7 +632,7 @@ export default function ChatPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-[calc(100vh-5rem)]">
+    <div className="flex flex-col" style={{ height: "calc(100dvh - 64px - env(safe-area-inset-bottom, 0px))" }}>
 
       {(loadIssue || actionIssue) && (
         <div className="px-4 pt-3">
@@ -1036,11 +1042,6 @@ export default function ChatPage() {
                   Live
                 </span>
               )}
-              {!needsFamilyJoin && tripDateInfo?.status === "upcoming" && (
-                <span className="bg-sky-50 border border-sky-200 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                  ✈️ {tripDateInfo.daysUntilTrip}d
-                </span>
-              )}
               {!needsFamilyJoin && tripDateInfo?.status === "completed" && (
                 <span className="bg-slate-100 text-slate-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">Complete</span>
               )}
@@ -1307,7 +1308,7 @@ export default function ChatPage() {
       {/* ── Quick actions + input ─────────────────────────────────────────── */}
       <div className="flex-none bg-white border-t border-slate-100 px-4 pt-2.5">
         <div className="flex gap-2 overflow-x-auto pb-2.5"
-          style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+          style={{ scrollbarWidth: "none" }}>
           {QUICK_ACTIONS.map((a) => (
             <button key={a.key} onClick={() => handleQuickAction(a.key)}
               disabled={isReadOnlyGroup}

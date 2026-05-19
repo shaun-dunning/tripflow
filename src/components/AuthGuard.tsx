@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import BottomNav from "@/components/BottomNav";
 import AppSessionControls from "@/components/AppSessionControls";
 
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -76,12 +75,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Logged in — show app with bottom nav
+  // Logged in — BottomNav is rendered inside <main> in layout.tsx
   return (
     <>
       <AppSessionControls user={user} />
       {children}
-      <BottomNav />
     </>
   );
 }

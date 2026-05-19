@@ -142,7 +142,7 @@ export function useActiveTrip(user: User | null) {
 
     const storedTripId = typeof window !== "undefined" ? localStorage.getItem(ACTIVE_TRIP_KEY) : null;
     const nonDemoRows = rows.filter((row) => row.trip_id !== DEMO_TRIP_ID);
-    const preferred = rows.find((row) => row.trip_id === storedTripId && row.trip_id !== DEMO_TRIP_ID)
+    const preferred = rows.find((row) => row.trip_id === storedTripId)
       ?? nonDemoRows[0]
       ?? rows[0];
     if (typeof window !== "undefined") localStorage.setItem(ACTIVE_TRIP_KEY, preferred.trip_id);
@@ -182,6 +182,9 @@ export function useActiveTrip(user: User | null) {
       activeTrip: membership.trip,
       error,
     });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("daywave:trip-changed", { detail: { tripId } }));
+    }
   }, [applySnapshot, error, memberships, user]);
 
   const createTrip = useCallback(async (input: CreateTripInput) => {

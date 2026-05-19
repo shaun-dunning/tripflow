@@ -421,6 +421,12 @@ export default function VaultPage() {
     });
   }, [activeTrip.activeTripId]);
 
+  useEffect(() => {
+    const onTripChanged = () => void activeTrip.reloadTrips();
+    window.addEventListener("daywave:trip-changed", onTripChanged);
+    return () => window.removeEventListener("daywave:trip-changed", onTripChanged);
+  }, [activeTrip.reloadTrips]);
+
   // ── Sheet helpers ──────────────────────────────────────────────────────
   function openDetail(doc: Doc) { setDetailDoc(doc); setIsEditing(false); setDeleteConfirm(false); setSaveError(null); }
   function closeSheet() { setDetailDoc(null); setIsEditing(false); setDeleteConfirm(false); setSaveError(null); }
@@ -999,7 +1005,7 @@ export default function VaultPage() {
       {/* ════════════════════════════════════════
           HERO HEADER
       ════════════════════════════════════════ */}
-      <div className="relative h-52 w-full overflow-hidden flex-none">
+      <div className="relative h-56 w-full overflow-hidden flex-none">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={activeTrip.activeTrip?.cover_photo ?? "https://images.unsplash.com/photo-1488085061387-422e29b40080?w=800&h=500&fit=crop&q=85"}
@@ -1009,7 +1015,7 @@ export default function VaultPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
         <div className="absolute top-4 left-4">
           <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
-            {activeTrip.activeTrip?.title ?? "Trip"} · {activeTrip.activeTrip?.destination ?? "Travel"}
+            {activeTrip.activeTrip?.destination ?? "Travel"}
           </p>
         </div>
         <div className="absolute bottom-0 left-0 right-0 px-4 pb-5">
@@ -1023,7 +1029,7 @@ export default function VaultPage() {
           {docs.length > 0 && (
             <div className="mb-2">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Trip readiness</span>
+                <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Confirmation status</span>
                 <span className="text-[10px] font-bold text-white/80">{Math.round((confirmedCount / docs.length) * 100)}%</span>
               </div>
               <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">

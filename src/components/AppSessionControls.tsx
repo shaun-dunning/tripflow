@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LogOut, UserRound, Waves } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { useActiveTrip } from "@/hooks/useActiveTrip";
+import { registerPushNotifications, unregisterPushToken } from "@/lib/pushNotifications";
 import {
   ACTIVE_TRIP_KEY,
   DEMO_TRIP_ID,
@@ -39,7 +40,14 @@ export default function AppSessionControls({ user }: AppSessionControlsProps) {
   const [open, setOpen] = useState(false);
   const isDemo = activeTrip.activeTripId === DEMO_TRIP_ID;
 
+  useEffect(() => {
+    if (activeTrip.activeTripId && !isDemo) {
+      void registerPushNotifications(user.id, activeTrip.activeTripId);
+    }
+  }, [user.id, activeTrip.activeTripId, isDemo]);
+
   async function signOut(toAuth = true) {
+    await unregisterPushToken(user.id);
     localStorage.removeItem(PREVIEW_INVITE_KEY);
     localStorage.removeItem(FAMILY_INVITE_KEY);
     localStorage.removeItem(ACTIVE_TRIP_KEY);

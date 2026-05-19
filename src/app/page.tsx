@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { getTripDateInfo } from "@/lib/tripDates";
 import { loadWishlist, type WishlistEntry } from "@/lib/wishlist";
 import { useExploreContext } from "@/lib/exploreContext";
-import { SortableAgendaSections, type Section as DndSection, getMapsInfo, SHERATON, type ItemRsvp } from "@/components/SortableAgendaSection";
+import { SortableAgendaSections, type Section as DndSection, getMapsInfo, SHERATON } from "@/components/SortableAgendaSection";
 import { ResilientState } from "@/components/ResilientState";
 import TripAccessGate from "@/components/TripAccessGate";
 import FirstTripSetup from "@/components/FirstTripSetup";
@@ -85,7 +85,9 @@ const LEGACY_PACKING_STORAGE_KEY = "daywave-packing-maui26";
 function readLocalPackingProgress(): { packed: number; total: number } {
   if (typeof window === "undefined") return { packed: 0, total: PACKING_TOTAL };
   try {
-    const raw = localStorage.getItem(PACKING_STORAGE_KEY);
+    const activeTripId = localStorage.getItem("daywave-active-trip-id") ?? "";
+    const tripKey = activeTripId ? `daywave-packing-v2-${activeTripId}` : null;
+    const raw = (tripKey && localStorage.getItem(tripKey)) ?? localStorage.getItem(PACKING_STORAGE_KEY);
     if (raw) {
       const items = JSON.parse(raw) as { packed?: boolean }[];
       if (Array.isArray(items)) {
@@ -554,10 +556,6 @@ export default function MyDayPage() {
   const pullDistanceRef = useRef(0);  // for logic in touch handlers (no re-render cost)
   const isPulling = useRef(false);
 
-  // RSVP
-  const [rsvpsByItemId, setRsvpsByItemId] = useState<Record<string, ItemRsvp[]>>({});
-  const [rsvpSheetItem, setRsvpSheetItem] = useState<Item | null>(null);
-
   // Day route sheet
   const [showRouteSheet, setShowRouteSheet] = useState(false);
 
@@ -614,9 +612,22 @@ export default function MyDayPage() {
     };
     void loadPacking();
     const onFocus = () => void loadPacking();
+    const onPackingUpdated = () => void loadPacking();
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener("daywave:packing-updated", onPackingUpdated);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("daywave:packing-updated", onPackingUpdated);
+    };
   }, [activeTrip.activeTripId]);
+
+  // When the user switches trips from the Trips tab, reload the active trip
+  // so the main data fetch effect re-runs with the new trip ID.
+  useEffect(() => {
+    const onTripChanged = () => void activeTrip.reloadTrips();
+    window.addEventListener("daywave:trip-changed", onTripChanged);
+    return () => window.removeEventListener("daywave:trip-changed", onTripChanged);
+  }, [activeTrip.reloadTrips]);
 
   // Load wishlist from localStorage (also refresh when tab gains focus)
   useEffect(() => {
@@ -726,7 +737,7 @@ export default function MyDayPage() {
       setLoading(true);
       setLoadIssue(null);
       try {
-        const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult, rsvpResult] = await Promise.all([
+        const [tripResult, travelersResult, agendaResult, tripDaysResult, docsResult] = await Promise.all([
           supabase.from("trips").select("title, destination, start_date, end_date, cover_photo").eq("id", activeTrip.activeTripId).maybeSingle(),
           supabase.from("travelers").select("name, avatar, avatar_url").eq("trip_id", activeTrip.activeTripId).order("created_at"),
           supabase
@@ -741,9 +752,6 @@ export default function MyDayPage() {
             .order("day_number"),
           supabase.from("documents")
             .select("id, category, name, emoji, date, notes, confirmation, provider, status")
-            .eq("trip_id", activeTrip.activeTripId),
-          supabase.from("item_rsvps")
-            .select("agenda_item_id, traveler_name, traveler_avatar, status")
             .eq("trip_id", activeTrip.activeTripId),
         ]);
 
@@ -908,19 +916,6 @@ export default function MyDayPage() {
           setAgendas(fresh);
         }
 
-        // Build RSVP map: agenda_item_id → list of RSVPs
-        if (rsvpResult.data) {
-          const map: Record<string, ItemRsvp[]> = {};
-          rsvpResult.data.forEach((r) => {
-            if (!map[r.agenda_item_id]) map[r.agenda_item_id] = [];
-            map[r.agenda_item_id].push({
-              traveler_name: r.traveler_name,
-              traveler_avatar: r.traveler_avatar,
-              status: r.status as "in" | "skip",
-            });
-          });
-          setRsvpsByItemId(map);
-        }
       } catch (err) {
         setLoadIssue(err instanceof Error ? err.message : "The trip could not be refreshed.");
       } finally {
@@ -968,8 +963,9 @@ export default function MyDayPage() {
 
     // Pull-to-refresh touch handlers
     const PULL_THRESHOLD = 64; // px of damped pull before release triggers refresh
+    const mainEl = document.querySelector("main");
     const handleTouchStart = (e: TouchEvent) => {
-      if (window.scrollY > 0) return; // only activate at the very top
+      if ((mainEl?.scrollTop ?? window.scrollY) > 0) return; // only activate at the very top
       pullStartY.current = e.touches[0].clientY;
       isPulling.current = false;
     };
@@ -1254,43 +1250,6 @@ export default function MyDayPage() {
     closeSheet();
   }
 
-  // ── RSVP ─────────────────────────────────────────────────────────────────
-  const myName = user?.user_metadata?.full_name ?? user?.email?.split("@")[0] ?? crewMembers[0]?.name ?? "Me";
-  const myAvatar = crewMembers.find((m) => m.name === myName)?.avatar ?? "🧑";
-
-  async function handleRsvp(itemId: string, status: "in" | "skip") {
-    if (!activeTrip.activeTripId) return;
-
-    // Optimistic update
-    setRsvpsByItemId((prev) => {
-      const existing = (prev[itemId] ?? []).filter((r) => r.traveler_name !== myName);
-      return { ...prev, [itemId]: [...existing, { traveler_name: myName, traveler_avatar: myAvatar, status }] };
-    });
-
-    const { error } = await supabase.from("item_rsvps").upsert(
-      { trip_id: activeTrip.activeTripId, agenda_item_id: itemId, traveler_name: myName, traveler_avatar: myAvatar, status, updated_at: new Date().toISOString() },
-      { onConflict: "trip_id,agenda_item_id,traveler_name" },
-    );
-    if (error) setActionIssue(error.message);
-  }
-
-  async function removeRsvp(itemId: string) {
-    if (!activeTrip.activeTripId) return;
-
-    // Optimistic update
-    setRsvpsByItemId((prev) => {
-      const existing = (prev[itemId] ?? []).filter((r) => r.traveler_name !== myName);
-      return { ...prev, [itemId]: existing };
-    });
-
-    const { error } = await supabase.from("item_rsvps")
-      .delete()
-      .eq("trip_id", activeTrip.activeTripId)
-      .eq("agenda_item_id", itemId)
-      .eq("traveler_name", myName);
-    if (error) setActionIssue(error.message);
-  }
-
   // ── Live Now mode (today only) ────────────────────────────────────────────
   // Compute the most relevant item: if an item's time has passed and it's not
   // done yet, treat it as "happening now". Otherwise show the next upcoming
@@ -1405,6 +1364,14 @@ export default function MyDayPage() {
           history: [{ role: "user", content: prompt }],
           agendaItems: agendaPayload,
           dayNum: day.dayNum,
+          tripContext: {
+            title: activeTrip.activeTrip?.title,
+            destination: activeTrip.activeTrip?.destination,
+            startDate: activeTrip.activeTrip?.start_date,
+            endDate: activeTrip.activeTrip?.end_date,
+            travelers: crewMembers.map((m) => m.name),
+            dayLabels: displayDays.map((d) => d.theme),
+          },
         }),
       });
       const data = await res.json() as { reply: string };
@@ -1534,7 +1501,7 @@ export default function MyDayPage() {
           className={`relative bg-white rounded-t-3xl shadow-2xl transition-transform duration-300 ease-out flex flex-col ${
             sheetItem ? "translate-y-0" : "translate-y-full"
           }`}
-          style={{ maxHeight: "90dvh" }}
+          style={{ maxHeight: "85dvh" }}
         >
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1 flex-none">
@@ -1678,7 +1645,7 @@ export default function MyDayPage() {
 
           {/* Action bar — always visible, never clipped */}
           <div className="px-5 pt-3 flex gap-2 border-t border-slate-100 flex-none"
-            style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+            style={{ paddingBottom: "max(32px, env(safe-area-inset-bottom, 32px))" }}>
             {!isNewItem && !sheetDeleteConfirm && (
               <button
                 onClick={() => setSheetDeleteConfirm(true)}
@@ -1721,7 +1688,7 @@ export default function MyDayPage() {
               <button onClick={() => setShowMoveSheet(false)} className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold">✕</button>
             </div>
             <div className="px-4 pt-3 flex flex-col gap-2 max-h-[55vh] overflow-y-auto"
-              style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+              style={{ paddingBottom: "max(32px, env(safe-area-inset-bottom, 32px))" }}>
               {displayDays.map((d) => {
                 const isCurrent = d.dayNum === day.dayNum;
                 const label = dayLabels[d.dayNum] ?? d.theme;
@@ -1787,7 +1754,7 @@ export default function MyDayPage() {
             </div>
             {/* Body */}
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4"
-              style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
+              style={{ paddingBottom: "max(32px, env(safe-area-inset-bottom, 32px))" }}>
               {aiPlannerLoading ? (
                 <div className="flex flex-col items-center justify-center gap-4 py-8">
                   <div className="w-10 h-10 border-2 border-slate-200 border-t-violet-500 rounded-full animate-spin" />
@@ -1824,139 +1791,6 @@ export default function MyDayPage() {
           </div>
         </div>
       )}
-
-      {/* ── RSVP Sheet ── */}
-      {rsvpSheetItem && (() => {
-        const itemRsvps = rsvpsByItemId[rsvpSheetItem.id] ?? [];
-        const going = itemRsvps.filter((r) => r.status === "in");
-        const skipping = itemRsvps.filter((r) => r.status === "skip");
-        const myRsvp = itemRsvps.find((r) => r.traveler_name === myName);
-        const undecided = crewMembers.filter((m) => !itemRsvps.some((r) => r.traveler_name === m.name));
-
-        return (
-          <div
-            className="fixed inset-0 z-[70] flex flex-col justify-end max-w-md mx-auto"
-            onClick={() => setRsvpSheetItem(null)}
-          >
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-            <div
-              className="relative bg-white rounded-t-3xl shadow-2xl flex flex-col"
-              style={{ maxHeight: "80dvh" }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Handle */}
-              <div className="flex justify-center pt-3 pb-1 flex-none">
-                <div className="w-10 h-1 bg-slate-200 rounded-full" />
-              </div>
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-slate-100 flex-none">
-                <div>
-                  <h3 className="text-sm font-black text-slate-900">{rsvpSheetItem.emoji} {rsvpSheetItem.title}</h3>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{rsvpSheetItem.time} · Who&apos;s joining?</p>
-                </div>
-                <button
-                  onClick={() => setRsvpSheetItem(null)}
-                  className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-sm font-bold"
-                >✕</button>
-              </div>
-
-              {/* Body */}
-              <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 flex flex-col gap-5"
-                style={{ paddingBottom: "max(24px, env(safe-area-inset-bottom, 24px))" }}>
-
-                {/* My RSVP */}
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Your RSVP</p>
-                  <div className="flex gap-2.5">
-                    <button
-                      onClick={() => myRsvp?.status === "in" ? removeRsvp(rsvpSheetItem.id) : handleRsvp(rsvpSheetItem.id, "in")}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] ${
-                        myRsvp?.status === "in"
-                          ? "bg-emerald-500 text-white shadow-md shadow-emerald-200"
-                          : "bg-slate-100 text-slate-600 hover:bg-emerald-50 hover:text-emerald-700"
-                      }`}
-                    >
-                      <span className="text-lg">✅</span>
-                      I&apos;m in
-                    </button>
-                    <button
-                      onClick={() => myRsvp?.status === "skip" ? removeRsvp(rsvpSheetItem.id) : handleRsvp(rsvpSheetItem.id, "skip")}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-2xl font-bold text-sm transition-all active:scale-[0.97] ${
-                        myRsvp?.status === "skip"
-                          ? "bg-slate-700 text-white shadow-md shadow-slate-200"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      <span className="text-lg">🙅</span>
-                      I&apos;ll skip
-                    </button>
-                  </div>
-                </div>
-
-                {/* Going */}
-                {going.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-2">
-                      Going · {going.length}
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {going.map((r) => (
-                        <div key={r.traveler_name} className="flex items-center gap-3 bg-emerald-50 rounded-2xl px-3 py-2.5">
-                          <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-lg flex-none">
-                            {r.traveler_avatar}
-                          </div>
-                          <span className="font-semibold text-sm text-slate-800 flex-1 truncate">{r.traveler_name}</span>
-                          <span className="text-emerald-500 text-sm font-bold">✓</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Skipping */}
-                {skipping.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                      Skipping · {skipping.length}
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {skipping.map((r) => (
-                        <div key={r.traveler_name} className="flex items-center gap-3 bg-slate-50 rounded-2xl px-3 py-2.5">
-                          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-lg flex-none">
-                            {r.traveler_avatar}
-                          </div>
-                          <span className="font-semibold text-sm text-slate-500 flex-1 truncate">{r.traveler_name}</span>
-                          <span className="text-slate-400 text-sm">–</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Undecided */}
-                {undecided.length > 0 && (
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest mb-2">
-                      No response yet · {undecided.length}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {undecided.map((m) => (
-                        <div key={m.name} className="flex items-center gap-1.5 bg-slate-50 rounded-full px-3 py-1.5 border border-slate-100">
-                          <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-xs flex-none">
-                            {m.avatar}
-                          </div>
-                          <span className="text-xs font-medium text-slate-400">{m.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* ── Day Route Sheet ── */}
       {showRouteSheet && (() => {
@@ -2085,15 +1919,25 @@ export default function MyDayPage() {
 
         <div className="absolute top-0 left-0 right-0 px-4 pt-3 flex items-center justify-between">
           <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">My Day</span>
-          <span className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">
-            Day {day.dayNum} of {displayDays.length}
-          </span>
+          <div className="flex items-center gap-2">
+            {!isPreTrip && dayIndex !== todayDayIndex && (
+              <button
+                onClick={() => { setDayIndex(todayDayIndex); setEditingTheme(false); }}
+                className="text-[10px] font-bold text-white/80 bg-white/15 border border-white/25 px-2.5 py-1 rounded-full backdrop-blur-sm active:scale-95 transition-all"
+              >
+                ↩ Today
+              </button>
+            )}
+            <span className="text-[10px] font-semibold text-white/60 uppercase tracking-widest">
+              Day {day.dayNum} of {displayDays.length}
+            </span>
+          </div>
         </div>
 
         {dayIndex > 0 && (
           <button
             aria-label="Previous day"
-            onClick={() => { setDayIndex((i) => i - 1); setEditingTheme(false); }}
+            onClick={() => { savedDayRestored.current = true; setDayIndex((i) => i - 1); setEditingTheme(false); }}
             className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full bg-black/34 backdrop-blur-md border border-white/30 text-white text-xl font-bold shadow-sm hover:bg-black/45 transition-all"
           >
             ‹
@@ -2103,7 +1947,7 @@ export default function MyDayPage() {
         {dayIndex < displayDays.length - 1 && (
           <button
             aria-label="Next day"
-            onClick={() => { setDayIndex((i) => i + 1); setEditingTheme(false); }}
+            onClick={() => { savedDayRestored.current = true; setDayIndex((i) => i + 1); setEditingTheme(false); }}
             className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full bg-black/34 backdrop-blur-md border border-white/30 text-white text-xl font-bold shadow-sm hover:bg-black/45 transition-all"
           >
             ›
@@ -2115,7 +1959,7 @@ export default function MyDayPage() {
             <button
               key={i}
               aria-label={`Open day ${i + 1}`}
-              onClick={() => { setDayIndex(i); setEditingTheme(false); }}
+              onClick={() => { savedDayRestored.current = true; setDayIndex(i); setEditingTheme(false); }}
               className="flex h-6 w-7 items-center justify-center rounded-full transition-all active:scale-95"
             >
               <span
@@ -2213,29 +2057,6 @@ export default function MyDayPage() {
         })()}
       </div>
 
-      {/* ── Day action pills: Route + Jump to Today ── */}
-      {(dayRouteStops.length > 0 || (!isPreTrip && dayIndex !== todayDayIndex)) && (
-        <div className="flex items-center justify-center gap-2 pt-2 pb-0 px-4 flex-wrap">
-          {dayRouteStops.length > 0 && (
-            <button
-              onClick={() => setShowRouteSheet(true)}
-              className="flex items-center gap-1.5 bg-white border border-slate-200 text-slate-700 text-[11px] font-bold px-4 py-2 rounded-full shadow-sm hover:border-slate-400 active:scale-95 transition-all"
-            >
-              <span>🗺</span>
-              <span>View Route</span>
-            </button>
-          )}
-          {dayIndex !== todayDayIndex && (
-            <button
-              onClick={() => { setDayIndex(todayDayIndex); setEditingTheme(false); }}
-              className="flex items-center gap-1.5 bg-slate-950 text-white text-[11px] font-bold px-4 py-2 rounded-full shadow-md hover:bg-slate-700 active:scale-95 transition-all"
-            >
-              <span className="text-[8px]">⬤</span>
-              <span>Jump to Today</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* ── Pull-to-refresh indicator ── */}
       {(pullDistance > 0 || pullRefreshing) && (
@@ -2253,6 +2074,19 @@ export default function MyDayPage() {
       )}
 
       <div className="flex flex-col gap-4 px-4 pt-4 pb-4">
+
+        {/* ── View Route inline link ── */}
+        {dayRouteStops.length > 0 && !showPreTripPrep && (
+          <div className="flex justify-end -mb-2">
+            <button
+              onClick={() => setShowRouteSheet(true)}
+              className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-slate-800 active:scale-95 transition-all"
+            >
+              <span>🗺</span>
+              <span>View route</span>
+            </button>
+          </div>
+        )}
 
         {/* ── Pre-trip command center ── */}
         {showPreTripPrep && (
@@ -2615,14 +2449,12 @@ export default function MyDayPage() {
             isPast={isPast}
             isEditable={isEditable}
             wishlist={wishlist}
-            rsvpsByItemId={rsvpsByItemId}
             totalCrew={crewMembers.length}
             onReorder={handleReorder}
             onEdit={openEdit}
             onToggle={toggle}
             onAddClick={openAdd}
             onSuggestionClick={() => router.push("/explore")}
-            onRsvpClick={(item) => setRsvpSheetItem(item as Item)}
           />
         )}
 

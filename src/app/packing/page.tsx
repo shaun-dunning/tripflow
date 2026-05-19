@@ -401,7 +401,10 @@ export default function PackingPage() {
     const tripId = activeTrip.activeTripId ?? "preview";
     saveLocalItems(items, tripId);
     if (tripId && tripId !== DEMO_TRIP_ID && !activeTrip.isPreview) {
-      void saveSharedItems(items, tripId).then(() => setSyncedToCloud(true)).catch(() => {});
+      void saveSharedItems(items, tripId).then(() => {
+        setSyncedToCloud(true);
+        window.dispatchEvent(new CustomEvent("daywave:packing-updated"));
+      }).catch(() => {});
     }
   }, [activeTrip.activeTripId, activeTrip.isPreview, items, hydrated]);
 

@@ -1,4 +1,11 @@
 {
+  "redirects": [
+    {
+      "source": "/privacy",
+      "destination": "/privacy/",
+      "permanent": false
+    }
+  ],
   "headers": [
     {
       "source": "/sw.js",

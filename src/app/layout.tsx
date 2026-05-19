@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AuthGuard from "@/components/AuthGuard";
+import BottomNav from "@/components/BottomNav";
 import { ExploreProvider } from "@/lib/exploreContext";
 import ServiceWorkerRegistrar from "@/components/ServiceWorkerRegistrar";
 import DeepLinkHandler from "@/components/DeepLinkHandler";
@@ -61,18 +62,26 @@ export default function RootLayout({
         <ExploreProvider>
           <AuthGuard>
             {/*
-             * pb accounts for the fixed BottomNav (≈56 px) plus the iOS home
-             * indicator safe area (env(safe-area-inset-bottom)).
-             * Falls back to 80 px on non-notched devices.
+             * BottomNav lives INSIDE <main> so it shares main's compositing
+             * layer / stacking context on iOS. That lets position:fixed sheets
+             * (z-[60]) correctly layer above the nav (z-50). If the nav were
+             * outside main, iOS's overflow-y:auto compositing layer would trap
+             * the sheets at z:auto and the nav would paint over them.
+             *
+             * position:fixed still pins the nav to the viewport on iOS 15+
+             * (our minimum deployment target) even when the parent scrolls.
+             *
+             * pb accounts for the nav bar (~64 px) plus the home-indicator
+             * safe area, so content can always be scrolled into view.
              */}
             <main
               className="flex-1 tab-main-content overflow-y-auto"
               style={{
                 paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
-                WebkitOverflowScrolling: "touch",
               }}
             >
               {children}
+              <BottomNav />
             </main>
           </AuthGuard>
         </ExploreProvider>

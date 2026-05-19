@@ -5,41 +5,14 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const SYSTEM_PROMPT = `You are a friendly, knowledgeable trip assistant for a family vacation to Maui, Hawaii.
-
-Trip details:
-- Dates: June 5–11, 2026 (7 days)
-- Hotel: Sheraton Maui Resort & Spa, Ka'anapali
-- Travelers: Family — 2 adults + kids
-- Flights: AA271 LAX→SEA, then AS845 SEA→OGG on Jun 5. Return Jun 11.
-
-Planned activities:
-- Day 1 (Jun 5, Fri): Travel day — arrive at Sheraton Ka'anapali
-- Day 2 (Jun 6, Sat): Ka'anapali Beach, Snorkeling at Molokini Crater, Mama's Fish House dinner
-- Day 3 (Jun 7, Sun): Road to Hana — Twin Falls, Hana Farms lunch, Waiʻanapanapa Black Sand Beach
-- Day 4 (Jun 8, Mon): Beach day, Sheraton Spa massage, Humble Market dinner
-- Day 5 (Jun 9, Tue): Upcountry Farmer's Market, Paia Town, Old Lahaina Luau
-- Day 6 (Jun 10, Wed): Haleakalā Sunrise (2:30am departure!), Sliding Sands crater hike
-- Day 7 (Jun 11, Thu): Last swim, check out, fly home
-
-Local favorites near Ka'anapali:
-- Kapalua Beach: calm bay, great for kids, snorkel gear rentals
-- Monkeypod Kitchen: local farm-to-table, great cocktails, kids menu
-- Maui Ocean Center: premier aquarium in Maalaea, great rainy day option
-- Ululani's Shave Ice: best on the island (multiple locations)
-- Andaz Maui Spa: world-class, ocean views
-- Surfing Goat Dairy: fun family farm tour in Kula
-- Down the Hatch: waterfront bar in Lahaina
-- Wailea Beach Path: 1.5-mile free coastal walk
-
-Tips:
-- Ka'anapali is on the west side — sheltered, calm water, great for families
-- Haleakalā summit is 10,000ft and gets cold — bring layers
-- Road to Hana: 52 miles, 600+ turns, plan for a full day
-- Reef-safe sunscreen is required at Hawaii state parks
-- Maui time is HST (UTC-10), 3 hours behind LA in summer
-
-Keep responses concise and friendly. When suggesting things to do, be specific to Maui and the family context. Answer questions about the planned itinerary accurately.`;
+type TripContext = {
+  title?: string;
+  destination?: string;
+  startDate?: string;
+  endDate?: string;
+  travelers?: string[];
+  dayLabels?: string[];
+};
 
 type HistoryMessage = { role: string; content: string };
 
@@ -50,6 +23,40 @@ type AgendaItemInput = {
   notes?: string;
   reservation?: boolean;
 };
+
+function buildSystemPrompt(tripContext?: TripContext): string {
+  if (!tripContext?.destination) {
+    return `You are a friendly, knowledgeable trip assistant. Help the user with their travel plans — activities, restaurants, logistics, packing, and day-of decisions. Keep responses concise and friendly.`;
+  }
+
+  const { title, destination, startDate, endDate, travelers, dayLabels } = tripContext;
+
+  let prompt = `You are a friendly, knowledgeable trip assistant for ${title ?? destination}.
+
+Trip details:
+- Destination: ${destination}`;
+
+  if (startDate && endDate) {
+    const start = new Date(startDate + "T12:00:00");
+    const end = new Date(endDate + "T12:00:00");
+    const nights = Math.round((end.getTime() - start.getTime()) / 86400000);
+    const startLabel = start.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const endLabel = end.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    prompt += `\n- Dates: ${startLabel} – ${endLabel} (${nights} nights)`;
+  }
+
+  if (travelers && travelers.length > 0) {
+    prompt += `\n- Travelers: ${travelers.join(", ")}`;
+  }
+
+  if (dayLabels && dayLabels.length > 0) {
+    prompt += `\n\nPlanned days:\n${dayLabels.map((label, i) => `- Day ${i + 1}: ${label}`).join("\n")}`;
+  }
+
+  prompt += `\n\nKeep responses concise and friendly. Focus on ${destination} — activities, restaurants, logistics, and day-of decisions. When you don't know specific local details, give useful general travel advice for the destination. Answer questions about the planned itinerary accurately.`;
+
+  return prompt;
+}
 
 function buildAgendaContext(agendaItems: AgendaItemInput[], dayNum: number): string {
   if (!agendaItems || agendaItems.length === 0) return "";
@@ -115,6 +122,7 @@ Deno.serve(async (req: Request) => {
     history: HistoryMessage[];
     agendaItems?: AgendaItemInput[];
     dayNum?: number;
+    tripContext?: TripContext;
   };
 
   try {
@@ -126,15 +134,16 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const { message, history, agendaItems, dayNum } = body;
+  const { message, history, agendaItems, dayNum, tripContext } = body;
   const priorMessages = (history ?? []).slice(0, -1);
 
   const agendaContext = agendaItems
     ? buildAgendaContext(agendaItems, dayNum ?? 1)
     : "";
+  const systemPrompt = buildSystemPrompt(tripContext);
   const effectiveSystemPrompt = agendaContext
-    ? SYSTEM_PROMPT + agendaContext
-    : SYSTEM_PROMPT;
+    ? systemPrompt + agendaContext
+    : systemPrompt;
 
   const json = (data: unknown) =>
     new Response(JSON.stringify(data), {
@@ -166,8 +175,8 @@ Deno.serve(async (req: Request) => {
         .map((m) => m.name.replace("models/", ""));
 
       const preferred = [
-        ...flashModels.filter((n) => n.startsWith("gemini-1.5-flash")),
         ...flashModels.filter((n) => n.startsWith("gemini-2.0-flash")),
+        ...flashModels.filter((n) => n.startsWith("gemini-1.5-flash")),
         ...flashModels,
       ];
 
@@ -217,8 +226,8 @@ Deno.serve(async (req: Request) => {
             .join("")
             .trim() ??
           (candidate.finishReason === "SAFETY"
-            ? "I can't answer that one — try asking about your Maui itinerary, activities, or local tips!"
-            : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do in Maui.");
+            ? "I can't answer that one — try asking about your itinerary, activities, or local tips!"
+            : "I'm not sure how to answer that. Try asking about your trip itinerary or things to do.");
 
         if (candidate.finishReason === "MAX_TOKENS") {
           reply = `${reply.replace(/\s+$/, "")}\n\nI was cut off there. Ask me to continue and I'll pick up from this point.`;
