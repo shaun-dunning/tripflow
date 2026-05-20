@@ -42,7 +42,7 @@ export default function BottomNav() {
             <button
               key={tab.href}
               onClick={() => navigate(tab.href)}
-              className={`flex-1 flex flex-col items-center gap-0.5 pt-1 pb-0.5 transition-colors active:opacity-60 relative ${
+              className={`flex-1 flex flex-col items-center gap-0.5 pt-2.5 pb-1 transition-colors active:opacity-60 relative ${
                 active ? "text-sky-600" : "text-slate-400"
               }`}
             >

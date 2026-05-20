@@ -83,7 +83,7 @@ export default function RootLayout({
             <main
               className="flex-1 tab-main-content overflow-y-auto"
               style={{
-                paddingBottom: "calc(40px + env(safe-area-inset-bottom, 0px))",
+                paddingBottom: "calc(64px + env(safe-area-inset-bottom, 0px))",
                 WebkitOverflowScrolling: "touch",
               }}
             >
