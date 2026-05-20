@@ -1196,7 +1196,7 @@ export default function TripPage() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-sky-900/10" />
 
           {/* Countdown pill */}
-          <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-2 text-center">
+          <div className="absolute right-4 bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-2xl px-3 py-2 text-center" style={{ top: "max(44px, env(safe-area-inset-top))" }}>
             <p className="text-2xl font-black leading-none">
               {tripStatus === "upcoming" ? daysUntilTrip ?? "—" : tripStatus === "completed" ? "✓" : daysLeft}
             </p>
