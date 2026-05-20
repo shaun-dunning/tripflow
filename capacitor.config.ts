@@ -14,9 +14,10 @@ const config: CapacitorConfig = {
   webDir: "out",
 
   ios: {
-    // Render content behind the notch / Dynamic Island and home indicator.
-    // Safe-area CSS env() variables compensate in the stylesheet.
-    contentInset: "always",
+    // "never" = no native safe-area inset applied by iOS. All safe-area
+    // positioning is handled entirely by CSS env(safe-area-inset-*) vars,
+    // preventing the double-inset bug (native + CSS = 2x padding on iOS).
+    contentInset: "never",
 
     // Disable native scroll bounce — the app manages its own scroll containers.
     scrollEnabled: false,
