@@ -1378,6 +1378,13 @@ export default function ExplorePage() {
           className="absolute inset-0 h-full w-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/78 via-slate-950/18 to-sky-950/5" />
+        {activeTrip.activeTrip?.destination && (
+          <div className="absolute top-4 left-4">
+            <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
+              {activeTrip.activeTrip.destination}
+            </p>
+          </div>
+        )}
         <div className="absolute inset-x-0 bottom-0 px-4 pb-8">
           {activeTrip.activeTrip?.destination && (
             <div className="flex items-center gap-2 mb-2">
