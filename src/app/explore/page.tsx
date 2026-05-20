@@ -1379,7 +1379,7 @@ export default function ExplorePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-950/78 via-slate-950/18 to-sky-950/5" />
         {activeTrip.activeTrip?.destination && (
-          <div className="absolute top-4 left-4">
+          <div className="absolute left-4" style={{ top: "clamp(12px, env(safe-area-inset-top), 44px)" }}>
             <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
               {activeTrip.activeTrip.destination}
             </p>

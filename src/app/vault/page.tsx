@@ -1013,7 +1013,7 @@ export default function VaultPage() {
           className="absolute inset-0 w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-black/10" />
-        <div className="absolute left-4" style={{ top: "max(44px, env(safe-area-inset-top))" }}>
+        <div className="absolute left-4" style={{ top: "clamp(12px, env(safe-area-inset-top), 44px)" }}>
           <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest">
             {activeTrip.activeTrip?.destination ?? "Travel"}
           </p>
